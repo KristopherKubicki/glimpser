@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-import app.utils.template_manager as template_manager
+from app.utils import template_manager
 
 
 class TestLLMResponseCount(unittest.TestCase):

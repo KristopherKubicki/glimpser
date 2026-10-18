@@ -82,6 +82,11 @@ let idleTimer = null;
 let isDimmed = false;
 let lastActivityAt = Date.now();
 
+function setCursorHidden(hidden) {
+  if (!document.body) return;
+  document.body.classList.toggle("comfort-hide-cursor", Boolean(hidden));
+}
+
 function ensureOverlays() {
   if (!dimmerEl) {
     dimmerEl = document.getElementById("comfort-dimmer");
@@ -161,6 +166,7 @@ function applyComfort() {
   if (!idleEnabled) {
     isDimmed = false;
     setOpacity(dimmerEl, 0, 0);
+    setCursorHidden(false);
   }
 
   // Tint overlay
@@ -193,6 +199,7 @@ function dimNow() {
 
   isDimmed = true;
   setOpacity(dimmerEl, dimOpacity, dimInMs);
+  setCursorHidden(true);
 }
 
 function brightenNow() {
@@ -205,6 +212,7 @@ function brightenNow() {
 
   isDimmed = false;
   setOpacity(dimmerEl, 0, brightenMs);
+  setCursorHidden(false);
 }
 
 function scheduleIdle() {

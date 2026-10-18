@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import app.utils.template_manager as template_manager
+from app.utils import template_manager
 
 
 class TestLLMCostSummary(unittest.TestCase):

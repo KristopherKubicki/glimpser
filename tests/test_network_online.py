@@ -7,6 +7,12 @@ from app.utils.network import _get_test_hosts, _state, is_system_online
 
 class TestIsSystemOnline(unittest.TestCase):
     def setUp(self):
+        state_patch = patch(
+            "app.utils.network.network_state",
+            return_value={"lan_ok": False, "wan_ok": False, "dns_ok": False},
+        )
+        state_patch.start()
+        self.addCleanup(state_patch.stop)
         _state.update(
             {
                 "last_online_time": None,
@@ -23,7 +29,6 @@ class TestIsSystemOnline(unittest.TestCase):
 
     @patch("socket.create_connection")
     def test_first_host_success(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_HOSTS": "1.1.1.1", "ONLINE_TEST_URLS": ""},
@@ -47,14 +52,12 @@ class TestIsSystemOnline(unittest.TestCase):
     @patch("app.utils.network.socket.create_connection")
     @patch("app.utils.network._get_test_hosts", return_value=[" ", "2.2.2.2"])
     def test_is_system_online_skips_blank(self, mock_hosts, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(os.environ, {"ONLINE_TEST_URLS": ""}):
             self.assertTrue(is_system_online(timeout=2))
         mock_conn.assert_called_once_with(("2.2.2.2", 443), timeout=2)
 
     @patch("socket.create_connection")
     def test_custom_port_success(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {
@@ -81,7 +84,6 @@ class TestIsSystemOnline(unittest.TestCase):
 
     @patch("socket.create_connection")
     def test_host_with_inline_port(self, mock_conn):
-        mock_conn.return_value = None
         with patch.dict(
             os.environ,
             {"ONLINE_TEST_HOSTS": "example.com:444", "ONLINE_TEST_URLS": ""},
@@ -101,7 +103,6 @@ class TestIsSystemOnline(unittest.TestCase):
     @patch("socket.create_connection")
     @patch("app.utils.network.probe_url_with_range")
     def test_url_failure_falls_back_to_hosts(self, mock_probe, mock_conn):
-        mock_conn.return_value = None
         mock_probe.return_value = (False, {"ok": False})
         with patch.dict(
             os.environ,

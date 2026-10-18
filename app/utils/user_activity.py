@@ -196,6 +196,7 @@ def idle_seconds_loginctl() -> int:
                 "IdleSinceHintMonotonicUSec",
             ],
             text=True,
+            stderr=subprocess.DEVNULL,
             timeout=0.3,
         ).splitlines()
     except subprocess.SubprocessError:

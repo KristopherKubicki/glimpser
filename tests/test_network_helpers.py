@@ -13,24 +13,23 @@ class TestParseTarget(unittest.TestCase):
             network._parse_target("example.com:8080", 80), ("example.com", 8080)
         )
 
-    def test_host_with_invalid_port_uses_default(self):
-        self.assertEqual(
-            network._parse_target("example.com:notaport", 80), ("example.com", 80)
-        )
+    def test_host_with_invalid_port_is_rejected(self):
+        with self.assertRaises(ValueError):
+            network._parse_target("example.com:notaport", 80)
 
     def test_ipv6_host_with_port(self):
         self.assertEqual(
-            network._parse_target("2001:db8::1:8443", 443), ("2001:db8::1", 8443)
+            network._parse_target("[2001:db8::1]:8443", 443), ("2001:db8::1", 8443)
         )
 
 
 class TestTryConnect(unittest.TestCase):
     @patch("app.utils.network.socket.create_connection")
     def test_try_connect_success(self, mock_conn):
-        mock_conn.return_value = None
         result = network._try_connect("host.com:443", timeout=1, default_port=80)
         self.assertTrue(result)
         mock_conn.assert_called_once_with(("host.com", 443), timeout=1)
+        mock_conn.return_value.__exit__.assert_called_once()
 
     @patch("app.utils.network.socket.create_connection", side_effect=OSError())
     def test_try_connect_failure(self, mock_conn):

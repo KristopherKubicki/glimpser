@@ -1,3 +1,4 @@
+import { frameRateSample } from "./media_timing.js";
 import { showSpinner, hideSpinner, showErrorIndicator } from "./video.js";
 
 function safePlay(el) {
@@ -69,10 +70,16 @@ export function adjustFullHeight() {
     "--banner-space",
     `${bannerHeight}px`,
   );
-  const available =
-    window.innerHeight - headerHeight - bannerHeight - footerSpace;
+  const fullscreen = document.fullscreenElement === container;
+  // Page chrome is outside the fullscreen surface and must not shrink it.
+  const available = Math.max(
+    0,
+    fullscreen
+      ? window.innerHeight
+      : window.innerHeight - headerHeight - bannerHeight - footerSpace,
+  );
   container.style.maxHeight = `${available}px`;
-  if (window.innerWidth >= 768) {
+  if (fullscreen || window.innerWidth >= 768) {
     container.style.height = `${available}px`;
   } else {
     container.style.height = "auto";
@@ -397,10 +404,10 @@ export function initTilePlayer() {
   });
   const updateClock = () => {
     if (!liveClock) return;
-    liveClock.textContent = `Live ${timeFmt.format(new Date())}`;
+    liveClock.textContent = `Viewer clock ${timeFmt.format(new Date())}`;
   };
   updateClock();
-  setInterval(updateClock, 1000);
+  const liveClockTimer = setInterval(updateClock, 1000);
 
   let spinner = container?.querySelector(".loading-spinner");
   if (!spinner && container) {
@@ -603,6 +610,8 @@ export function initTilePlayer() {
     liveActionBtn.style.display = visible ? "" : "none";
   }
 
+  let previousFrameSample = null;
+  let measuredFps = null;
   function updateLiveStats() {
     if (!liveStatsEl) return;
     const w = Number(video.videoWidth) || 0;
@@ -612,7 +621,16 @@ export function initTilePlayer() {
       return;
     }
     const q = getEffectiveLiveQuality();
-    liveStatsEl.textContent = `${w}x${h} (${q})`;
+    if (typeof video.getVideoPlaybackQuality === "function") {
+      const sample = frameRateSample(
+        previousFrameSample,
+        video.getVideoPlaybackQuality(),
+        performance.now(),
+      );
+      previousFrameSample = sample.next;
+      if (sample.fps !== null) measuredFps = sample.fps;
+    }
+    liveStatsEl.textContent = `${w}×${h}${measuredFps === null ? "" : ` · ${measuredFps} fps displayed`} · ${q}`;
     updateFlashGuardFrom(video);
   }
 
@@ -667,6 +685,7 @@ export function initTilePlayer() {
   let clipSeq = 0;
   let clipLoopsRemaining = 0;
   let clipFailTimer = null;
+  let clipPlaybackCleanup = null;
   let clipControls = null;
   let clipSeek = null;
   let clipTime = null;
@@ -676,6 +695,7 @@ export function initTilePlayer() {
   let liveVideoCleanup = null;
   let liveProfileRetryTimer = null;
   let liveConnectTimer = null;
+  let liveWatchdogTimer = null;
   let streamRecoverTimer = null;
   let streamRecoverDelayMs = 1200;
   let backendCheckTimer = null;
@@ -689,7 +709,20 @@ export function initTilePlayer() {
   const ROTATION_DWELL_MS = 6000;
   const BACKEND_HEALTH_POLL_MS = 4000;
   const LIVE_FADE_MS = 1800;
+  const LIVE_STALL_MIN_MS = 25000;
   const speedContainer = document.getElementById("speed-container");
+  let lastLiveProgressAt = Date.now();
+  let lastLiveRecoveryAt = 0;
+  let liveRecoveryEscalations = 0;
+
+  function markLiveProgress() {
+    lastLiveProgressAt = Date.now();
+    liveRecoveryEscalations = 0;
+  }
+
+  function getLiveStallThresholdMs() {
+    return Math.max(LIVE_STALL_MIN_MS, refreshSeconds * 5000);
+  }
 
   function setSpeedControlsVisible(visible) {
     if (!speedContainer) return;
@@ -735,6 +768,8 @@ export function initTilePlayer() {
   let _stillCtx = null;
   let _lastStillCaptureAt = 0;
   let _lastStillObjectUrl = null;
+  let _lastImageFlashGuardAt = 0;
+  const IMAGE_FLASH_GUARD_MIN_INTERVAL_MS = 1200;
 
   function captureVideoFrameToStill() {
     if (!isLivePage) return false;
@@ -823,6 +858,20 @@ export function initTilePlayer() {
     // Otherwise, try to snapshot the current video so we always have something
     // to fade from (rotation / rapid switching can skip last_screenshot preload).
     captureVideoFrameToStill();
+  }
+
+  function maybeUpdateFlashGuardFromImage(img) {
+    if (!FLASH_GUARD_ENABLED) return;
+    if (window.LOW_CPU_MODE) return;
+    if (!img || img.style.display === "none") return;
+    if (document.visibilityState === "hidden") return;
+
+    const now = Date.now();
+    if (now - _lastImageFlashGuardAt < IMAGE_FLASH_GUARD_MIN_INTERVAL_MS) {
+      return;
+    }
+    _lastImageFlashGuardAt = now;
+    updateFlashGuardFrom(img);
   }
 
   function crossFadeToImage() {
@@ -922,6 +971,37 @@ export function initTilePlayer() {
   if (speedSlider) speedSlider.addEventListener("input", updateSpeedLabel);
   updateSpeedLabel();
 
+  function startLiveWatchdog() {
+    if (!isLivePage || hasClipSource) return;
+    if (liveWatchdogTimer) return;
+    liveWatchdogTimer = setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      if (!isLiveStreamActive()) return;
+      const ageMs = Date.now() - lastLiveProgressAt;
+      if (ageMs < getLiveStallThresholdMs()) return;
+      if (Date.now() - lastLiveRecoveryAt < 8000) return;
+
+      lastLiveRecoveryAt = Date.now();
+      liveRecoveryEscalations += 1;
+      const recoverTarget = rotationRoot || current;
+      if (!recoverTarget) return;
+
+      console.warn(
+        `[live] detected stalled media (${ageMs}ms); recovery #${liveRecoveryEscalations}`,
+      );
+
+      if (liveRecoveryEscalations >= 2) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("_reload", String(Date.now()));
+        window.location.replace(url.toString());
+        return;
+      }
+
+      showSpinner(video);
+      play(recoverTarget);
+    }, 5000);
+  }
+
   let image = document.getElementById("live-image");
   if (!image) {
     image = document.createElement("img");
@@ -970,7 +1050,8 @@ export function initTilePlayer() {
       backendWasDown = false;
       backendConsecutiveFails = 0;
       resetStreamRecovery();
-      updateFlashGuardFrom(img);
+      markLiveProgress();
+      maybeUpdateFlashGuardFromImage(img);
 
       // If this is the new stream image and we have an alternate, cross-fade.
       // Note: for MJPEG streams, <img> can emit many "load" events (one per frame).
@@ -1062,23 +1143,45 @@ export function initTilePlayer() {
     const controlsList = video.controlsList;
     const supportsNoFullscreen = Boolean(
       controlsList &&
-      typeof controlsList.supports === "function" &&
-      controlsList.supports("nofullscreen"),
+        typeof controlsList.supports === "function" &&
+        controlsList.supports("nofullscreen"),
     );
-    // Keep exactly one fullscreen affordance: either native controls OR our
-    // custom overlay button depending on browser capability.
-    if (supportsNoFullscreen) {
+    const target = container || video;
+    // Image streams have no native video controls. Test the player API itself.
+    if (supportsNoFullscreen)
       video.setAttribute("controlsList", "nofullscreen");
-      fsButton.style.display = "block";
-    } else {
-      fsButton.style.display = "none";
-    }
-    fsButton.addEventListener("click", () => {
-      const target = container || video;
-      if (!document.fullscreenElement) {
-        target?.requestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
+    fsButton.style.display =
+      typeof target?.requestFullscreen === "function" ? "block" : "none";
+    const updateFullscreenControl = () => {
+      const active = document.fullscreenElement === target;
+      const label = active ? "Exit fullscreen" : "Enter fullscreen";
+      fsButton.title = label;
+      fsButton.setAttribute("aria-label", label);
+      fsButton.setAttribute("aria-pressed", String(active));
+    };
+    updateFullscreenControl();
+    document.addEventListener("fullscreenchange", updateFullscreenControl);
+    const cleanupFullscreenControl = (event) => {
+      if (event.persisted) return;
+      document.removeEventListener("fullscreenchange", updateFullscreenControl);
+      window.removeEventListener("pagehide", cleanupFullscreenControl);
+    };
+    window.addEventListener("pagehide", cleanupFullscreenControl);
+    fsButton.addEventListener("click", async () => {
+      if (fsButton.disabled) return;
+      fsButton.disabled = true;
+      try {
+        if (!document.fullscreenElement) {
+          await target?.requestFullscreen?.();
+        } else {
+          await document.exitFullscreen?.();
+        }
+        updateFullscreenControl();
+      } catch (_) {
+        // Browser policy or a detached player can reject a fullscreen request.
+        fsButton.title = "Could not change fullscreen. Try again.";
+      } finally {
+        fsButton.disabled = false;
       }
     });
   }
@@ -1098,7 +1201,9 @@ export function initTilePlayer() {
   const IDLE_DELAY = 30000;
   const CLIP_DURATION_SEC = 120;
   const CLIP_LOOP_COUNT = 3;
-  const LIVE_CONNECT_TIMEOUT_MS = 5000;
+  // Low-FPS fragmented MP4 can need several fragments before browser decode.
+  // Allow the backend's warm-up plus client preroll before changing profiles.
+  const LIVE_CONNECT_TIMEOUT_MS = 15000;
   const LIVE_PROFILE_RECOVERY_MS = 45000;
 
   function showClip() {
@@ -1112,11 +1217,19 @@ export function initTilePlayer() {
     safePlay(video);
   }
 
-  function showLive() {
+  function cleanupClipPlayback() {
+    if (clipPlaybackCleanup) {
+      clipPlaybackCleanup();
+      clipPlaybackCleanup = null;
+    }
     if (clipFailTimer) {
       clearTimeout(clipFailTimer);
       clipFailTimer = null;
     }
+  }
+
+  function showLive() {
+    cleanupClipPlayback();
     play(current);
   }
 
@@ -1246,6 +1359,7 @@ export function initTilePlayer() {
     if (!isLivePage) return false;
     if (!name || name === "All") return false;
 
+    cleanupClipPlayback();
     clipSeq += 1;
     const myClipSeq = clipSeq;
     clipLoopsRemaining = CLIP_LOOP_COUNT - 1;
@@ -1298,17 +1412,19 @@ export function initTilePlayer() {
 
     video.addEventListener("ended", onEnded);
     video.addEventListener("error", onError);
-    video.addEventListener("loadedmetadata", () => {
+    const onLoadedMetadata = () => {
       if (!clipSeek) return;
       clipSeek.max = String(video.duration || 0);
       clipSeek.value = String(video.currentTime || 0);
       if (clipTime) clipTime.textContent = formatClock(video.currentTime || 0);
-    });
-    video.addEventListener("timeupdate", () => {
+    };
+    const onTimeUpdate = () => {
       if (!clipSeek || clipIsSeeking) return;
       clipSeek.value = String(video.currentTime || 0);
       if (clipTime) clipTime.textContent = formatClock(video.currentTime || 0);
-    });
+    };
+    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("timeupdate", onTimeUpdate);
 
     // Hard failsafe: if the clip never reaches "canplay", drop to live.
     if (clipFailTimer) clearTimeout(clipFailTimer);
@@ -1325,20 +1441,18 @@ export function initTilePlayer() {
       }
     };
     video.addEventListener("canplay", onCanPlay, { once: true });
+    clipPlaybackCleanup = () => {
+      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("error", onError);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("canplay", onCanPlay);
+    };
 
     setVideoSrc(clipUrl);
     video.loop = false;
     video.load();
     showClip();
-
-    // Clean up listeners when a new selection happens.
-    const cleanupIfStale = () => {
-      if (myClipSeq !== clipSeq) {
-        video.removeEventListener("ended", onEnded);
-        video.removeEventListener("error", onError);
-      }
-    };
-    setTimeout(cleanupIfStale, 0);
 
     // Ensure we still return to live if user stops interacting.
     scheduleLive(name);
@@ -1548,6 +1662,8 @@ export function initTilePlayer() {
       liveConnectTimer = null;
     }
     setLiveSourceBadge("");
+    previousFrameSample = null;
+    measuredFps = null;
     setLiveAction("", null);
     clearLiveAutoUpgradeTimer();
     if (liveQuality === "auto") liveAutoStage = "first";
@@ -1606,6 +1722,7 @@ export function initTilePlayer() {
 
     let profileIndex = 0;
     let failedThisAttempt = false;
+    let readyThisAttempt = false;
 
     let stallCount = 0;
     let waitingCount = 0;
@@ -1700,6 +1817,7 @@ export function initTilePlayer() {
     const startAttempt = () => {
       if (streamToken !== activeStreamToken) return;
       failedThisAttempt = false;
+      readyThisAttempt = false;
 
       const q = getQuality();
       const profilePlan = getPlan(q);
@@ -1766,7 +1884,16 @@ export function initTilePlayer() {
     };
 
     const onReady = () => {
-      if (streamToken !== activeStreamToken) return;
+      if (
+        streamToken !== activeStreamToken ||
+        failedThisAttempt ||
+        readyThisAttempt ||
+        video.readyState < 2
+      )
+        return;
+      // Metadata, data, canplay and playing can arrive together. Transition
+      // once per attempt so they cannot launch overlapping quality upgrades.
+      readyThisAttempt = true;
       if (liveConnectTimer) {
         clearTimeout(liveConnectTimer);
         liveConnectTimer = null;
@@ -1780,6 +1907,7 @@ export function initTilePlayer() {
       backendWasDown = false;
       backendConsecutiveFails = 0;
       resetStreamRecovery();
+      markLiveProgress();
       updateFlashGuardFrom(video);
       updateLiveStats();
       clearLiveBad(camera);
@@ -1860,7 +1988,7 @@ export function initTilePlayer() {
     if (!target) return;
     stopLiveVideoMode();
     if (isCamera && isLivePage) {
-      setLiveSourceBadge("Live PNG fallback", "fallback");
+      setLiveSourceBadge("Saved snapshots · video unavailable", "fallback");
       setLiveAction("try", target);
     } else {
       setLiveAction("", null);
@@ -1885,7 +2013,7 @@ export function initTilePlayer() {
     if (!target) return;
     stopLiveVideoMode();
     if (isCamera && isLivePage) {
-      setLiveSourceBadge("Live MJPEG fallback", "fallback");
+      setLiveSourceBadge("Saved-frame stream · video unavailable", "fallback");
       setLiveAction("try", target);
     } else {
       setLiveAction("", null);
@@ -1963,6 +2091,7 @@ export function initTilePlayer() {
   // skipped entirely so the image element always shows the current stream.
   function play(name) {
     if (!name) return;
+    cleanupClipPlayback();
     const now = Date.now();
     if (isLivePage && now - lastPlayBeaconAt > 10000) {
       lastPlayBeaconAt = now;
@@ -1973,7 +2102,7 @@ export function initTilePlayer() {
     const shouldRotate =
       isLivePage &&
       !hasClipSource &&
-      (forceAllRotator ||
+      (forcedRotatorActive ||
         selection === "All" ||
         selection.startsWith("group-"));
 
@@ -2013,7 +2142,10 @@ export function initTilePlayer() {
     if (liveQuality === "auto") liveAutoStage = "first";
     setLiveAction("", null);
 
-    if (shouldUseLiveVideo(selection)) {
+    // Rotator mode should stay on the lighter image-based path. Rebinding the
+    // <video> element across many cameras is much heavier than pinning one
+    // camera and can leave long-running tabs in a bad state.
+    if (!shouldRotate && shouldUseLiveVideo(selection)) {
       playLiveVideo(selection, streamToken);
       return;
     }
@@ -2037,6 +2169,9 @@ export function initTilePlayer() {
 
   if (camSelect) {
     camSelect.addEventListener("change", async () => {
+      // A pending rotation must not interrupt the newly selected camera's clip.
+      stopRotationTimer();
+      rotationRoot = null;
       // Empty camera option means "rotate" for current group/all.
       const selected = camSelect.value;
       if (selected) {
@@ -2103,6 +2238,7 @@ export function initTilePlayer() {
   }
 
   syncLiveContext(current);
+  startLiveWatchdog();
 
   if (source && source.src) {
     const onInteract = () => {
@@ -2119,6 +2255,39 @@ export function initTilePlayer() {
   } else {
     play(current);
   }
+
+  const cleanupLivePageResources = () => {
+    cleanupClipPlayback();
+    clearLiveAutoUpgradeTimer();
+    stopRotationTimer();
+    clearTimeout(liveTimer);
+    if (liveWatchdogTimer) {
+      clearInterval(liveWatchdogTimer);
+      liveWatchdogTimer = null;
+    }
+    if (pngTimer) {
+      clearInterval(pngTimer);
+      pngTimer = null;
+    }
+    if (refreshAbort) refreshAbort.abort();
+    refreshTimeoutIds.forEach((id) => clearTimeout(id));
+    refreshTimeoutIds = [];
+    resetStreamRecovery();
+    stopLiveVideoMode();
+    clearInterval(liveClockTimer);
+    if (_lastStillObjectUrl) {
+      try {
+        URL.revokeObjectURL(_lastStillObjectUrl);
+      } catch (_) {
+        // ignore
+      }
+      _lastStillObjectUrl = null;
+    }
+  };
+
+  window.addEventListener("pagehide", cleanupLivePageResources, {
+    once: true,
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -2131,6 +2300,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 window.addEventListener("resize", adjustFullHeight);
+document.addEventListener("fullscreenchange", adjustFullHeight);
 
 export function updateCameraOptions(group) {
   const camSelect =

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>AWS Latency Wall</title>
+    <link rel="stylesheet" href="/static/css/cloudping_wall.css" />
+  </head>
+  <body data-cloudping-auto>
+    <main id="latency-wall" class="cloudping-wall" data-ready="0">
+      <header class="cloudping-header">
+        <div>
+          <p class="eyebrow">Glimpser network probe</p>
+          <h1>AWS latency wall</h1>
+        </div>
+        <div class="header-status" aria-live="polite">
+          <span id="cloudping-status" class="status-pill">Starting probes</span>
+          <time id="cloudping-updated">--</time>
+        </div>
+      </header>
+
+      <section class="metric-strip" aria-label="Latency summary">
+        <article class="metric-panel">
+          <span class="metric-label">Closest</span>
+          <strong id="cloudping-best">--</strong>
+          <span id="cloudping-best-code">--</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Median</span>
+          <strong id="cloudping-median">--</strong>
+          <span>all regions</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Slowest</span>
+          <strong id="cloudping-worst">--</strong>
+          <span id="cloudping-worst-code">--</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Regions</span>
+          <strong id="cloudping-count">--</strong>
+          <span>browser timed</span>
+        </article>
+      </section>
+
+      <section class="wall-content">
+        <section class="route-map-panel" aria-label="AWS latency routing map">
+          <svg
+            id="cloudping-route-map"
+            class="route-map"
+            viewBox="0 0 960 520"
+            role="img"
+            aria-labelledby="route-map-title route-map-desc"
+          >
+            <title id="route-map-title">AWS latency routing map</title>
+            <desc id="route-map-desc">
+              Stylized paths from Glimpser in the Midwest to AWS regions,
+              colored by measured browser latency.
+            </desc>
+            <rect class="map-ocean" width="960" height="520" rx="0" />
+            <g class="map-grid" aria-hidden="true">
+              <path
+                d="M60 80H900M60 160H900M60 240H900M60 320H900M60 400H900"
+              />
+              <path
+                d="M140 40V470M280 40V470M420 40V470M560 40V470M700 40V470M840 40V470"
+              />
+            </g>
+            <g class="landmasses" aria-hidden="true">
+              <path
+                d="M88 100 180 62 295 80 352 138 320 225 230 260 120 226 66 164Z"
+              />
+              <path d="M365 165 438 124 535 142 574 210 520 260 420 246Z" />
+              <path
+                d="M548 160 675 110 834 142 906 246 846 350 680 324 596 250Z"
+              />
+              <path d="M294 280 390 300 438 395 388 482 306 432 274 352Z" />
+              <path d="M746 374 832 384 884 454 806 482 734 438Z" />
+            </g>
+            <g id="route-lines" class="route-lines"></g>
+            <g class="origin-node" aria-label="Glimpser Midwest origin">
+              <circle cx="250" cy="198" r="7" />
+              <circle cx="250" cy="198" r="15" />
+              <text x="270" y="192">Glimpser</text>
+              <text x="270" y="210">Midwest</text>
+            </g>
+            <g id="region-points" class="region-points"></g>
+          </svg>
+        </section>
+
+        <section class="table-shell" aria-label="AWS region latency">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Rank</th>
+                <th scope="col">Region</th>
+                <th scope="col">Code</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Min</th>
+                <th scope="col">Max</th>
+                <th scope="col">Signal</th>
+              </tr>
+            </thead>
+            <tbody id="cloudping-rows">
+              <tr>
+                <td colspan="7" class="placeholder-row">
+                  Preparing browser probes
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </section>
+
+      <footer class="cloudping-footer">
+        <span>Measured from this browser session</span>
+        <span>Endpoint pattern: ec2.&lt;region&gt;.amazonaws.com/ping</span>
+      </footer>
+    </main>
+
+    <script type="module" src="/static/js/cloudping_wall.js"></script>
+  </body>
+</html>

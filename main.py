@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from app import config, create_app, scheduler
@@ -107,7 +108,9 @@ def setup_logging(args=None):
 
     # Set up file logging if not already configured
     if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
-        file_handler = logging.FileHandler(config.LOGGING_PATH)
+        file_handler = RotatingFileHandler(
+            config.LOGGING_PATH, maxBytes=25 * 1024 * 1024, backupCount=3
+        )
         file_handler.setFormatter(formatter)
         rate_filter = RateLimitFilter(config.LOG_RATE_LIMIT_SEC)
         file_handler.addFilter(rate_filter)
@@ -302,6 +305,29 @@ def cleanup_resources():
     shutdown_manager.cleanup()
 
 
+SHUTDOWN_DEADLINE_SECONDS = 20.0
+
+
+def _enforce_shutdown_deadline():
+    """Exit if cleanup or Python's worker-thread teardown exceeds the deadline."""
+    # Logging may hold the same lock as a stuck worker. Write directly, and
+    # always exit even if stderr has already closed. The service manager then
+    # reaps remaining child processes and restarts according to its policy.
+    try:
+        os.write(2, b"Shutdown deadline exceeded; terminating unfinished workers.\n")
+    finally:
+        os._exit(1)
+
+
+def _start_shutdown_deadline():
+    """Bound signal-driven shutdown without interrupting prompt cleanup."""
+    watchdog = threading.Timer(SHUTDOWN_DEADLINE_SECONDS, _enforce_shutdown_deadline)
+    watchdog.daemon = True
+    watchdog.start()
+    # Do not cancel after cleanup: sys.exit can still wait indefinitely for
+    # non-daemon executor threads. A normal process exit ends this daemon.
+
+
 def graceful_shutdown(signum, frame):
     """Handle termination signals by cleaning up and exiting."""
     global _shutdown_signaled
@@ -309,6 +335,7 @@ def graceful_shutdown(signum, frame):
         if _shutdown_signaled:
             return
         _shutdown_signaled = True
+    _start_shutdown_deadline()
     mark_shutdown()
     try:
         scheduler.pause()
@@ -323,13 +350,24 @@ def graceful_shutdown(signum, frame):
             pass
     cleanup_resources()
     time.sleep(0.01)
+    if os.environ.get("GLIMPSER_HARD_EXIT_ON_SIGNAL") == "1":
+        try:
+            logging.info("Glimpser shut down.")
+        except Exception:
+            pass
+        os._exit(0)
     sys.exit(0)
 
 
 def clear_console():
-    """Clear the terminal in a platform agnostic way."""
-    command = ["cls"] if os.name == "nt" else ["clear"]
-    subprocess.run(command, check=False)
+    """Best-effort terminal clearing without disrupting service startup."""
+    if not sys.stdout.isatty():
+        return
+    command = ["cmd.exe", "/d", "/c", "cls"] if os.name == "nt" else ["clear"]
+    try:
+        subprocess.run(command, check=False, timeout=2)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def clear_console_cli():
@@ -467,6 +505,7 @@ def get_port_usage(port: int) -> str:
 
 def main(argv=None):
     """Entry point for the ``glimpser`` command."""
+    args = parse_arguments(argv)
     # Clear the console before starting
     clear_console()
 
@@ -478,9 +517,11 @@ def main(argv=None):
     signal.signal(signal.SIGINT, graceful_shutdown)
 
     logging.info("Initializing...")
-    args = parse_arguments(argv)
     app = create_application(args)
     display_startup_info(args)
+    # HTTPS may share its port with an address-specific reverse proxy such as
+    # Tailscale. Keep HTTP's bind unchanged so loopback integrations still work.
+    https_host = config.get_setting("HTTPS_HOST", config.HOST) or config.HOST
 
     ports_to_check: list[int]
     if config.HTTPS_ENABLED:
@@ -532,7 +573,7 @@ def main(argv=None):
             from werkzeug.serving import make_server
 
             https_server = make_server(
-                config.HOST,
+                https_host,
                 config.HTTPS_PORT,
                 app,
                 threaded=True,
@@ -546,20 +587,21 @@ def main(argv=None):
             https_thread.start()
             logging.info(
                 "Starting HTTPS interface at https://%s:%s",
-                config.HOST,
+                https_host,
                 config.HTTPS_PORT,
             )
 
         if config.HTTPS_ENABLED and config.HTTPS_ONLY:
             logging.info(
                 "Starting web interface at https://%s:%s",
-                config.HOST,
+                https_host,
                 config.HTTPS_PORT,
             )
             app.run(
-                host=config.HOST,
+                host=https_host,
                 port=config.HTTPS_PORT,
-                debug=config.DEBUG_MODE,
+                debug=False,
+                use_debugger=False,
                 threaded=True,
                 ssl_context=ssl_context,
             )
@@ -572,7 +614,8 @@ def main(argv=None):
             app.run(
                 host=config.HOST,
                 port=config.PORT,
-                debug=config.DEBUG_MODE,
+                debug=False,
+                use_debugger=False,
                 threaded=True,
             )
     except KeyboardInterrupt:

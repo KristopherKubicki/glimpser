@@ -35,7 +35,7 @@ class TestGetDriver(unittest.TestCase):
         if hasattr(ss._driver_local, "driver"):
             ss._driver_local.driver = None
 
-    def test_driver_cached(self):
+    def test_preferred_driver_cached(self):
         with (
             patch(
                 "app.utils.screenshots.ChromeDriverManager.install",
@@ -45,13 +45,18 @@ class TestGetDriver(unittest.TestCase):
                 "app.utils.screenshots.webdriver.Chrome",
                 return_value=sentinel.driver,
             ) as mock_chrome,
+            patch(
+                "app.utils.screenshots._find_cached_chromedriver",
+                return_value="/test/chromedriver",
+            ),
+            patch("app.utils.screenshots.get_chrome_path", return_value=None),
             patch("app.utils.screenshots.is_system_online", return_value=True),
         ):
             driver1 = ss.get_driver(sentinel.options)
             driver2 = ss.get_driver(sentinel.options)
             self.assertIs(driver1, sentinel.driver)
             self.assertIs(driver1, driver2)
-            mock_install.assert_called_once()
+            mock_install.assert_not_called()
             mock_chrome.assert_called_once()
 
 

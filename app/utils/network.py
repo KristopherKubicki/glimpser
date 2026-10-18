@@ -44,13 +44,27 @@ def _is_private_host(host: str) -> bool:
 
 def _parse_target(target: str, default_port: int) -> tuple[str, int]:
     """Return ``(host, port)`` tuple for ``target``."""
-    if ":" in target:
-        host, p = target.rsplit(":", 1)
-        try:
-            return host, int(p)
-        except ValueError:
-            return host, default_port
-    return target, default_port
+    target = target.strip()
+    port = default_port
+    if target.startswith("["):
+        host, separator, suffix = target[1:].partition("]")
+        if not separator or (suffix and not suffix.startswith(":")):
+            raise ValueError("invalid bracketed connectivity target")
+        ipaddress.IPv6Address(host)
+        if suffix:
+            port = int(suffix[1:])
+    elif target.count(":") > 1:
+        # A bare IPv6 literal has no inline port. Explicit ports require brackets.
+        ipaddress.IPv6Address(target)
+        host = target
+    elif ":" in target:
+        host, value = target.rsplit(":", 1)
+        port = int(value)
+    else:
+        host = target
+    if not host or not 1 <= port <= 65535:
+        raise ValueError("invalid connectivity host or port")
+    return host, port
 
 
 def _check_url(url: str, timeout: int) -> bool:
@@ -64,11 +78,15 @@ def _check_url(url: str, timeout: int) -> bool:
 
 def _try_connect(target: str, timeout: int, default_port: int) -> bool:
     """Return ``True`` if ``target`` can be reached via TCP."""
-    host, port = _parse_target(target, default_port)
     try:
-        socket.create_connection((host, port), timeout=timeout)
-        return True
-    except OSError as exc:  # pragma: no cover - network depends on environment
+        host, port = _parse_target(target, default_port)
+    except (ValueError, TypeError):
+        logging.debug("Skipping malformed connectivity target")
+        return False
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (OSError, OverflowError, ValueError) as exc:
         logging.debug("offline check failed for %s:%s: %s", host, port, exc)
     return False
 
@@ -83,7 +101,9 @@ def _get_lan_test_hosts() -> list[str]:
 
 
 def _get_dns_test_hosts() -> list[str]:
-    return _parse_list(os.getenv("DNS_TEST_HOSTS", "1.1.1.1,8.8.8.8"))
+    return _parse_list(
+        os.getenv("DNS_TEST_HOSTS", "connectivitycheck.gstatic.com,google.com")
+    )
 
 
 def _offline_grace_seconds() -> int:
@@ -141,6 +161,12 @@ def is_system_online(timeout: int = 3) -> bool:
                 _state["last_online_time"] = time.time()
                 _state["last_online_reason"] = f"tcp:{host}"
                 return True
+
+        state = network_state(timeout=timeout)
+        if state.get("lan_ok"):
+            _state["last_online_time"] = time.time()
+            _state["last_online_reason"] = str(state.get("lan_reason") or "lan")
+            return True
 
         grace = _offline_grace_seconds()
         last_online_time = _state["last_online_time"]

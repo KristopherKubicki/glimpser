@@ -13,8 +13,13 @@
     {% endif %} {% endwith %}
 
     <p>
-      Keep Eufy cloud access enclosed inside Glimpser and import cameras as
+      Keep Eufy camera access enclosed inside Glimpser and import cameras as
       <code>eufy://&lt;profile&gt;/&lt;device_id&gt;</code> templates.
+    </p>
+    <p>
+      Preferred connector model: a narrow bridge service that exposes a device
+      list and per-camera snapshot endpoint. noVNC is useful for debugging, but
+      it is the wrong primary connector for Glimpser.
     </p>
 
     <form
@@ -55,7 +60,7 @@
               type="text"
               name="profile"
               value="{{ selected_profile }}"
-              placeholder="e.g. argyle"
+              placeholder="e.g. site-one"
               style="width: 100%"
             />
           </label>
@@ -63,11 +68,78 @@
           <label style="min-width: 260px">
             Mode
             <select name="mode" style="width: 100%">
+              <option value="external" {{ "selected" if mode == "external" else "" }}>
+                External HTTP Bridge
+              </option>
               <option value="emulator" {{ "selected" if mode == "emulator" else "" }}>
                 VM / Emulator (ADB)
               </option>
             </select>
-            <small>ADB-only mode is enforced in this deployment.</small>
+            <small>
+              Use a Mac/bridge service when you can. Keep VM / Emulator for ADB
+              capture workflows.
+            </small>
+          </label>
+
+          <label style="min-width: 520px">
+            Bridge URL
+            <input
+              type="text"
+              name="bridge_url"
+              value="{{ bridge_url }}"
+              placeholder="https://bridge.example"
+              style="width: 100%"
+            />
+            <small>
+              Recommended for the Mac-hosted Eufy service. Do not point this at
+              <code>/vnc.html</code>; point it at a JSON/image bridge API root.
+            </small>
+          </label>
+
+          <label style="min-width: 260px">
+            API Token (optional)
+            <input
+              type="text"
+              name="api_token"
+              value="{{ api_token }}"
+              placeholder="Bearer token or shared secret"
+              style="width: 100%"
+            />
+          </label>
+
+          <label style="min-width: 260px">
+            Devices Path
+            <input
+              type="text"
+              name="devices_path"
+              value="{{ devices_path }}"
+              placeholder="/api/devices"
+              style="width: 100%"
+            />
+          </label>
+
+          <label style="min-width: 360px">
+            Snapshot Path
+            <input
+              type="text"
+              name="snapshot_path"
+              value="{{ snapshot_path }}"
+              placeholder="/api/cameras/{device_id}/snapshot"
+              style="width: 100%"
+            />
+            <small>
+              Supports <code>{device_id}</code> substitution.
+            </small>
+          </label>
+
+          <label style="min-width: 220px">
+            <input
+              type="checkbox"
+              name="verify_tls"
+              value="1"
+              {{ "checked" if verify_tls else "" }}
+            />
+            Verify TLS certificates
           </label>
 
           <label style="min-width: 520px">
@@ -193,12 +265,14 @@
 
       <p style="margin-top: 10px">
         Tip: create one profile per house (for example
-        <code>argyle</code>/<code>beach</code>/<code>halsted</code>).
+        <code>site-one</code>/<code>site-two</code>/<code>site-three</code>).
       </p>
       <p style="margin-top: 8px">
-        VM / Emulator mode captures from Android via ADB commands and a local
-        JSON device catalog. Web/native cloud capture is disabled in this
-        deployment.
+        External bridge mode is the recommended connector for your Mac-hosted
+        Eufy service. It should expose <code>/api/devices</code> and a
+        per-camera snapshot endpoint. VM / Emulator mode remains available for
+        ADB-based capture. Native/webportal cloud capture is still disabled in
+        this deployment.
       </p>
     </details>
 

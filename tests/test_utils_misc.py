@@ -9,8 +9,21 @@ from app.utils.validators import is_public_url
 
 
 class TestIsPublicURL(unittest.TestCase):
-    def test_public(self):
+    @patch(
+        "socket.getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))
+        ],
+    )
+    def test_public(self, _resolve):
         self.assertTrue(is_public_url("http://example.com"))
+
+    @patch(
+        "socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 0))],
+    )
+    def test_public_name_resolving_locally_is_rejected(self, _resolve):
+        self.assertFalse(is_public_url("http://camera.example"))
 
     def test_private_ip(self):
         self.assertFalse(is_public_url("http://192.168.0.1"))

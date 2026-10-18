@@ -30,7 +30,6 @@ class TestGroupSymlinkWarning(unittest.TestCase):
                 patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp),
                 patch("app.utils.scheduling.capture_or_download", return_value=True),
                 patch("app.utils.scheduling.add_timestamp"),
-                patch("app.utils.scheduling.remove_background"),
                 patch("app.utils.scheduling.add_motion_and_caption"),
                 patch("app.utils.scheduling.save_template"),
                 patch("app.utils.scheduling.send_http_callback"),

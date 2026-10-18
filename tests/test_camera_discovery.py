@@ -620,7 +620,7 @@ class TestCameraDiscovery(unittest.TestCase):
         camera_discovery.autodetect_onvif_endpoints(
             "http://1.2.3.4/onvif/device_service",
             username="user",
-            password="pass",
+            password="pass",  # pragma: allowlist secret - synthetic test credential
         )
         sent = "\n".join(
             str(c.kwargs.get("data") or "") for c in mock_post.call_args_list

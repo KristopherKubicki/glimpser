@@ -26,6 +26,7 @@ from ipaddress import ip_address, ip_network
 from urllib.parse import unquote, urlparse, urlunparse
 
 import psutil
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring
 
 from app.utils.api_utils import request_with_retry
 
@@ -194,7 +195,7 @@ def _onvif_get_device_info(xaddr: str, timeout: int = 2) -> dict[str, str]:
             retries=0,
         )
         if resp.ok:
-            xml = ET.fromstring(resp.content)
+            xml = safe_xml_fromstring(resp.content)
             ns = {"tt": "http://www.onvif.org/ver10/schema"}
             for tag, key in (
                 ("Manufacturer", "manufacturer"),
@@ -238,6 +239,38 @@ def _strip_url_credentials(url: str) -> tuple[str, str | None, str | None]:
     username = unquote(parsed.username) if parsed.username else None
     password = unquote(parsed.password) if parsed.password else None
     return clean_url, username, password
+
+
+def _candidate_onvif_xaddrs(url: str) -> list[str]:
+    """Return likely ONVIF device service URLs derived from ``url``."""
+
+    clean_url, _, _ = _strip_url_credentials(url)
+    parsed = urlparse(clean_url)
+    host = parsed.hostname or ""
+    if not host:
+        return []
+
+    candidates: list[str] = []
+
+    def add(candidate: str) -> None:
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    if "device_service" in parsed.path:
+        add(clean_url)
+
+    if parsed.scheme in {"http", "https"}:
+        add(f"{parsed.scheme}://{parsed.netloc}/onvif/device_service")
+        if parsed.port in {None, 80, 443}:
+            other_scheme = "https" if parsed.scheme == "http" else "http"
+            add(f"{other_scheme}://{host}/onvif/device_service")
+    else:
+        # RTSP and direct still endpoints often still expose ONVIF on the same
+        # host over HTTP(S), so probe both without rewriting the capture URL.
+        add(f"http://{host}/onvif/device_service")
+        add(f"https://{host}/onvif/device_service")
+
+    return candidates
 
 
 def _onvif_wsse_header(username: str, password: str, *, use_digest: bool = True) -> str:
@@ -323,7 +356,7 @@ def _onvif_parse_profiles(xml_bytes: bytes) -> list[dict[str, object]]:
     """Parse an ONVIF GetProfiles response into lightweight profile metadata."""
 
     try:
-        root = ET.fromstring(xml_bytes)
+        root = safe_xml_fromstring(xml_bytes)
     except Exception:
         return []
 
@@ -365,6 +398,43 @@ def _onvif_parse_profiles(xml_bytes: bytes) -> list[dict[str, object]]:
         profiles.append(info)
 
     return profiles
+
+
+def _onvif_parse_presets(xml_bytes: bytes) -> list[dict[str, str]]:
+    """Parse an ONVIF GetPresets response into token/name pairs."""
+
+    try:
+        root = safe_xml_fromstring(xml_bytes)
+    except Exception:
+        return []
+
+    presets: list[dict[str, str]] = []
+    for el in root.iter():
+        if _onvif_localname(str(el.tag)) != "Preset":
+            continue
+        token = el.attrib.get("token") or ""
+        if not token:
+            continue
+        name = ""
+        for child in el.iter():
+            if _onvif_localname(str(child.tag)) == "Name" and child.text:
+                name = child.text.strip()
+                break
+        presets.append({"token": token, "name": name or token})
+    return presets
+
+
+def _onvif_find_capability_xaddr(root: ET.Element, service_name: str) -> str | None:
+    """Return the capability XAddr for ``service_name`` if present."""
+
+    target = service_name.strip().lower()
+    for el in root.iter():
+        if _onvif_localname(str(el.tag)).lower() != target:
+            continue
+        for child in el.iter():
+            if _onvif_localname(str(child.tag)) == "XAddr" and child.text:
+                return child.text.strip()
+    return None
 
 
 def _onvif_pick_glimpser_profile(
@@ -430,7 +500,7 @@ def autodetect_onvif_endpoints(
     *,
     username: str | None = None,
     password: str | None = None,
-) -> dict[str, str]:
+) -> dict[str, object]:
     """Return stream and snapshot URLs derived from an ONVIF device service.
 
     Parameters
@@ -453,8 +523,12 @@ def autodetect_onvif_endpoints(
         password = url_password
 
     parsed = urlparse(url)
-    base = f"{parsed.scheme}://{parsed.netloc}"
-    xaddr = url if "device_service" in parsed.path else f"{base}/onvif/device_service"
+    base = (
+        f"{parsed.scheme}://{parsed.netloc}"
+        if parsed.scheme in {"http", "https"}
+        else ""
+    )
+    xaddr = ""
 
     # Step 1: locate the media service address via GetCapabilities
     cap_body = (
@@ -468,24 +542,39 @@ def autodetect_onvif_endpoints(
         "</s:Envelope>"
     )
     media_addr = None
-    try:
-        resp = _onvif_request(
-            xaddr,
-            cap_body,
-            timeout=timeout,
-            username=username,
-            password=password,
-        )
-        if resp.ok:
-            xml = ET.fromstring(resp.content)
-            ns = {"tt": "http://www.onvif.org/ver10/schema"}
-            node = xml.find(".//tt:Capabilities/tt:Media/tt:XAddr", ns)
-            if node is not None and node.text:
-                media_addr = node.text
-    except Exception:
-        media_addr = None
-    if not media_addr:
+    ptz_addr = None
+    candidates = _candidate_onvif_xaddrs(url)
+    for candidate in candidates:
+        try:
+            resp = _onvif_request(
+                candidate,
+                cap_body,
+                timeout=timeout,
+                username=username,
+                password=password,
+            )
+            if not resp.ok:
+                continue
+            xml = safe_xml_fromstring(resp.content)
+            media_addr = _onvif_find_capability_xaddr(xml, "Media")
+            ptz_addr = _onvif_find_capability_xaddr(xml, "PTZ")
+            xaddr = candidate
+            break
+        except Exception:
+            continue
+    if not media_addr and base:
         media_addr = f"{base}/onvif/media_service"
+
+    result: dict[str, str | list[dict[str, str]] | bool] = {}
+    if xaddr:
+        result["device_service"] = xaddr
+    if media_addr:
+        result["media_service"] = media_addr
+    if ptz_addr:
+        result["ptz_service"] = ptz_addr
+        result["ptz_enabled"] = True
+    else:
+        result["ptz_enabled"] = False
 
     # Step 2: fetch profiles and choose a Glimpser-friendly one (usually substream)
     prof_body = (
@@ -498,28 +587,28 @@ def autodetect_onvif_endpoints(
     )
     token = None
     chosen_profile: dict[str, object] | None = None
-    try:
-        resp = _onvif_request(
-            media_addr,
-            prof_body,
-            timeout=timeout,
-            username=username,
-            password=password,
-        )
-        if resp.ok:
-            profiles = _onvif_parse_profiles(resp.content)
-            chosen_profile = _onvif_pick_glimpser_profile(profiles)
-            if chosen_profile and chosen_profile.get("token"):
-                token = str(chosen_profile["token"])
-            elif profiles and profiles[0].get("token"):
-                token = str(profiles[0]["token"])
-    except Exception:
-        token = None
+    if media_addr:
+        try:
+            resp = _onvif_request(
+                media_addr,
+                prof_body,
+                timeout=timeout,
+                username=username,
+                password=password,
+            )
+            if resp.ok:
+                profiles = _onvif_parse_profiles(resp.content)
+                chosen_profile = _onvif_pick_glimpser_profile(profiles)
+                if chosen_profile and chosen_profile.get("token"):
+                    token = str(chosen_profile["token"])
+                elif profiles and profiles[0].get("token"):
+                    token = str(profiles[0]["token"])
+        except Exception:
+            token = None
     if not token:
-        return {}
+        return result  # capability data may still be useful even without media
 
     # Step 3: fetch stream URI and snapshot URI
-    result: dict[str, str] = {}
     if chosen_profile:
         result["profile_token"] = str(chosen_profile.get("token") or "")
         if chosen_profile.get("name"):
@@ -551,22 +640,23 @@ def autodetect_onvif_endpoints(
         "</s:Body>"
         "</s:Envelope>"
     )
-    try:
-        resp = _onvif_request(
-            media_addr,
-            stream_body,
-            timeout=timeout,
-            username=username,
-            password=password,
-        )
-        if resp.ok:
-            xml = ET.fromstring(resp.content)
-            ns = {"tt": "http://www.onvif.org/ver10/schema"}
-            uri = xml.find(".//tt:Uri", ns)
-            if uri is not None and uri.text:
-                result["stream"] = uri.text
-    except Exception:
-        pass
+    if media_addr:
+        try:
+            resp = _onvif_request(
+                media_addr,
+                stream_body,
+                timeout=timeout,
+                username=username,
+                password=password,
+            )
+            if resp.ok:
+                xml = safe_xml_fromstring(resp.content)
+                ns = {"tt": "http://www.onvif.org/ver10/schema"}
+                uri = xml.find(".//tt:Uri", ns)
+                if uri is not None and uri.text:
+                    result["stream"] = uri.text
+        except Exception:
+            pass
 
     snap_body = (
         "<?xml version='1.0' encoding='UTF-8'?>"
@@ -578,23 +668,475 @@ def autodetect_onvif_endpoints(
         "</s:Body>"
         "</s:Envelope>"
     )
+    if media_addr:
+        try:
+            resp = _onvif_request(
+                media_addr,
+                snap_body,
+                timeout=timeout,
+                username=username,
+                password=password,
+            )
+            if resp.ok:
+                xml = safe_xml_fromstring(resp.content)
+                ns = {"tt": "http://www.onvif.org/ver10/schema"}
+                uri = xml.find(".//tt:Uri", ns)
+                if uri is not None and uri.text:
+                    result["snapshot"] = uri.text
+        except Exception:
+            pass
+
+    if ptz_addr and token:
+        presets_body = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' "
+            "xmlns:tptz='http://www.onvif.org/ver20/ptz/wsdl'>"
+            "<s:Body>"
+            "<tptz:GetPresets>"
+            f"<tptz:ProfileToken>{token}</tptz:ProfileToken>"
+            "</tptz:GetPresets>"
+            "</s:Body>"
+            "</s:Envelope>"
+        )
+        try:
+            resp = _onvif_request(
+                ptz_addr,
+                presets_body,
+                timeout=timeout,
+                username=username,
+                password=password,
+            )
+            if resp.ok:
+                result["ptz_presets"] = _onvif_parse_presets(resp.content)
+        except Exception:
+            result.setdefault("ptz_presets", [])
+
+    if "ptz_presets" not in result:
+        result["ptz_presets"] = []
+
+    return result
+
+
+_UID_CGI_PTZ_DRIVER = "uid_cgi"
+_UID_CGI_LENS_COMMANDS = {
+    "zoom_in": ("zoom", "1"),
+    "zoom_out": ("zoom", "-1"),
+    "focus_near": ("focus", "1"),
+    "focus_far": ("focus", "-1"),
+    "iris_open": ("iris", "1"),
+    "iris_close": ("iris", "-1"),
+}
+
+
+def _ptz_vendor_base_url(url: str) -> str | None:
+    """Return the scheme/netloc base used by vendor CGI PTZ endpoints."""
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
+
+
+def _uid_cgi_text(resp: object) -> str:
+    """Return a response body as text for the UID/CGI PTZ family."""
+
+    text = getattr(resp, "text", None)
+    if text is not None:
+        return str(text)
+    content = getattr(resp, "content", b"")
+    if isinstance(content, bytes):
+        return content.decode(errors="ignore")
+    return str(content or "")
+
+
+def _uid_cgi_get_uid(
+    base_url: str,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+    timeout: int = 3,
+) -> str:
+    """Return the vendor UID used by the CGI PTZ command family."""
+
+    if not username or password is None:
+        return ""
     try:
+        resp = request_with_retry(
+            "GET",
+            f"{base_url}/cgi-bin/getuid",
+            params={"username": username, "password": password},
+            timeout=timeout,
+            retries=0,
+        )
+    except Exception:
+        return ""
+    if not getattr(resp, "ok", False):
+        return ""
+    match = re.search(r"<uid>([^<]+)</uid>", _uid_cgi_text(resp), re.IGNORECASE)
+    if not match:
+        return ""
+    return str(match.group(1) or "").strip()
+
+
+def detect_ptz_vendor_driver(
+    url: str,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+    timeout: int = 3,
+) -> str:
+    """Return a vendor PTZ driver name when ``url`` matches a known family."""
+
+    base_url = _ptz_vendor_base_url(url)
+    if not base_url:
+        return ""
+    if _uid_cgi_get_uid(
+        base_url, username=username, password=password, timeout=timeout
+    ):
+        return _UID_CGI_PTZ_DRIVER
+    return ""
+
+
+def _uid_cgi_ptz_ok(resp: object) -> bool:
+    """Return ``True`` when a UID/CGI PTZ command reports success."""
+
+    if not getattr(resp, "ok", False):
+        return False
+    body = _uid_cgi_text(resp).strip().lower()
+    return not body or "<ptz_ctrl>true</ptz_ctrl>" in body or body == "true"
+
+
+def _run_ptz_pulse(move, stop, accepted, duration_ms, metadata):
+    """Always attempt stop, including when a move's acknowledgement is lost."""
+    # Validate before sending movement; an invalid duration must never strand a motor.
+    try:
+        duration = max(100, min(int(duration_ms), 10000)) / 1000.0
+    except (TypeError, ValueError, OverflowError):
+        return {"ok": False, "error": "invalid_duration", "metadata": metadata}
+    moved = False
+    stopped = False
+    try:
+        moved = accepted(move())
+        if moved:
+            time.sleep(duration)
+    except Exception:
+        # A timeout does not prove that the camera failed to receive movement.
+        moved = False
+    finally:
+        try:
+            stopped = accepted(stop())
+        except Exception:
+            stopped = False
+    return {
+        "ok": bool(moved and stopped),
+        "error": "stop_failed" if not stopped else ("" if moved else "move_failed"),
+        "stop_confirmed": bool(stopped),
+        "metadata": metadata,
+    }
+
+
+def _control_uid_cgi_ptz(
+    url: str,
+    *,
+    action: str,
+    direction: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+    duration_ms: int = 500,
+    timeout: int = 3,
+) -> dict[str, object]:
+    """Execute PTZ commands for the vendor UID/CGI camera family."""
+
+    base_url = _ptz_vendor_base_url(url)
+    if not base_url:
+        return {"ok": False, "error": "vendor_ptz_unavailable", "metadata": {}}
+    uid = _uid_cgi_get_uid(
+        base_url, username=username, password=password, timeout=timeout
+    )
+    if not uid:
+        return {"ok": False, "error": "vendor_auth_failed", "metadata": {}}
+
+    stop_params = {"stop": "1", "uid": uid}
+    metadata = {"ptz_vendor_driver": _UID_CGI_PTZ_DRIVER}
+
+    if action == "stop":
+        try:
+            stop_resp = request_with_retry(
+                "GET",
+                f"{base_url}/cgi-bin/ptz_ctrl",
+                params=stop_params,
+                timeout=timeout,
+                retries=0,
+            )
+        except Exception:
+            return {"ok": False, "error": "stop_failed", "metadata": metadata}
+        return {
+            "ok": _uid_cgi_ptz_ok(stop_resp),
+            "metadata": metadata,
+            "error": "" if _uid_cgi_ptz_ok(stop_resp) else "stop_failed",
+        }
+
+    command = _UID_CGI_LENS_COMMANDS.get(str(direction or "").strip().lower())
+    if not command:
+        return {
+            "ok": False,
+            "error": "unsupported_vendor_command",
+            "metadata": metadata,
+        }
+
+    param_name, param_value = command
+    return _run_ptz_pulse(
+        lambda: request_with_retry(
+            "GET",
+            f"{base_url}/cgi-bin/ptz_ctrl",
+            params={param_name: param_value, "uid": uid},
+            timeout=timeout,
+            retries=0,
+        ),
+        lambda: request_with_retry(
+            "GET",
+            f"{base_url}/cgi-bin/ptz_ctrl",
+            params=stop_params,
+            timeout=timeout,
+            retries=0,
+        ),
+        _uid_cgi_ptz_ok,
+        duration_ms,
+        metadata,
+    )
+
+
+def control_onvif_ptz(
+    url: str,
+    *,
+    action: str,
+    username: str | None = None,
+    password: str | None = None,
+    profile_token: str | None = None,
+    ptz_service: str | None = None,
+    preset_token: str | None = None,
+    pan: float = 0.0,
+    tilt: float = 0.0,
+    zoom: float = 0.0,
+    duration_ms: int = 500,
+    timeout: int = 3,
+) -> dict[str, object]:
+    """Execute an ONVIF PTZ action and return the resolved metadata."""
+
+    metadata: dict[str, object] = {}
+    resolved_ptz = str(ptz_service or "").strip()
+    resolved_token = str(profile_token or "").strip()
+    if not resolved_ptz or not resolved_token:
+        metadata = autodetect_onvif_endpoints(
+            url, timeout=timeout, username=username, password=password
+        )
+        resolved_ptz = str(resolved_ptz or metadata.get("ptz_service") or "").strip()
+        resolved_token = str(
+            resolved_token or metadata.get("profile_token") or ""
+        ).strip()
+    if not resolved_ptz or not resolved_token:
+        return {"ok": False, "error": "ptz_not_available", "metadata": metadata}
+
+    action_name = str(action or "").strip().lower()
+    if action_name == "preset":
+        if not preset_token:
+            return {"ok": False, "error": "missing_preset", "metadata": metadata}
+        body = (
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' "
+            "xmlns:tptz='http://www.onvif.org/ver20/ptz/wsdl'>"
+            "<s:Body>"
+            "<tptz:GotoPreset>"
+            f"<tptz:ProfileToken>{resolved_token}</tptz:ProfileToken>"
+            f"<tptz:PresetToken>{preset_token}</tptz:PresetToken>"
+            "</tptz:GotoPreset>"
+            "</s:Body>"
+            "</s:Envelope>"
+        )
         resp = _onvif_request(
-            media_addr,
-            snap_body,
+            resolved_ptz,
+            body,
             timeout=timeout,
             username=username,
             password=password,
         )
-        if resp.ok:
-            xml = ET.fromstring(resp.content)
-            ns = {"tt": "http://www.onvif.org/ver10/schema"}
-            uri = xml.find(".//tt:Uri", ns)
-            if uri is not None and uri.text:
-                result["snapshot"] = uri.text
-    except Exception:
-        pass
+        return {"ok": bool(resp.ok), "metadata": metadata}
 
+    stop_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' "
+        "xmlns:tptz='http://www.onvif.org/ver20/ptz/wsdl'>"
+        "<s:Body>"
+        "<tptz:Stop>"
+        f"<tptz:ProfileToken>{resolved_token}</tptz:ProfileToken>"
+        "<tptz:PanTilt>true</tptz:PanTilt>"
+        "<tptz:Zoom>true</tptz:Zoom>"
+        "</tptz:Stop>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+
+    if action_name == "stop":
+        resp = _onvif_request(
+            resolved_ptz,
+            stop_body,
+            timeout=timeout,
+            username=username,
+            password=password,
+        )
+        return {"ok": bool(resp.ok), "metadata": metadata}
+
+    if action_name != "move":
+        return {"ok": False, "error": "invalid_action", "metadata": metadata}
+
+    def _clamp_velocity(value: float) -> float:
+        return max(-1.0, min(1.0, float(value)))
+
+    pan = _clamp_velocity(pan)
+    tilt = _clamp_velocity(tilt)
+    zoom = _clamp_velocity(zoom)
+    # Some PTZ lenses, especially zoom motors, need a noticeably longer hold
+    # than a quick pan/tilt nudge. Keep a hard ceiling, but allow sustained
+    # moves long enough to match the vendor UI behavior.
+    duration_ms = max(100, min(int(duration_ms), 10000))
+    if pan == 0.0 and tilt == 0.0 and zoom == 0.0:
+        return {"ok": False, "error": "zero_velocity", "metadata": metadata}
+
+    move_body = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        "<s:Envelope xmlns:s='http://www.w3.org/2003/05/soap-envelope' "
+        "xmlns:tptz='http://www.onvif.org/ver20/ptz/wsdl' "
+        "xmlns:tt='http://www.onvif.org/ver10/schema'>"
+        "<s:Body>"
+        "<tptz:ContinuousMove>"
+        f"<tptz:ProfileToken>{resolved_token}</tptz:ProfileToken>"
+        "<tptz:Velocity>"
+        f"<tt:PanTilt x='{pan:.3f}' y='{tilt:.3f}' />"
+        f"<tt:Zoom x='{zoom:.3f}' />"
+        "</tptz:Velocity>"
+        "</tptz:ContinuousMove>"
+        "</s:Body>"
+        "</s:Envelope>"
+    )
+    return _run_ptz_pulse(
+        lambda: _onvif_request(
+            resolved_ptz,
+            move_body,
+            timeout=timeout,
+            username=username,
+            password=password,
+        ),
+        lambda: _onvif_request(
+            resolved_ptz,
+            stop_body,
+            timeout=timeout,
+            username=username,
+            password=password,
+        ),
+        lambda response: bool(response.ok),
+        duration_ms,
+        metadata,
+    )
+
+
+def control_ptz(
+    url: str,
+    *,
+    action: str,
+    username: str | None = None,
+    password: str | None = None,
+    profile_token: str | None = None,
+    ptz_service: str | None = None,
+    preset_token: str | None = None,
+    pan: float = 0.0,
+    tilt: float = 0.0,
+    zoom: float = 0.0,
+    duration_ms: int = 500,
+    timeout: int = 3,
+    direction: str | None = None,
+    vendor_driver: str | None = None,
+) -> dict[str, object]:
+    """Execute PTZ using ONVIF first, with vendor fallback where required.
+
+    The UID/CGI camera family accepts ONVIF pan/tilt and presets, but lens
+    controls like zoom/focus/iris must use the vendor CGI endpoint to behave
+    like the camera's own web UI.
+    """
+
+    resolved_vendor = str(vendor_driver or "").strip() or detect_ptz_vendor_driver(
+        url, username=username, password=password, timeout=timeout
+    )
+    direction_name = str(direction or "").strip().lower()
+    vendor_move = ""
+    if resolved_vendor == _UID_CGI_PTZ_DRIVER:
+        if direction_name in _UID_CGI_LENS_COMMANDS:
+            vendor_move = direction_name
+        elif pan == 0.0 and tilt == 0.0 and zoom != 0.0:
+            vendor_move = "zoom_in" if zoom > 0 else "zoom_out"
+
+    if action == "move" and vendor_move:
+        return _control_uid_cgi_ptz(
+            url,
+            action="move",
+            direction=vendor_move,
+            username=username,
+            password=password,
+            duration_ms=duration_ms,
+            timeout=timeout,
+        )
+
+    if action == "stop" and resolved_vendor == _UID_CGI_PTZ_DRIVER:
+        vendor_result = _control_uid_cgi_ptz(
+            url,
+            action="stop",
+            username=username,
+            password=password,
+            timeout=timeout,
+        )
+        onvif_result = control_onvif_ptz(
+            url,
+            action="stop",
+            username=username,
+            password=password,
+            profile_token=profile_token,
+            ptz_service=ptz_service,
+            timeout=timeout,
+        )
+        metadata = (
+            onvif_result.get("metadata") if isinstance(onvif_result, dict) else {}
+        )
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata.setdefault("ptz_vendor_driver", resolved_vendor)
+        return {
+            "ok": bool(vendor_result.get("ok")) or bool(onvif_result.get("ok")),
+            "metadata": metadata,
+            "error": (
+                ""
+                if bool(vendor_result.get("ok")) or bool(onvif_result.get("ok"))
+                else vendor_result.get("error")
+                or onvif_result.get("error")
+                or "stop_failed"
+            ),
+        }
+
+    result = control_onvif_ptz(
+        url,
+        action=action,
+        username=username,
+        password=password,
+        profile_token=profile_token,
+        ptz_service=ptz_service,
+        preset_token=preset_token,
+        pan=pan,
+        tilt=tilt,
+        zoom=zoom,
+        duration_ms=duration_ms,
+        timeout=timeout,
+    )
+    metadata = result.get("metadata") if isinstance(result, dict) else None
+    if isinstance(metadata, dict) and resolved_vendor:
+        metadata.setdefault("ptz_vendor_driver", resolved_vendor)
     return result
 
 
@@ -793,12 +1335,12 @@ def _probe_onvif(timeout=2):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
-            except socket.timeout:
+            except TimeoutError:
                 break
             ip = addr[0]
             info = {}
             try:
-                xml = ET.fromstring(data)
+                xml = safe_xml_fromstring(data)
                 # Be namespace-agnostic: different devices use different WS-D
                 # namespace aliases/versions, but element local names are stable.
                 types = _xml_text_by_localname(xml, "Types")
@@ -1001,6 +1543,7 @@ def _check_http_endpoint(ip: str, port: int, path: str, timeout: int = 2) -> boo
             if port == 443:
                 # Discovery is best-effort; accept self-signed certs.
                 ctx = ssl.create_default_context()
+                ctx.minimum_version = ssl.TLSVersion.TLSv1_2
                 ctx.check_hostname = False
                 ctx.verify_mode = ssl.CERT_NONE
                 sock = ctx.wrap_socket(raw_sock, server_hostname=ip)

@@ -31,8 +31,15 @@ test("shows banner when offline", async () => {
   initNetworkBanner();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   await Promise.resolve();
+  await Promise.resolve();
   const banner = document.getElementById("network-banner");
-  expect(fetch).toHaveBeenCalledWith("/network_status");
+  expect(fetch).toHaveBeenCalledWith(
+    "/network_status",
+    expect.objectContaining({
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    }),
+  );
   expect(banner.classList.contains("show")).toBe(true);
   expect(banner.textContent).toBe("Offline mode");
 });

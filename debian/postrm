@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+case "${1:-}" in
+    remove)
+        if [ -d /run/systemd/system ]; then
+            systemctl daemon-reload
+        fi
+        ;;
+    purge)
+        deb-systemd-helper purge glimpser.service >/dev/null
+        deb-systemd-helper unmask glimpser.service >/dev/null
+        ;;
+esac
+# Runtime data and the service account are deliberately retained on purge.
+#DEBHELPER#
+exit 0

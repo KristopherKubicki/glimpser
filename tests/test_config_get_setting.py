@@ -1,4 +1,3 @@
-import importlib
 import os
 import sqlite3
 
@@ -6,6 +5,9 @@ import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 class TestGetSetting(unittest.TestCase):
@@ -19,11 +21,13 @@ class TestGetSetting(unittest.TestCase):
         patcher = patch.dict(os.environ, env)
         patcher.start()
         from app import config
-        from app.utils import db
 
-        importlib.reload(config)
-        importlib.reload(db)
         self.addCleanup(patcher.stop)
+        engine = create_engine(f"sqlite:///{db_path}")
+        self.addCleanup(engine.dispose)
+        session_patch = patch.object(config, "SessionLocal", sessionmaker(bind=engine))
+        session_patch.start()
+        self.addCleanup(session_patch.stop)
         return config
 
     def test_env_variable_takes_precedence(self):

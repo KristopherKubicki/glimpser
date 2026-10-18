@@ -24,6 +24,16 @@ class TestClipRoute(unittest.TestCase):
         self.login_patch.stop()
         self.throttle_patch.stop()
 
+    def test_invalid_duration_is_rejected_before_capture(self):
+        with patch("app.routes._concat_copy") as concat:
+            for duration in ("0", "-1", "601", "--help", "1.5"):
+                with self.subTest(duration=duration):
+                    response = self.client.get(
+                        "/clip/cam1", query_string={"duration": duration}
+                    )
+                    self.assertEqual(response.status_code, 400)
+            concat.assert_not_called()
+
     @patch("app.routes.video_archiver.create_blank_video")
     @patch("app.routes._concat_copy")
     def test_clip_default(self, mock_concat, mock_blank):

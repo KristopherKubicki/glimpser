@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from app.utils.screenshots import cleanup_old_tempdirs, run_cmd
 
@@ -26,13 +27,16 @@ class TestRunCmd(unittest.TestCase):
 
 class TestCleanupOldTempdirs(unittest.TestCase):
     def test_cleanup_removes_old_dirs(self):
-        old_dir = tempfile.mkdtemp(prefix="glimpser_test_")
-        new_dir = tempfile.mkdtemp(prefix="glimpser_test_")
+        root = tempfile.mkdtemp(prefix="cleanup_test_")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        old_dir = tempfile.mkdtemp(prefix="glimpser_test_", dir=root)
+        new_dir = tempfile.mkdtemp(prefix="glimpser_test_", dir=root)
         now = time.time()
         # make old_dir appear 2 hours old
         os.utime(old_dir, (now - 7200, now - 7200))
         os.utime(new_dir, (now, now))
-        cleanup_old_tempdirs(prefix="glimpser_test_", max_age_hours=1)
+        with patch("app.utils.screenshots.tempfile.gettempdir", return_value=root):
+            cleanup_old_tempdirs(prefix="glimpser_test_", max_age_hours=1)
         self.assertFalse(os.path.exists(old_dir))
         self.assertTrue(os.path.exists(new_dir))
         shutil.rmtree(new_dir)

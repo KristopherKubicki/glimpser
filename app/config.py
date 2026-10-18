@@ -1,5 +1,3 @@
-# config.py
-
 import argparse
 import importlib.util
 import json
@@ -16,6 +14,13 @@ from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+
+from app.caption_policy import DEFAULT_CAPTION_PROMPT
+from app.runtime_paths import application_state_root
+from app.session_secret import resolve_session_secret
+
+# config.py
+
 
 _ffmpeg_spec = importlib.util.spec_from_file_location(
     "app.utils.ffmpeg_setup",
@@ -72,7 +77,7 @@ def _parse_cli_args():
 _cli_args = _parse_cli_args() if __name__ == "__main__" else None
 
 # Resolve paths relative to the project root when a relative path is provided
-_BASE_DIR = Path(__file__).resolve().parent.parent
+_BASE_DIR = application_state_root(__file__)
 
 DATABASE_PATH = (
     _cli_args.db_path
@@ -299,7 +304,7 @@ TZ = get_setting("TZ", "UTC")
 try:
     _PKG_VERSION = version("glimpser")
 except PackageNotFoundError:
-    _PKG_VERSION = "0.2.9"
+    _PKG_VERSION = "0.2.10"
 sync_version(_PKG_VERSION)
 # Default to the package version if not overridden in the database
 VERSION = get_setting("VERSION", _PKG_VERSION)
@@ -383,9 +388,12 @@ LAN_GUEST_MODE = get_setting("LAN_GUEST_MODE", "full").lower()
 CLOCK_OVERLAY = get_setting("CLOCK_OVERLAY", "False") == "True"
 CLOCK_DIGITAL = get_setting("CLOCK_DIGITAL", "False") == "True"
 CLOCK_NAVBAR = get_setting("CLOCK_NAVBAR", "True") == "True"
+VISUAL_TIMESTAMP_MODE = str(get_setting("VISUAL_TIMESTAMP_MODE", "clean")).lower()
 
 # Load settings from the database
-SECRET_KEY = get_setting("SECRET_KEY", "default_secret_key")
+SECRET_KEY = resolve_session_secret(
+    get_setting("SECRET_KEY", ""), DATABASE_PATH, persist=not _SKIP_DB_INIT
+)
 USER_NAME = get_setting("USER_NAME", "admin")
 API_KEY = get_setting("API_KEY", "")
 SSO_TOKEN = get_setting("SSO_TOKEN", "")
@@ -421,17 +429,11 @@ if LLM_MODEL_VERSION not in ALLOWED_LLM_MODELS:
 # note that $datetime is a special keyword that will be replaced with the datetime in iso Z format
 LLM_SUMMARY_PROMPT = get_setting(
     "LLM_SUMMARY_PROMPT",
-    "Return one single line of plain text—no line breaks, numbers, or bullet lists—beginning with a brief greeting plus today’s date, local time, and Chicago temperature, then densely packed clauses separated by “ | ”, each clause giving grouped insights, forecasts, and local take-aways drawn from the logs and any provided history; mark critical items with ⚠️, routine-but-watchworthy items with ℹ️ (info symbol), and resolved items with ✔️; weave a coherent bigger story rather than camera-by-camera notes, avoid repetition, drop boiler-plate, use precise technical language, and include uncommon insights or likely next events whenever possible; if nothing is noteworthy output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
-    # "Below are caption logs from multiple live sources. Produce a 10-line technical digest for a highly educated Chicago-area listener who glances for <30 s. Format: line 0 → greeting + date/time + current temperature + one-sentence “big picture”; lines 1-9 → plain-text bullets of ≤90 chars each, no timestamps, each tagged with ⚠️ for immediate action, ℹ️ for watch/interesting, ✔️ for resolved/nominal. Group related items logically; emphasise local (Chicago/Lincolnwood/Kenosha), include concrete facts (counts, magnitudes, street names, runways, K-index, etc.), omit boiler-plate and repeated info unless it’s a new alert. Tie items into a bigger narrative (weather → transit → power → cosmic events) rather than a camera list. If nothing merits mention, output exactly “All systems nominal — no actionable items.” The time is $datetime UTC.",
+    "Return one compact operator brief in plain text. Use one line with clauses separated by ' | '. Start with the date/time context, then group observations by weather/lake, traffic/air, power/network, systems, and unusual visual changes. Lead with actionable or abnormal items, include concrete magnitudes, locations, counts, and source names when available, and avoid camera-by-camera narration. Use labels CRITICAL, WATCH, and OK instead of decorative symbols. Do not repeat stale captions or diagnose clocks/timestamps unless the log is specifically about time service. If nothing is actionable, output exactly 'All systems nominal - no actionable items.' The time is $datetime UTC.",
     # "Summarize the following logs into a concise, technical transcript. Focus on providing clear, actionable insights and key takeaways. Keep the summary brief and organized, with one line per segment, separated by newlines. Start with a brief overview, including any major events or trends. Prioritize clarity and relevance, ensuring the summary is easy to understand and useful for decision-making. Avoid repetition unless necessary. Conclude with a brief summary or closing note. The time is $datetime.",
 )
 
-LLM_CAPTION_PROMPT = get_setting(
-    "LLM_CAPTION_PROMPT",
-    "Examine the image carefully, then reply in two paragraphs only: (1) a punchy headline of ≤ 10 words that captures the single most urgent, unusual, or otherwise news-worthy element the user glancing for three seconds needs to notice; (2) one or two sharply written sentences that expand on that element with concrete specifics—names, counts, street or airport identifiers, magnitudes, colour codes, timestamps, likely impact, or next action—strictly based on visual evidence and the accompanying user question. Skip generic scene-setting, boiler-plate weather phrases, interface chrome, or guessing. If the frame is blank, frozen, unreadable, or unchanged since the previous image, respond only with the word **UNREADABLE**. Do not output anything else. The time is $datetime UTC.",
-    # Provide a concise, insightful observation about this image. Focus on unique or significant aspects. Limit your response to 16 words or less. Do not describe the scene, describe the anomalies. Do not be concerned about timestamp issues (the image may have local and UTC timestamps on it). Provide a concise caption in 10 words o less, focusing only on the noteable aspects.  Avoid general descriptions. Keep it short!  Then, on a newline, write a couple sentences with a more detailed description. The time is $datetime UTC
-    # "Write a concise caption that highlights the most significant or unique aspect of this image in 10 words or less. Avoid general descriptions, and focus on noteworthy details or anomalies. Then, provide a brief, more detailed description in a couple of sentences. The time is $datetime UTC.",
-)
+LLM_CAPTION_PROMPT = get_setting("LLM_CAPTION_PROMPT", DEFAULT_CAPTION_PROMPT)
 
 # FFMPEG/FFPROBE path settings
 _ffmpeg_default = ffmpeg_setup.get_ffmpeg_path() or "ffmpeg"
@@ -494,6 +496,16 @@ if _hwaccel_cfg.lower() == "auto":
     FFMPEG_HWACCEL = _detect_best_encoder()
 else:
     FFMPEG_HWACCEL = _hwaccel_cfg
+
+from app.runtime_health import probe_acceleration  # noqa: E402
+
+FFMPEG_ACCELERATION_STATUS = probe_acceleration(FFMPEG_PATH, FFMPEG_HWACCEL)
+FFMPEG_HWACCEL = FFMPEG_ACCELERATION_STATUS["effective"]
+if FFMPEG_ACCELERATION_STATUS["status"] == "failed":
+    logging.warning(
+        "GPU capability check failed; using software acceleration: %s",
+        FFMPEG_ACCELERATION_STATUS["reason"],
+    )
 
 # Number of threads FFmpeg should use when encoding/decoding
 _ffmpeg_threads_cfg = int(
@@ -655,6 +667,9 @@ MCP_SERVER_URL = get_setting("MCP_SERVER_URL", "")
 # When ``True`` the ``/robots.txt`` route allows search engine indexing.
 # ``False`` (the default) disallows all crawlers.
 ALLOW_BOTS = get_setting("ALLOW_BOTS", "False") == "True"
+ALLOW_PRIVATE_CALLBACK_URLS = (
+    get_setting("ALLOW_PRIVATE_CALLBACK_URLS", "False") == "True"
+)
 
 # Branch to auto-update from when new releases are available. "None" disables
 # automatic updates. Values other than "Main" or "Staging" revert to "None".

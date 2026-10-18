@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from io import BytesIO
+
 import pytest
+from PIL import Image
 
 from app.utils import eufy_cloud, eufy_first_pass
 
@@ -116,3 +119,66 @@ def test_capture_profile_first_pass_bubbles_captcha(monkeypatch) -> None:
 
     with pytest.raises(eufy_cloud.EufyCaptchaRequired):
         eufy_first_pass.capture_profile_first_pass("default", timeout=9.0)
+
+
+def test_save_snapshot_png_uses_shared_still_postprocess(monkeypatch, tmp_path) -> None:
+    source = Image.new("RGB", (40, 30), (20, 20, 20))
+    buffer = BytesIO()
+    source.save(buffer, format="PNG")
+
+    seen: dict[str, object] = {}
+
+    def _postprocess(image, final_path, name, **kwargs):
+        seen["name"] = name
+        seen["final_path"] = final_path
+        seen["kwargs"] = kwargs
+        return image.crop((0, 0, 20, 10))
+
+    monkeypatch.setattr(eufy_first_pass, "SCREENSHOT_DIRECTORY", str(tmp_path))
+    monkeypatch.setattr(
+        eufy_first_pass.screenshots,
+        "_postprocess_still_image",
+        _postprocess,
+    )
+    monkeypatch.setattr(
+        eufy_first_pass.screenshots, "add_timestamp", lambda *a, **k: None
+    )
+
+    out = eufy_first_pass._save_snapshot_png(
+        name="BeachShore",
+        payload=buffer.getvalue(),
+        invert=False,
+        dark=False,
+        stabilize_mode="rolling_5m",
+    )
+
+    assert seen["name"] == "BeachShore"
+    assert seen["kwargs"]["stabilize_mode"] == "rolling_5m"
+    assert Image.open(out).size == (20, 10)
+
+
+def test_save_snapshot_png_rejects_processed_loading_frame(
+    monkeypatch, tmp_path
+) -> None:
+    source = Image.new("RGB", (40, 30), (20, 20, 20))
+    buffer = BytesIO()
+    source.save(buffer, format="PNG")
+
+    monkeypatch.setattr(eufy_first_pass, "SCREENSHOT_DIRECTORY", str(tmp_path))
+    monkeypatch.setattr(
+        eufy_first_pass.screenshots,
+        "_postprocess_still_image",
+        lambda image, *_args, **_kwargs: image,
+    )
+    monkeypatch.setattr(
+        eufy_first_pass.screenshots,
+        "_captured_frame_rejection_reason",
+        lambda image: "loading",
+    )
+
+    with pytest.raises(eufy_cloud.EufyCloudError, match="loading"):
+        eufy_first_pass._save_snapshot_png(
+            name="BeachShore",
+            payload=buffer.getvalue(),
+            invert=False,
+        )

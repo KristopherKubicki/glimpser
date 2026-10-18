@@ -1,0 +1,58 @@
+.kiosk-live-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #050a10;
+  opacity: 0;
+  pointer-events: none;
+}
+.kiosk-live-layer.is-playing {
+  opacity: 1;
+}
+.kiosk-live-layer video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.kiosk-live-label,
+.kiosk-live-note {
+  color: #edf5ff;
+  background: #102337;
+  border: 1px solid #63d5b0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font:
+    600 28px/1.3 system-ui,
+    sans-serif;
+}
+.kiosk-live-label {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+}
+.kiosk-live-note {
+  position: absolute;
+  top: 116px;
+  left: 24px;
+  z-index: 9;
+}
+.has-kiosk-live .landing-capture-age,
+.has-kiosk-live .kiosk-source-age,
+.has-kiosk-live .kiosk-caption-strip {
+  visibility: hidden;
+}
+.kiosk-live-label {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.kiosk-live-label .ambient-clock {
+  margin: 0;
+  padding: 0;
+}
+
+.kiosk-live-label .ambient-clock time {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}

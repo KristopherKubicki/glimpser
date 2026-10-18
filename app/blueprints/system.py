@@ -46,8 +46,8 @@ def create_blueprint() -> Blueprint:
                 routes.scheduling.schedule_crawlers()
                 routes.scheduling.schedule_summarization()
             return jsonify({"status": "running"})
-        except Exception as e:  # pragma: no cover - unexpected errors
-            return jsonify({"status": "error", "message": str(e)}), 500
+        except Exception:  # pragma: no cover - unexpected errors
+            return jsonify({"status": "error", "message": "Operation failed"}), 500
 
     @bp.route("/scheduler_status")
     @routes.login_required

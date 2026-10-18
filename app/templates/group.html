@@ -1,6 +1,17 @@
 {% extends 'base.html' %} {% from 'components.html' import template_controls %}
-{% block body_class %}templates-screen templates-wall{% endblock %}
-{% block content %} {% call template_controls() %}
+{% block body_class %}templates-screen templates-wall{% endblock %} {% block
+content %} {% call template_controls() %}
+<label for="dashboard-picker" class="sr-only">Dashboard</label>
+<select id="dashboard-picker" aria-label="Dashboard">
+  <option value="">Choose a dashboard</option>
+  {% for key, label in [('security', 'Home Security'), ('systems', 'Home
+  Systems'), ('growers', 'Growers'), ('regional', 'Regional / Lake'),
+  ('operations', 'Operations')] %} {% if dashboard_name|default('') == key %}
+  <option value="{{ key }}" selected>{{ label }}</option>
+  {% else %}
+  <option value="{{ key }}">{{ label }}</option>
+  {% endif %} {% endfor %}
+</select>
 <select id="sort-date" class="sort-select" aria-label="Sort cameras">
   <option value="">↕</option>
   <option value="name_asc">A–Z</option>
@@ -15,11 +26,11 @@
 {% endcall %}
 <section id="template-list-section">
   <div
-  id="template-list"
-  title="List of all templates"
-  role="region"
-  aria-label="Templates"
-></div>
+    id="template-list"
+    title="List of all templates"
+    role="region"
+    aria-label="Templates"
+  ></div>
 </section>
 <div
   id="index-time"
@@ -30,6 +41,7 @@
 ></div>
 <script type="module">
   window.currentGroup = '{{ group_name }}';
+  window.currentDashboard = {{ dashboard_name|default('')|tojson }};
   window.isGroupWall = true;
 </script>
 {% endblock %}

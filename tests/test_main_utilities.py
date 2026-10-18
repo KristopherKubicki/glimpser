@@ -74,27 +74,60 @@ class TestMainUtilities(unittest.TestCase):
         t2.join.assert_called_once_with(timeout=0.01)
         mock_output.assert_called_once()
 
+    @patch("main._start_shutdown_deadline")
+    @patch("main._shutdown_signaled", False)
     @patch("main.shutdown_manager.cleanup")
     @patch("main.sys.exit")
     @patch("main.time.sleep")
-    def test_graceful_shutdown_exits(self, mock_sleep, mock_exit, mock_cleanup):
+    def test_graceful_shutdown_exits(
+        self, mock_sleep, mock_exit, mock_cleanup, mock_deadline
+    ):
         main.graceful_shutdown(
             signal.SIGTERM if hasattr(signal, "SIGTERM") else 0, None
         )
+        # Repeated signals must not extend the process exit deadline.
+        main.graceful_shutdown(signal.SIGTERM, None)
         mock_cleanup.assert_called_once()
         mock_exit.assert_called_once_with(0)
+        mock_deadline.assert_called_once()
 
     @patch("main.subprocess.run")
     def test_clear_console_windows(self, mock_run):
-        with patch.object(main.os, "name", "nt"):
+        with (
+            patch.object(main.os, "name", "nt"),
+            patch("main.sys.stdout.isatty", return_value=True),
+        ):
             main.clear_console()
-            mock_run.assert_called_once_with(["cls"], check=False)
+            mock_run.assert_called_once_with(
+                ["cmd.exe", "/d", "/c", "cls"], check=False, timeout=2
+            )
 
     @patch("main.subprocess.run")
     def test_clear_console_posix(self, mock_run):
-        with patch.object(main.os, "name", "posix"):
+        with (
+            patch.object(main.os, "name", "posix"),
+            patch("main.sys.stdout.isatty", return_value=True),
+        ):
             main.clear_console()
-            mock_run.assert_called_once_with(["clear"], check=False)
+            mock_run.assert_called_once_with(["clear"], check=False, timeout=2)
+
+    @patch("main.subprocess.run")
+    def test_clear_console_skips_redirected_output(self, mock_run):
+        with patch("main.sys.stdout.isatty", return_value=False):
+            main.clear_console()
+        mock_run.assert_not_called()
+
+    @patch("main.subprocess.run", side_effect=FileNotFoundError)
+    def test_missing_clear_command_does_not_prevent_startup(self, mock_run):
+        with patch("main.sys.stdout.isatty", return_value=True):
+            main.clear_console()
+
+    @patch("main.clear_console")
+    def test_version_exits_before_startup(self, mock_clear):
+        with self.assertRaises(SystemExit) as result:
+            main.main(["--version"])
+        self.assertEqual(result.exception.code, 0)
+        mock_clear.assert_not_called()
 
     @patch("main.clear_console")
     def test_clear_console_cli_calls_clear(self, mock_clear):

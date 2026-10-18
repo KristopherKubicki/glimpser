@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import re
 import socket
 import ssl
 import time
+from collections import OrderedDict
+from threading import Lock
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -13,38 +16,67 @@ import requests
 
 DEFAULT_MEDIA_ACCEPT = "audio/*, application/octet-stream;q=0.9, */*;q=0.1"
 PROBE_CACHE_TTL_SECONDS = 3600
+PROBE_CACHE_MAX_ENTRIES = 1024
+PROBE_CACHE_MAX_ENTRY_CHARS = 8192
 MP4_PROBE_FRONT_BYTES = 128 * 1024
 MP4_PROBE_TAIL_BYTES = 128 * 1024
 MP4_MULTI_RANGE_MAX_BYTES = 384 * 1024
 
-_probe_conditional_cache: dict[str, dict[str, Any]] = {}
+_probe_conditional_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
+_probe_cache_lock = Lock()
+
+
+def _reset_probe_cache_after_fork() -> None:
+    # A capture child must not inherit a lock held by a vanished parent thread.
+    global _probe_cache_lock
+    _probe_cache_lock = Lock()
+    _probe_conditional_cache.clear()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_probe_cache_after_fork)
 
 
 def _cache_get(url: str) -> dict[str, Any] | None:
-    entry = _probe_conditional_cache.get(url)
-    if not entry:
-        return None
-    ts = float(entry.get("time") or 0)
-    if ts <= 0 or time.time() - ts > PROBE_CACHE_TTL_SECONDS:
-        _probe_conditional_cache.pop(url, None)
-        return None
-    return entry
+    with _probe_cache_lock:
+        entry = _probe_conditional_cache.get(url)
+        if entry is None:
+            return None
+        if time.monotonic() - entry["time"] >= PROBE_CACHE_TTL_SECONDS:
+            _probe_conditional_cache.pop(url, None)
+            return None
+        return dict(entry)
 
 
 def _cache_set(url: str, *, etag: str = "", last_modified: str = "") -> None:
-    if not etag and not last_modified:
-        return
-    _probe_conditional_cache[url] = {
-        "etag": etag,
-        "last_modified": last_modified,
-        "time": time.time(),
-    }
+    with _probe_cache_lock:
+        # A successful response without validators supersedes any old value.
+        _probe_conditional_cache.pop(url, None)
+        now = time.monotonic()
+        # Entries are ordered by write time, so expired entries form a prefix.
+        while _probe_conditional_cache:
+            oldest = next(iter(_probe_conditional_cache))
+            if now - _probe_conditional_cache[oldest]["time"] < PROBE_CACHE_TTL_SECONDS:
+                break
+            _probe_conditional_cache.popitem(last=False)
+        if not etag and not last_modified:
+            return
+        if len(url) + len(etag) + len(last_modified) > PROBE_CACHE_MAX_ENTRY_CHARS:
+            return
+        _probe_conditional_cache[url] = {
+            "etag": etag,
+            "last_modified": last_modified,
+            "time": now,
+        }
+        while len(_probe_conditional_cache) > PROBE_CACHE_MAX_ENTRIES:
+            _probe_conditional_cache.popitem(last=False)
 
 
 def clear_probe_cache() -> None:
     """Clear in-memory conditional probe cache (tests/maintenance)."""
 
-    _probe_conditional_cache.clear()
+    with _probe_cache_lock:
+        _probe_conditional_cache.clear()
 
 
 def _parse_content_length_from_range(content_range: str) -> int | None:
@@ -159,22 +191,36 @@ def _extract_mp4_duration_seconds(moov_payload: bytes) -> float | None:
     return None
 
 
+def _remaining_probe_timeout(timeout: float, deadline: float | None) -> float:
+    """Return the remaining request-chain budget without restarting its clock."""
+    if deadline is None:
+        return timeout
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise requests.Timeout("HTTP probe deadline exceeded")
+    return min(timeout, remaining)
+
+
 def _get_with_redirects(
     url: str,
     request_kwargs: dict[str, Any],
     max_redirects: int = 6,
+    deadline: float | None = None,
 ) -> tuple[requests.Response, list[str]]:
     """Perform GET while preserving headers (including Range) across redirects."""
 
     current = url
+    request_kwargs = dict(request_kwargs)
+    request_kwargs["headers"] = dict(request_kwargs.get("headers") or {})
     chain: list[str] = []
-    last_resp: requests.Response | None = None
 
     for _ in range(max_redirects + 1):
         kwargs = dict(request_kwargs)
         kwargs["allow_redirects"] = False
+        kwargs["timeout"] = _remaining_probe_timeout(
+            request_kwargs["timeout"], deadline
+        )
         resp = requests.get(current, **kwargs)
-        last_resp = resp
 
         effective = str(getattr(resp, "url", current) or current)
         chain.append(effective)
@@ -184,15 +230,45 @@ def _get_with_redirects(
             location = str(resp.headers.get("Location") or "").strip()
             if not location:
                 return resp, chain
-            current = urljoin(effective, location)
-            resp.close()
+            try:
+                destination = urljoin(effective, location)
+                old, new = urlparse(effective), urlparse(destination)
+
+                def origin(parsed):
+                    return (
+                        parsed.scheme.lower(),
+                        parsed.hostname,
+                        parsed.port
+                        or (443 if parsed.scheme.lower() == "https" else 80),
+                    )
+
+                if origin(old) != origin(new):
+                    # Range survives redirects; source credentials and validators
+                    # must not cross an origin boundary or reappear on later hops.
+                    request_kwargs.pop("auth", None)
+                    request_kwargs.pop("cookies", None)
+                    request_kwargs["headers"] = {
+                        key: value
+                        for key, value in request_kwargs["headers"].items()
+                        if key.lower()
+                        not in {
+                            "authorization",
+                            "proxy-authorization",
+                            "cookie",
+                            "if-none-match",
+                            "if-modified-since",
+                            "host",
+                        }
+                    }
+                current = destination
+            finally:
+                resp.close()
             continue
 
         return resp, chain
 
-    if last_resp is None:
-        raise requests.TooManyRedirects("redirect limit exceeded")
-    return last_resp, chain
+    # Every redirect response was closed; exhaustion is not a healthy 3xx.
+    raise requests.TooManyRedirects("redirect limit exceeded")
 
 
 def _parse_multipart_byteranges(payload: bytes, content_type: str) -> dict[int, bytes]:
@@ -206,30 +282,42 @@ def _parse_multipart_byteranges(payload: bytes, content_type: str) -> dict[int, 
     if not boundary:
         return {}
 
-    marker = ("--" + boundary).encode("latin-1", errors="ignore")
-    parts = payload.split(marker)
+    try:
+        marker = ("--" + boundary).encode("ascii")
+    except UnicodeEncodeError:
+        return {}
+    if len(boundary) > 70 or "\r" in boundary or "\n" in boundary:
+        return {}
+    delimiter = re.compile(rb"(?:\A|\r\n)" + re.escape(marker) + rb"(\r\n|--)")
     out: dict[int, bytes] = {}
-    for part in parts:
-        part = part.strip()
-        if not part or part == b"--":
-            continue
-        headers, sep, body = part.partition(b"\r\n\r\n")
-        if not sep:
-            continue
-        mcr = re.search(
-            rb"Content-Range:\s*bytes\s+(\d+)-(\d+)/(\d+|\*)",
+    position = 0
+    while match := delimiter.search(payload, position):
+        if match.group(1) == b"--":
+            break
+        header_start = match.end()
+        header_end = payload.find(b"\r\n\r\n", header_start)
+        if header_end < 0 or header_end - header_start > 64 * 1024:
+            break
+        headers = payload[header_start:header_end]
+        content_range = re.search(
+            rb"^Content-Range:[ \t]*bytes[ \t]+(\d+)-(\d+)/(\d+|\*)[ \t]*\r?$",
             headers,
-            flags=re.IGNORECASE,
+            flags=re.IGNORECASE | re.MULTILINE,
         )
-        if not mcr:
-            continue
-        start = int(mcr.group(1))
-        end = int(mcr.group(2))
-        expected = max(0, end - start + 1)
-        body = body.rstrip(b"\r\n")
-        if expected and len(body) > expected:
-            body = body[:expected]
-        out[start] = body
+        if not content_range:
+            break
+        start, end = int(content_range[1]), int(content_range[2])
+        if end < start or (content_range[3] != b"*" and end >= int(content_range[3])):
+            break
+        body_start = header_end + 4
+        body_end = body_start + end - start + 1
+        # Content-Range frames the binary body. Never strip bytes or split on
+        # a marker embedded inside media; verify the following MIME delimiter.
+        following = delimiter.match(payload, body_end)
+        if body_end > len(payload) or following is None:
+            break
+        out[start] = payload[body_start:body_end]
+        position = body_end
     return out
 
 
@@ -240,15 +328,17 @@ def _fetch_sparse_multi_ranges(
     allow_redirects: bool,
     headers: dict[str, str],
     auth: Any,
-    verify: bool | None,
+    verify: bool | str | None,
     range_header: str,
+    deadline: float | None = None,
 ) -> dict[int, bytes]:
     """Fetch sparse multi-range sample and parse multipart byte ranges."""
 
     h = dict(headers)
     h["Range"] = range_header
+    h["Accept-Encoding"] = "identity"
     kwargs: dict[str, Any] = {
-        "timeout": timeout,
+        "timeout": _remaining_probe_timeout(timeout, deadline),
         "allow_redirects": allow_redirects,
         "headers": h,
         "stream": True,
@@ -260,7 +350,9 @@ def _fetch_sparse_multi_ranges(
 
     r = requests.get(url, **kwargs)
     try:
-        if r.status_code != 206:
+        if r.status_code != 206 or str(
+            r.headers.get("Content-Encoding", "identity")
+        ).lower() not in {"", "identity"}:
             return {}
         ct = str(r.headers.get("Content-Type", ""))
         if "multipart/byteranges" not in ct.lower():
@@ -268,6 +360,7 @@ def _fetch_sparse_multi_ranges(
 
         buf = bytearray()
         for chunk in r.iter_content(chunk_size=8192):
+            _remaining_probe_timeout(timeout, deadline)
             if not chunk:
                 continue
             remaining = MP4_MULTI_RANGE_MAX_BYTES - len(buf)
@@ -290,13 +383,22 @@ def _fetch_range_chunk(
     allow_redirects: bool,
     headers: dict[str, str],
     auth: Any,
-    verify: bool | None,
+    verify: bool | str | None,
     range_header: str,
+    deadline: float | None = None,
 ) -> bytes:
+    requested = re.fullmatch(r"bytes=(\d+)-(\d+)", range_header.strip(), re.I)
+    if requested is None:
+        return b""
+    start, end = map(int, requested.groups())
+    max_bytes = end - start + 1
+    if max_bytes <= 0 or max_bytes > max(MP4_PROBE_FRONT_BYTES, MP4_PROBE_TAIL_BYTES):
+        return b""
     h = dict(headers)
     h["Range"] = range_header
+    h["Accept-Encoding"] = "identity"
     kwargs: dict[str, Any] = {
-        "timeout": timeout,
+        "timeout": _remaining_probe_timeout(timeout, deadline),
         "allow_redirects": allow_redirects,
         "headers": h,
         "stream": True,
@@ -306,33 +408,41 @@ def _fetch_range_chunk(
     if verify is not None:
         kwargs["verify"] = verify
 
-    # Incremental parse path: read only the requested prefix bytes and stop.
-    max_bytes = None
-    m = range_header.strip().lower().removeprefix("bytes=")
-    if "-" in m and "," not in m:
-        start_s, end_s = m.split("-", 1)
-        if start_s.isdigit() and end_s.isdigit():
-            start = int(start_s)
-            end = int(end_s)
-            if end >= start:
-                max_bytes = end - start + 1
-
     r = requests.get(url, **kwargs)
     try:
-        if r.status_code >= 400:
+        if r.headers.get("Content-Encoding", "identity").strip().lower() not in {
+            "",
+            "identity",
+        }:
+            return b""
+        if r.status_code == 206:
+            returned = re.fullmatch(
+                r"bytes (\d+)-(\d+)/(\d+|\*)",
+                r.headers.get("Content-Range", "").strip(),
+                re.I,
+            )
+            if returned is None:
+                return b""
+            actual_start, actual_end = int(returned[1]), int(returned[2])
+            if actual_start != start or not start <= actual_end <= end:
+                return b""
+            if returned[3] != "*" and actual_end >= int(returned[3]):
+                return b""
+            max_bytes = actual_end - actual_start + 1
+        elif r.status_code != 200 or start != 0:
+            # A server ignoring Range returns the beginning of the resource.
+            # That is usable only for a bounded prefix, never a tail sample.
             return b""
         buf = bytearray()
         for chunk in r.iter_content(chunk_size=4096):
+            _remaining_probe_timeout(timeout, deadline)
             if not chunk:
                 continue
-            if max_bytes is not None and len(buf) + len(chunk) > max_bytes:
-                take = max_bytes - len(buf)
-                if take > 0:
-                    buf.extend(chunk[:take])
+            buf.extend(chunk[: max_bytes - len(buf)])
+            if len(buf) >= max_bytes:
                 break
-            buf.extend(chunk)
-            if max_bytes is not None and len(buf) >= max_bytes:
-                break
+        if r.status_code == 206 and len(buf) != max_bytes:
+            return b""
         return bytes(buf)
     finally:
         r.close()
@@ -348,7 +458,8 @@ def _probe_mp4_atoms(
     allow_redirects: bool,
     headers: dict[str, str],
     auth: Any,
-    verify: bool | None,
+    verify: bool | str | None,
+    deadline: float | None = None,
 ) -> dict[str, Any]:
     if not _looks_like_mp4(effective_url or url, content_type):
         return {}
@@ -376,12 +487,12 @@ def _probe_mp4_atoms(
             headers=headers,
             auth=auth,
             verify=verify,
+            deadline=deadline,
             range_header=sparse_header,
         )
         if parts:
-            starts = sorted(parts.keys())
-            front = parts.get(starts[0], b"")
-            tail = parts.get(starts[-1], b"") if len(starts) > 1 else b""
+            front = parts.get(0, b"")
+            tail = parts.get(tail_start, b"")
             info["sparse_probe"] = "multi-range"
 
     if not front:
@@ -392,6 +503,7 @@ def _probe_mp4_atoms(
             headers=headers,
             auth=auth,
             verify=verify,
+            deadline=deadline,
             range_header=f"bytes=0-{front_end}",
         )
     if not front:
@@ -426,6 +538,7 @@ def _probe_mp4_atoms(
             headers=headers,
             auth=auth,
             verify=verify,
+            deadline=deadline,
             range_header=f"bytes={tail_start}-{total_len - 1}",
         )
     if not tail:
@@ -450,9 +563,36 @@ def _probe_mp4_atoms(
     return info
 
 
-def _preconnect_check(url: str, timeout: float = 2.0) -> tuple[bool, str]:
+def _connect_resolved(addrinfo, timeout: float, deadline: float) -> socket.socket:
+    """Try resolved addresses once, transferring ownership only on success."""
+
+    last_error = None
+    for family, socktype, proto, _, address in addrinfo:
+        remaining = _remaining_probe_timeout(timeout, deadline)
+        sock = None
+        connected = False
+        try:
+            sock = socket.socket(family, socktype, proto)
+            sock.settimeout(remaining)
+            sock.connect(address)
+            connected = True
+            return sock
+        except OSError as exc:
+            last_error = exc
+        finally:
+            if sock is not None and not connected:
+                sock.close()
+    if last_error is not None:
+        raise last_error
+    raise OSError("No address candidates")
+
+
+def _preconnect_check(
+    url: str, timeout: float = 2.0, verify: bool | str | None = None
+) -> tuple[bool, str]:
     """Run DNS + TCP (and optional TLS) checks before HTTP probing."""
 
+    deadline = time.monotonic() + timeout
     parsed = urlparse(url)
     host = parsed.hostname
     if not host:
@@ -463,8 +603,10 @@ def _preconnect_check(url: str, timeout: float = 2.0) -> tuple[bool, str]:
         default_port = 443
     elif scheme == "http":
         default_port = 80
-    elif scheme in {"rtsp", "rtsps"}:
+    elif scheme == "rtsp":
         default_port = 554
+    elif scheme == "rtsps":
+        default_port = 322
     else:
         default_port = 443
     port = parsed.port or default_port
@@ -477,10 +619,19 @@ def _preconnect_check(url: str, timeout: float = 2.0) -> tuple[bool, str]:
         return False, "dns_failed"
 
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
-            if scheme == "https":
+        with _connect_resolved(addrinfo, timeout, deadline) as sock:
+            if scheme in {"https", "rtsps"}:
                 try:
-                    ctx = ssl.create_default_context()
+                    if isinstance(verify, str):
+                        ca_option = "capath" if os.path.isdir(verify) else "cafile"
+                        ctx = ssl.create_default_context(**{ca_option: verify})
+                    else:
+                        ctx = ssl.create_default_context()
+                    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+                    if verify is False:
+                        ctx.check_hostname = False
+                        ctx.verify_mode = ssl.CERT_NONE
+                    sock.settimeout(_remaining_probe_timeout(timeout, deadline))
                     with ctx.wrap_socket(sock, server_hostname=host):
                         pass
                 except OSError:
@@ -523,9 +674,14 @@ def _run_probe_request(
     url: str,
     request_kwargs: dict[str, Any],
     allow_redirects: bool,
+    deadline: float | None = None,
 ) -> tuple[requests.Response, list[str]]:
     if allow_redirects:
-        return _get_with_redirects(url, request_kwargs)
+        return _get_with_redirects(url, request_kwargs, deadline=deadline)
+    request_kwargs = dict(request_kwargs)
+    request_kwargs["timeout"] = _remaining_probe_timeout(
+        request_kwargs["timeout"], deadline
+    )
     resp = requests.get(url, **request_kwargs)
     chain: list[str] = []
     return resp, chain
@@ -539,7 +695,7 @@ def probe_url_with_range(
     range_header: str = "bytes=0-1",
     headers: dict[str, str] | None = None,
     auth: Any = None,
-    verify: bool | None = None,
+    verify: bool | str | None = None,
     accept: str = DEFAULT_MEDIA_ACCEPT,
     use_conditional_cache: bool = True,
     probe_mp4_atoms: bool = True,
@@ -558,8 +714,14 @@ def probe_url_with_range(
     Optional DNS/TCP/TLS preconnect checks can short-circuit dead hosts.
     """
 
+    deadline = time.monotonic() + timeout
     if preconnect:
-        ok_pre, reason = _preconnect_check(url, timeout=preconnect_timeout)
+        try:
+            ok_pre, reason = _preconnect_check(
+                url, timeout=min(timeout, preconnect_timeout), verify=verify
+            )
+        except (OSError, ValueError):
+            ok_pre, reason = False, "preconnect_failed"
         if not ok_pre:
             return False, {"preconnect": reason, "ok": False}
 
@@ -589,6 +751,7 @@ def probe_url_with_range(
     if verify is not None:
         request_kwargs["verify"] = verify
 
+    resp: requests.Response | None = None
     try:
         attempts: list[dict[str, Any]] = []
 
@@ -597,7 +760,9 @@ def probe_url_with_range(
         ) -> tuple[requests.Response, list[str]]:
             local_kwargs = dict(request_kwargs)
             local_kwargs["headers"] = headers
-            resp_i, chain_i = _run_probe_request(url, local_kwargs, allow_redirects)
+            resp_i, chain_i = _run_probe_request(
+                url, local_kwargs, allow_redirects, deadline=deadline
+            )
             attempts.append(
                 {"step": label, "status": int(getattr(resp_i, "status_code", 0) or 0)}
             )
@@ -647,7 +812,7 @@ def probe_url_with_range(
 
         etag = resp.headers.get("ETag", "")
         last_modified = resp.headers.get("Last-Modified", "")
-        if use_conditional_cache:
+        if use_conditional_cache and 200 <= int(resp.status_code) < 300:
             cache_key = str(getattr(resp, "url", url) or url)
             _cache_set(cache_key, etag=etag, last_modified=last_modified)
             if cache_key != url:
@@ -668,22 +833,37 @@ def probe_url_with_range(
             "ok": bool(resp.ok),
         }
 
-        if probe_mp4_atoms and bool(resp.ok):
-            mp4_info = _probe_mp4_atoms(
-                url=url,
-                effective_url=str(info.get("url") or url),
-                content_type=content_type,
-                content_range=content_range,
-                timeout=timeout,
-                allow_redirects=allow_redirects,
-                headers={k: v for k, v in req_headers.items() if k.lower() != "range"},
-                auth=auth,
-                verify=verify,
-            )
+        # All metadata above is detached from the response. Release its socket
+        # before optional media requests so a small connection pool cannot stall.
+        resp.close()
+        resp = None
+        if probe_mp4_atoms and info["ok"]:
+            try:
+                mp4_info = _probe_mp4_atoms(
+                    url=url,
+                    effective_url=str(info.get("url") or url),
+                    content_type=content_type,
+                    content_range=content_range,
+                    timeout=timeout,
+                    deadline=deadline,
+                    allow_redirects=allow_redirects,
+                    headers={
+                        k: v for k, v in req_headers.items() if k.lower() != "range"
+                    },
+                    auth=auth,
+                    verify=verify,
+                )
+            except (requests.RequestException, OSError, ValueError):
+                # Optional metadata failures cannot erase proven HTTP reachability.
+                mp4_info = {}
             if mp4_info:
                 info["mp4_probe"] = mp4_info
 
-        resp.close()
         return True, info
     except Exception:
         return False, {}
+    finally:
+        # MP4 metadata and response parsing can fail after headers arrive.
+        # Always release the streamed response, including those error paths.
+        if resp is not None:
+            resp.close()

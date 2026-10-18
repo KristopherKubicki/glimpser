@@ -5,7 +5,8 @@ from __future__ import annotations
 import datetime
 import io
 import os
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from PIL import Image
 
@@ -13,16 +14,53 @@ from app.config import SCREENSHOT_DIRECTORY
 from app.utils import eufy_cloud, screenshots, template_manager
 
 
-def _save_snapshot_png(*, name: str, payload: bytes, invert: bool) -> str:
+def _save_snapshot_png(
+    *,
+    name: str,
+    payload: bytes,
+    invert: bool,
+    dark: bool = False,
+    stabilize_mode: str = "off",
+) -> str:
     """Save raw image bytes as a timestamped PNG and add standard overlays."""
 
     timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     camera_dir = os.path.join(SCREENSHOT_DIRECTORY, name)
     os.makedirs(camera_dir, exist_ok=True)
     output_path = os.path.join(camera_dir, f"{name}_{timestamp}.png")
+    existing = [
+        os.path.join(camera_dir, entry)
+        for entry in os.listdir(camera_dir)
+        if entry.startswith(f"{name}_") and entry.endswith(".png")
+    ]
 
     with Image.open(io.BytesIO(payload)) as img:
         img = img.convert("RGB")
+        img = screenshots._postprocess_still_image(
+            img,
+            output_path,
+            name,
+            dark=dark,
+            stabilize_mode=stabilize_mode,
+        )
+        reject_reason = screenshots._captured_frame_rejection_reason(img)
+        if reject_reason is not None:
+            usable_existing = []
+            for path in sorted(existing):
+                try:
+                    with Image.open(path) as previous:
+                        if (
+                            screenshots._captured_frame_rejection_reason(previous)
+                            is None
+                        ):
+                            usable_existing.append(path)
+                except Exception:
+                    continue
+            if usable_existing:
+                return usable_existing[-1]
+            raise eufy_cloud.EufyCloudError(
+                f"Rejected Eufy snapshot after post-processing: {reject_reason}"
+            )
         img.save(output_path, "PNG")
 
     screenshots.add_timestamp(output_path, name=name, invert=invert)
@@ -67,6 +105,8 @@ def capture_profile_first_pass(
                 name=name,
                 payload=payload,
                 invert=bool(tmpl.get("invert", False)),
+                dark=bool(tmpl.get("dark", False)),
+                stabilize_mode=str(tmpl.get("stabilize_mode") or "off"),
             )
             template_manager.update_last_screenshot_time(name)
             template_manager.clear_offline(name)

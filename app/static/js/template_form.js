@@ -10,6 +10,16 @@ function setupTemplateForm(container) {
   const browserToggle = container.querySelector("#browser");
   const headlessToggle = container.querySelector("#headless");
   const stealthToggle = container.querySelector("#stealth");
+  const eventBufferToggle = container.querySelector("#event_buffer_enabled");
+  const eventBufferSection = container.querySelector(".event-buffer-section");
+  const eventBufferFields = container.querySelectorAll(
+    "[data-event-buffer-field]",
+  );
+  const eventBufferTestBtn = container.querySelector("#event_buffer_test");
+  const eventBufferStatusBtn = container.querySelector("#event_buffer_status");
+  const eventBufferTestResult = container.querySelector(
+    "#event_buffer_test_result",
+  );
   const groupInput = container.querySelector("#groups");
   const advanced = container.querySelector(".advanced-settings");
   const previewItems = {};
@@ -89,6 +99,23 @@ function setupTemplateForm(container) {
     }
   };
 
+  const syncEventBuffer = () => {
+    if (!eventBufferToggle) return;
+    const incompatible =
+      Boolean(browserToggle?.checked) || Boolean(stealthToggle?.checked);
+    if (incompatible) {
+      eventBufferToggle.checked = false;
+    }
+    eventBufferToggle.disabled = incompatible;
+    const enabled = eventBufferToggle.checked && !incompatible;
+    eventBufferFields.forEach((field) => {
+      field.disabled = !enabled;
+    });
+    if (eventBufferSection) {
+      eventBufferSection.classList.toggle("is-disabled", !enabled);
+    }
+  };
+
   const applyMode = (mode) => {
     if (mode === "stream") {
       if (browserToggle) browserToggle.checked = false;
@@ -103,6 +130,7 @@ function setupTemplateForm(container) {
       if (advanced) advanced.open = true;
       setActive(modeButtons, { key: "mode", value: "web" });
     }
+    syncEventBuffer();
     updateSummary();
   };
 
@@ -116,8 +144,17 @@ function setupTemplateForm(container) {
     if (!value) return null;
     const url = value.toLowerCase();
     if (url.startsWith("rtsp://")) return "stream";
-    if (url.includes("youtube.com") || url.includes("youtu.be"))
-      return "stream";
+    try {
+      const host = new URL(url).hostname;
+      if (
+        ["youtube.com", "youtu.be"].some(
+          (domain) => host === domain || host.endsWith(`.${domain}`),
+        )
+      )
+        return "stream";
+    } catch {
+      return null;
+    }
     if (url.endsWith(".mjpg") || url.includes("mjpg")) return "stream";
     if (
       url.endsWith(".jpg") ||
@@ -158,6 +195,112 @@ function setupTemplateForm(container) {
   if (authToggle) {
     authToggle.addEventListener("change", syncAuth);
     syncAuth();
+  }
+
+  if (eventBufferToggle) {
+    eventBufferToggle.addEventListener("change", syncEventBuffer);
+    syncEventBuffer();
+  }
+
+  if (stealthToggle) {
+    stealthToggle.addEventListener("change", syncEventBuffer);
+  }
+
+  if (browserToggle) {
+    browserToggle.addEventListener("change", syncEventBuffer);
+  }
+
+  if (eventBufferTestBtn && eventBufferSection) {
+    eventBufferTestBtn.addEventListener("click", async () => {
+      const testUrl = eventBufferSection.dataset.eventBufferTestUrl;
+      const form = eventBufferTestBtn.closest("form");
+      if (!testUrl || !form) {
+        if (eventBufferTestResult) {
+          eventBufferTestResult.textContent = "BLOCKED: save first";
+        }
+        return;
+      }
+
+      if (eventBufferTestResult) {
+        eventBufferTestResult.textContent = "Testing...";
+      }
+      const body = new FormData(form);
+      if (!eventBufferToggle?.checked) {
+        body.set("event_buffer_enabled", "false");
+      }
+      try {
+        const response = await fetch(testUrl, {
+          method: "POST",
+          body,
+          credentials: "same-origin",
+        });
+        const payload = await response.json();
+        if (eventBufferTestResult) {
+          const status = response.ok ? "OK" : "BLOCKED";
+          eventBufferTestResult.textContent = `${status}: ${
+            payload.message || payload.status || "unknown"
+          }`;
+        }
+      } catch (error) {
+        if (eventBufferTestResult) {
+          eventBufferTestResult.textContent = "BLOCKED: test failed";
+        }
+      }
+    });
+  }
+
+  const eventBufferAge = (timestamp) => {
+    if (!timestamp) return "never";
+    const seconds = Math.max(0, Math.round(Date.now() / 1000 - timestamp));
+    if (seconds < 90) return `${seconds}s ago`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 90) return `${minutes}m ago`;
+    return `${Math.round(minutes / 60)}h ago`;
+  };
+
+  if (eventBufferStatusBtn && eventBufferSection) {
+    eventBufferStatusBtn.addEventListener("click", async () => {
+      const statusUrl = eventBufferSection.dataset.eventBufferStatusUrl;
+      if (!statusUrl) {
+        if (eventBufferTestResult) {
+          eventBufferTestResult.textContent = "STATUS: save first";
+        }
+        return;
+      }
+
+      if (eventBufferTestResult) {
+        eventBufferTestResult.textContent = "Checking...";
+      }
+      try {
+        const response = await fetch(statusUrl, {
+          method: "GET",
+          credentials: "same-origin",
+        });
+        const payload = await response.json();
+        const frames = payload.frames || 0;
+        const parts = [`${frames} frames`];
+        if (payload.newest)
+          parts.push(`newest ${eventBufferAge(payload.newest)}`);
+        if (
+          payload.backoff_until &&
+          payload.backoff_until > Date.now() / 1000
+        ) {
+          parts.push(
+            `backoff ${Math.ceil(payload.backoff_until - Date.now() / 1000)}s`,
+          );
+        }
+        if (payload.last_error) parts.push(payload.last_error);
+        if (eventBufferTestResult) {
+          eventBufferTestResult.textContent = `${
+            response.ok ? "STATUS" : "BLOCKED"
+          }: ${parts.join(", ")}`;
+        }
+      } catch (error) {
+        if (eventBufferTestResult) {
+          eventBufferTestResult.textContent = "STATUS: check failed";
+        }
+      }
+    });
   }
 
   if (frequencyInput) {

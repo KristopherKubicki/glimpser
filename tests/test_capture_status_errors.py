@@ -20,6 +20,10 @@ class TestCaptureStatusErrors(unittest.TestCase):
         ss.throttle_cache.clear()
         ss.source_circuit_cache.clear()
         ss.domain_retry_budget_cache.clear()
+        ss.auth_scheme_cache.clear()
+        ss.auth_scheme_cache_time.clear()
+        ss.auth_hint_cache.clear()
+        ss.auth_hint_cache_time.clear()
         ss._persist_status_cache()
 
     def tearDown(self):
@@ -87,6 +91,49 @@ class TestCaptureStatusErrors(unittest.TestCase):
         self.assertTrue(modified)
         self.assertTrue(preflight_ok)
         self.assertEqual(reason, "ok")
+
+    @patch("app.utils.screenshots.http_session")
+    @patch("app.utils.screenshots.is_system_online", return_value=True)
+    @patch(
+        "app.utils.screenshots.network_state",
+        return_value={"dns_ok": True, "wan_ok": True, "lan_ok": True},
+    )
+    def test_get_content_type_digest_retry_keeps_template_credentials(
+        self, _mock_state, _mock_online, mock_session_factory
+    ):
+        url = "http://192.168.1.158/ISAPI/Streaming/channels/101/picture"
+
+        first = MagicMock()
+        first.status_code = 401
+        first.headers = {"WWW-Authenticate": 'Digest realm="cam"'}
+        first.history = []
+        first.url = url
+        first.cookies = None
+
+        second = MagicMock()
+        second.status_code = 200
+        second.headers = {"Content-Type": "image/jpeg"}
+        second.history = []
+        second.url = url
+        second.cookies = None
+        second.raw = MagicMock()
+        second.raw.read.return_value = b"\xff\xd8\xff" * 1000
+
+        mock_session = MagicMock()
+        mock_session.request.side_effect = [first, second]
+        mock_session_factory.return_value = mock_session
+
+        ctype, modified, preflight_ok, reason = ss.get_content_type(
+            url, False, username="admin", password="example-test-password"
+        )
+
+        self.assertEqual(ctype, "image/jpeg")
+        self.assertTrue(modified)
+        self.assertTrue(preflight_ok)
+        self.assertEqual(reason, "ok")
+        retry_auth = mock_session.request.call_args_list[1].kwargs["auth"]
+        self.assertEqual(retry_auth.username, "admin")
+        self.assertEqual(retry_auth.password, "example-test-password")
 
     @patch("app.utils.screenshots.http_session")
     @patch("app.utils.screenshots.is_system_online", return_value=True)

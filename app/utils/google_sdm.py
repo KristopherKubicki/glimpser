@@ -27,9 +27,10 @@ from __future__ import annotations
 import datetime
 import logging
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 
 import requests
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -43,6 +44,8 @@ _SDM_BASE = "https://smartdevicemanagement.googleapis.com/v1"
 
 # Scope required for the SDM API.
 _SDM_SCOPE = "https://www.googleapis.com/auth/sdm.service"
+_TRANSIENT_HTTP_STATUS = {429, 500, 502, 503, 504}
+_REQUEST_RETRY_DELAYS = (0.6, 1.2)
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,43 @@ _PREVIEW_TOKEN_SALT = "google-sdm-webrtc-preview-v1"
 
 def _now_utc() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
+
+
+def _request_with_retries(
+    method: str,
+    url: str,
+    *,
+    retry_statuses: set[int] | None = None,
+    **kwargs: Any,
+) -> requests.Response:
+    """Issue an HTTP request with small retries for transient SDM failures.
+
+    Google SDM and OAuth token refreshes are sensitive to brief DNS/WAN flaps on
+    noisy networks. A short retry window avoids escalating those transient
+    failures into camera-level outages while keeping the call bounded.
+    """
+
+    retry_statuses = set(retry_statuses or _TRANSIENT_HTTP_STATUS)
+    attempts = len(_REQUEST_RETRY_DELAYS) + 1
+    last_error: Exception | None = None
+
+    for attempt in range(attempts):
+        try:
+            resp = requests.request(method, url, **kwargs)
+        except requests.RequestException as exc:
+            last_error = exc
+        else:
+            if resp.status_code not in retry_statuses or attempt == attempts - 1:
+                return resp
+            last_error = GoogleSdmError(
+                f"Transient Google SDM HTTP {resp.status_code} for {url}"
+            )
+            resp.close()
+
+        if attempt < attempts - 1:
+            time.sleep(_REQUEST_RETRY_DELAYS[attempt])
+
+    raise GoogleSdmError(f"Google SDM request failed: {last_error}")
 
 
 def _profile(name: str | None):
@@ -137,7 +177,7 @@ def exchange_code_for_refresh_token(
         "grant_type": "authorization_code",
         "redirect_uri": _profile(profile).redirect_uri,
     }
-    resp = requests.post(_TOKEN_URL, data=data, timeout=20)
+    resp = _request_with_retries("post", _TOKEN_URL, data=data, timeout=20)
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"OAuth token exchange failed: {resp.status_code} {resp.text[:200]}"
@@ -162,7 +202,7 @@ def _refresh_access_token(profile: str | None = None) -> tuple[str, int]:
         "refresh_token": refresh,
         "grant_type": "refresh_token",
     }
-    resp = requests.post(_TOKEN_URL, data=data, timeout=20)
+    resp = _request_with_retries("post", _TOKEN_URL, data=data, timeout=20)
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"OAuth refresh failed: {resp.status_code} {resp.text[:200]}"
@@ -178,8 +218,6 @@ def _refresh_access_token(profile: str | None = None) -> tuple[str, int]:
 def access_token(profile: str | None = None) -> str:
     """Return a valid access token, refreshing if needed."""
 
-    global _access_token, _access_expires_at
-
     with _access_lock:
         key = str(profile or "default")
         token = _access_token.get(key)
@@ -189,7 +227,19 @@ def access_token(profile: str | None = None) -> str:
             if exp - _now_utc() > datetime.timedelta(seconds=30):
                 return token
 
-        access, expires_in = _refresh_access_token(profile)
+        try:
+            access, expires_in = _refresh_access_token(profile)
+        except GoogleSdmError as exc:
+            if token and exp and exp > _now_utc():
+                remaining = int((exp - _now_utc()).total_seconds())
+                logging.warning(
+                    "Google SDM refresh failed for profile=%s; reusing cached token for %ss: %s",
+                    key,
+                    max(0, remaining),
+                    exc,
+                )
+                return token
+            raise
         _access_token[key] = access
         _access_expires_at[key] = _now_utc() + datetime.timedelta(
             seconds=int(expires_in)
@@ -203,7 +253,6 @@ def clear_cached_tokens() -> None:
     Useful after disconnecting a Google account or rotating credentials.
     """
 
-    global _access_token, _access_expires_at
     with _access_lock:
         _access_token.clear()
         _access_expires_at.clear()
@@ -233,7 +282,7 @@ def list_devices(profile: str | None = None) -> list[dict[str, Any]]:
         raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
 
     url = f"{_SDM_BASE}/enterprises/{project}/devices"
-    resp = requests.get(url, headers=_auth_headers(profile), timeout=30)
+    resp = _request_with_retries("get", url, headers=_auth_headers(profile), timeout=30)
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM list devices failed: {resp.status_code} {resp.text[:200]}"
@@ -262,7 +311,9 @@ def generate_rtsp_stream(device_name: str, profile: str | None = None) -> SdmRts
         "params": {},
     }
 
-    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=30)
+    resp = _request_with_retries(
+        "post", url, json=payload, headers=_auth_headers(profile), timeout=30
+    )
     if resp.status_code != 200:
         error_msg = ""
         try:
@@ -325,7 +376,9 @@ def generate_webrtc_stream(
         "params": {"offerSdp": offer_sdp},
     }
 
-    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=30)
+    resp = _request_with_retries(
+        "post", url, json=payload, headers=_auth_headers(profile), timeout=30
+    )
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM generate WebRTC failed: {resp.status_code} {resp.text[:200]}"
@@ -372,7 +425,9 @@ def extend_webrtc_stream(
         "params": {"mediaSessionId": media_session_id},
     }
 
-    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=20)
+    resp = _request_with_retries(
+        "post", url, json=payload, headers=_auth_headers(profile), timeout=20
+    )
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM extend WebRTC failed: {resp.status_code} {resp.text[:200]}"
@@ -405,7 +460,9 @@ def stop_webrtc_stream(
         "command": "sdm.devices.commands.CameraLiveStream.StopWebRtcStream",
         "params": {"mediaSessionId": media_session_id},
     }
-    resp = requests.post(url, json=payload, headers=_auth_headers(profile), timeout=20)
+    resp = _request_with_retries(
+        "post", url, json=payload, headers=_auth_headers(profile), timeout=20
+    )
     if resp.status_code != 200:
         raise GoogleSdmError(
             f"SDM stop WebRTC failed: {resp.status_code} {resp.text[:200]}"
@@ -442,6 +499,44 @@ def stable_key_for_resolved_rtsp(rtsp_url: str) -> str | None:
         return _resolved_rtsp_reverse.get(rtsp_url)
 
 
+def stable_key_for_webrtc_preview_url(preview_url: str) -> str | None:
+    """Return stable `sdm://...` key for an internal WebRTC preview URL.
+
+    The preview page is an internal HTTP URL, but it still represents one SDM
+    camera. Normalizing it back to the stable `sdm://<profile>/<device_id>` key
+    keeps retry/backoff/circuit state attached to the camera rather than the
+    transient preview URL.
+    """
+
+    if not preview_url:
+        return None
+    parsed = urlparse(str(preview_url))
+    if "/integrations/google/webrtc/preview" not in (parsed.path or ""):
+        return None
+    params = parse_qs(parsed.query or "")
+    profile = (
+        str((params.get("profile") or ["default"])[0] or "default").strip() or "default"
+    )
+    device_id = str((params.get("device_id") or [""])[0] or "").strip()
+    if not device_id:
+        return None
+    return f"sdm://{profile}/{device_id}"
+
+
+def stable_sdm_key_for_url(url: str) -> str | None:
+    """Normalize any SDM-derived URL back to its stable `sdm://...` key."""
+
+    value = str(url or "").strip()
+    if not value:
+        return None
+    if value.lower().startswith("sdm://"):
+        return value
+    stable = stable_key_for_resolved_rtsp(value)
+    if stable:
+        return stable
+    return stable_key_for_webrtc_preview_url(value)
+
+
 def resolve_sdm_to_rtsp(stable_sdm_url: str) -> str | None:
     """Resolve `sdm://<device_id>` to a fresh RTSP URL.
 
@@ -468,7 +563,21 @@ def resolve_sdm_to_rtsp(stable_sdm_url: str) -> str | None:
         raise GoogleSdmError("Missing GOOGLE_SDM_PROJECT_ID")
 
     device_name = f"enterprises/{project}/devices/{device_id}"
-    stream = generate_rtsp_stream(device_name, profile)
+    try:
+        stream = generate_rtsp_stream(device_name, profile)
+    except GoogleSdmError:
+        if cached and cached.rtsp_url:
+            # If token refresh or stream generation is briefly unavailable, a
+            # nearly-expired cached RTSP URL is still better than dropping the
+            # camera immediately. The live path will retry and replace it soon.
+            if cached.expires_at is None or cached.expires_at > _now_utc():
+                logging.warning(
+                    "SDM resolve failed for %s; reusing cached RTSP stream until %s",
+                    stable_sdm_url,
+                    cached.expires_at,
+                )
+                return cached.rtsp_url
+        raise
 
     with _resolve_lock:
         _resolved_rtsp_cache[stable_sdm_url] = stream

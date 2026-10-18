@@ -8,7 +8,7 @@ initialized :class:`flask.Flask` instance used by the application.
 import logging
 import multiprocessing
 import os
-import sys
+import signal
 import threading
 import time
 from datetime import timedelta
@@ -26,7 +26,6 @@ from app.config import (
     WATCHDOG_MEMORY_THRESHOLD,
     WATCHDOG_RESTART_COOLDOWN,
     backup_config,
-    restore_config,
 )
 from app.utils.email_alerts import email_alert
 from app.utils.retention_policy import cleanup_clips, retention_cleanup
@@ -34,11 +33,15 @@ from app.utils.scheduling import (
     refresh_clips,
     schedule_auto_update,
     schedule_baseline_updates,
+    schedule_browser_queue,
     schedule_clip_refresh,
     schedule_crawlers,
     schedule_discovery,
+    schedule_event_buffers,
     schedule_offline_job_processor,
+    schedule_seiche_brief,
     schedule_summarization,
+    schedule_weather_brief,
     scheduler,
     start_log_caching,
     start_metrics_collection,
@@ -72,8 +75,7 @@ def create_app(
     enable_watchdog : bool, optional
         When ``True`` (the default) a background thread periodically
         polls the ``/health`` endpoint and checks the number of open file
-        handles.  If either check fails it restores the last known good
-        configuration using :func:`restore_config` and exits the process so
+        handles. If core checks repeatedly fail, it signals the process so
         an external supervisor can restart it.  Pass ``False`` to disable
         this thread entirely, which is useful when running unit tests.
 
@@ -154,8 +156,21 @@ def create_app(
         app.config["SCHEDULER_EXECUTORS"] = {
             "default": {
                 "type": _scheduler_executor_type(),
-                "max_workers": MAX_WORKERS,
-            }
+                # Reserve a small maintenance pool; a long offline replay must
+                # not occupy the only worker available for housekeeping.
+                "max_workers": min(2, max(1, MAX_WORKERS)),
+            },
+            # These coordinators already run captures in bounded child processes,
+            # just like priority cameras. Preserve the native capture limit.
+            "camera_captures": {"type": "threadpool", "max_workers": MAX_WORKERS},
+            # Keep entrance captures moving when slow scenic feeds fill the queue.
+            "priority_cameras": {"type": "threadpool", "max_workers": 2},
+            "browser_retries": {"type": "threadpool", "max_workers": 1},
+            "browser_captures": {"type": "threadpool", "max_workers": 2},
+            "event_buffer": {
+                "type": "threadpool",
+                "max_workers": 2,
+            },
         }
         app.config["SCHEDULER_API_ENABLED"] = SCHEDULER_API_ENABLED
         logging.info(
@@ -183,6 +198,7 @@ def create_app(
             # Schedule various periodic tasks
             if crawlers:
                 schedule_crawlers()
+                schedule_browser_queue()
             scheduler.add_job(
                 id="compile_to_teaser",
                 func=compile_to_teaser,
@@ -211,8 +227,14 @@ def create_app(
                 id="retention_cleanup", func=retention_cleanup, trigger="cron", day="*"
             )
             schedule_summarization()
+            schedule_weather_brief()
+            schedule_seiche_brief()
             schedule_offline_job_processor()
+            schedule_event_buffers()
             schedule_baseline_updates()
+            from app.utils.household_presence import schedule_presence
+
+            schedule_presence(scheduler)
             if enable_clip_refresh:
                 schedule_clip_refresh()
             schedule_auto_update()
@@ -236,7 +258,7 @@ def create_app(
         The thread issues requests to ``/health`` and performs additional
         checks every 30 seconds. When CPU or memory usage exceeds configured
         thresholds the number of open file handles is inspected. If any check
-        fails the previous configuration is restored and the process exits so
+        repeatedly fails the process is signaled, preserving configuration, so
         an external supervisor can restart it. A 15 minute cooldown prevents
         rapid restart loops.
         """
@@ -247,7 +269,8 @@ def create_app(
         failure_threshold = WATCHDOG_FAILURE_THRESHOLD
 
         while not stop_event.is_set():
-            time.sleep(30)  # Check every 30 seconds
+            if stop_event.wait(30):
+                break
             if not app.debug:
                 try:
                     # Check app responsiveness
@@ -255,6 +278,10 @@ def create_app(
                         response = client.get("/health", headers={"X-API-Key": API_KEY})
                         if response.status_code != 200:
                             raise Exception("Application is not responding correctly")
+                        if (response.get_json(silent=True) or {}).get(
+                            "restart_required"
+                        ):
+                            raise Exception("Core application health check failed")
 
                     current_process = psutil.Process()
                     cpu_usage = psutil.cpu_percent(interval=0.1)
@@ -283,19 +310,14 @@ def create_app(
                     current_time = time.time()
                     if failure_count >= failure_threshold:
                         if current_time - last_restart_time > restart_cooldown:
-                            logging.info(
-                                "Attempting to restore previous configuration..."
-                            )
-                            try:
-                                restore_config()
-                            except Exception as config_error:
-                                logging.error(
-                                    "Failed to restore configuration: %s", config_error
-                                )
                             logging.info("Forcing application restart...")
                             last_restart_time = current_time
                             failure_count = 0
-                            sys.exit(1)  # Force restart the application gracefully
+                            # sys.exit() in a daemon only kills the watchdog.
+                            # Signal the process; its supervisor handles restart.
+                            # A runtime outage is not evidence of corrupt config.
+                            os.kill(os.getpid(), signal.SIGTERM)
+                            return
                         else:
                             logging.warning(
                                 "Restart cooldown in effect. Skipping restart."
@@ -327,6 +349,7 @@ def create_app(
 
                 if crawlers:
                     schedule_crawlers()
+                    schedule_browser_queue()
                 scheduler.add_job(
                     id="compile_to_teaser",
                     func=compile_to_teaser,
@@ -355,8 +378,22 @@ def create_app(
                     day="*",
                 )
                 schedule_summarization()
+                schedule_weather_brief()
+                schedule_seiche_brief()
                 schedule_offline_job_processor()
+                schedule_event_buffers()
                 schedule_baseline_updates()
+                from app.utils.household_presence import poll_presence
+
+                scheduler.add_job(
+                    id="household_presence",
+                    func=poll_presence,
+                    trigger="interval",
+                    seconds=30,
+                    max_instances=1,
+                    coalesce=True,
+                    replace_existing=True,
+                )
                 if enable_clip_refresh:
                     schedule_clip_refresh()
                 if DISCOVERY_AUTOSTART:

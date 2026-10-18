@@ -1,0 +1,134 @@
+{% extends 'base.html' %} {% block body_class %}visual-dashboard-screen{%
+endblock %} {% block content %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/visual_dashboard.css') }}"
+/>
+<section class="vd" data-visual-dashboard="{{ dashboard_name }}">
+  <header class="vd-heading">
+    <div>
+      <p class="vd-eyebrow">GLIMPSER / CAMERA OVERVIEW</p>
+      <h1>{{ dashboard_label }}</h1>
+      <p>
+        {{ dashboard_model.description or "Explore locations, compare nearby
+        views, and distinguish capture age from the age of the source image." }}
+      </p>
+    </div>
+    <nav aria-label="Camera dashboards">
+      {% for key, label in dashboard_options.items() %}<a
+        href="/dashboard/{{ key }}"
+        aria-current="{{ 'page' if key == dashboard_name else 'false' }}"
+        >{{ label }}</a
+      >{% endfor %}<a href="/satellite">Satellite timelapse ↗</a><a href="/group/all">All cameras ↗</a>
+    </nav>
+  </header>
+  {% if dashboard_name in ['security', 'systems', 'arrivals'] %}
+  <section
+    class="vd-panel household-presence"
+    data-household-presence
+    aria-label="Household presence"
+  ></section>
+  <script
+    type="module"
+    src="{{ url_for('static', filename='js/household_presence.js') }}"
+  ></script>
+  {% endif %}
+  <div class="vd-stats" aria-label="Feed summary">
+    <div>
+      <strong id="vd-total">{{ dashboard_model.cameras|length }}</strong
+      ><span>Camera views</span>
+    </div>
+    <div>
+      <strong id="vd-healthy">{{ dashboard_model.healthy }}</strong
+      ><span>Captures on schedule</span>
+    </div>
+    <div>
+      <strong id="vd-attention">{{ dashboard_model.attention }}</strong
+      ><span>Need attention</span>
+    </div>
+    <div>
+      <strong id="vd-mapped">{{ dashboard_model.mapped }}</strong
+      ><span>Mapped locations</span>
+    </div>
+  </div>
+  {% if dashboard_name == 'health' %}
+  <section class="vd-panel vd-health-summary" aria-label="Feed health summary">
+    <h2>Feeds needing attention</h2>
+    <p id="vd-health-counts"></p>
+    <p class="vd-note">
+      An unchanged image is a warning to review, not proof of a frozen camera.
+      Archived feeds are excluded.
+    </p>
+  </section>
+  {% endif %}
+  <div class="vd-workspace">
+    <section class="vd-panel vd-combined">
+      <header>
+        <div>
+          <p class="vd-eyebrow">COMPARE CAMERAS</p>
+          <h2>Combined view</h2>
+        </div>
+        <label
+          >Area
+          <select id="vd-area"></select
+        ></label>
+      </header>
+      <p class="vd-note">
+        Separate camera views, shown together. Each panel has its own capture
+        time.
+      </p>
+      <div id="vd-board" class="vd-board"></div>
+    </section>
+    <aside class="vd-panel">
+      <p class="vd-eyebrow">LOCATION CONTEXT</p>
+      <h2 id="vd-map-title">Camera minimap</h2>
+      <p class="vd-note" id="vd-map-note"></p>
+      <div id="vd-map"></div>
+      <p class="vd-note">Select a marker to find its camera below.</p>
+    </aside>
+  </div>
+  <section class="vd-gallery-section">
+    <header>
+      <div>
+        <h2>
+          {{ 'Feeds to review' if dashboard_name == 'health' else 'All camera
+          views' }}
+        </h2>
+        <p class="vd-note" id="vd-results"></p>
+      </div>
+      <label
+        >Show
+        <select id="vd-filter">
+          <option value="all">All views</option>
+          <option value="attention">Needs attention</option>
+          <option value="motion">Replay buffers</option>
+        </select>
+      </label>
+      <label
+        >Find a camera
+        <input id="vd-search" type="search" placeholder="Camera or area"
+      /></label>
+    </header>
+    <p class="vd-note" id="vd-refresh-status" role="status">
+      Capture metadata refreshes every minute.
+    </p>
+    <div class="vd-gallery" id="vd-gallery"></div>
+  </section>
+  <dialog id="vd-detail" class="vd-detail" aria-labelledby="vd-detail-title">
+    <header>
+      <h2 id="vd-detail-title">Camera details</h2>
+      <button type="button" id="vd-detail-close" class="vd-action">
+        Close
+      </button>
+    </header>
+    <div id="vd-detail-content"></div>
+  </dialog>
+</section>
+<script id="vd-model" type="application/json">
+  {{ dashboard_model|tojson }}
+</script>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/visual_dashboard.js') }}"
+></script>
+{% endblock %}

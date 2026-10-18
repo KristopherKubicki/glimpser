@@ -1,0 +1,400 @@
+:root {
+  color-scheme: dark;
+
+  --bg: #05070b;
+  --panel: #0b1118;
+  --panel-strong: #101923;
+  --line: #203244;
+  --line-soft: rgba(122, 156, 184, 0.18);
+  --text: #eff6fb;
+  --muted: #95a9ba;
+  --cyan: #6ee7ff;
+  --green: #68f5a8;
+  --amber: #ffd166;
+  --red: #ff667a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: grid;
+  place-items: start center;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.comed-wall {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  width: 100vw;
+  aspect-ratio: 16 / 9;
+  max-height: none;
+  padding: 22px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 20, 0.96), rgba(5, 7, 11, 0.99)),
+    var(--bg);
+}
+
+.comed-header,
+.metric-strip,
+.chart-notes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comed-header {
+  gap: 24px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow,
+.metric-label,
+.status-pill,
+.chart-notes,
+.chart-axis text,
+.point-labels text {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.header-status {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 220px;
+  text-align: right;
+}
+
+.status-pill {
+  display: inline-flex;
+  min-width: 168px;
+  justify-content: center;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+}
+
+.status-pill[data-state="ok"] {
+  border-color: rgba(104, 245, 168, 0.42);
+  color: var(--green);
+}
+
+.status-pill[data-state="warn"] {
+  border-color: rgba(255, 209, 102, 0.5);
+  color: var(--amber);
+}
+
+.status-pill[data-state="error"] {
+  border-color: rgba(255, 102, 122, 0.56);
+  color: var(--red);
+}
+
+time {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric-panel {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.metric-panel strong {
+  display: block;
+  margin: 6px 0 3px;
+  color: var(--text);
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-current strong {
+  color: var(--green);
+}
+
+.metric-panel span:last-child {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.chart-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.comed-chart {
+  display: block;
+  width: 100%;
+  min-height: 0;
+}
+
+.chart-bg {
+  fill: #071019;
+}
+
+.chart-axis line,
+.chart-axis path {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.chart-axis text,
+.point-labels text {
+  fill: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.threshold-zone {
+  fill: rgba(255, 102, 122, 0.08);
+}
+
+.threshold-line {
+  stroke: rgba(255, 209, 102, 0.62);
+  stroke-dasharray: 8 7;
+  stroke-width: 2;
+}
+
+.threshold-label {
+  fill: var(--amber);
+  font-size: 17px;
+}
+
+.day-ahead-bar {
+  fill: rgba(110, 231, 255, 0.58);
+}
+
+.day-ahead-bar.is-high {
+  fill: rgba(255, 209, 102, 0.7);
+}
+
+.actual-path {
+  fill: none;
+  stroke: var(--green);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-width: 5;
+}
+
+.actual-point {
+  fill: var(--green);
+  stroke: #061019;
+  stroke-width: 2;
+}
+
+.current-point {
+  fill: var(--red);
+  stroke: #061019;
+  stroke-width: 3;
+}
+
+.chart-notes {
+  gap: 20px;
+  min-height: 54px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--muted);
+  text-transform: none;
+}
+
+.chart-notes div {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: max-content;
+}
+
+.chart-notes p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  width: 22px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.swatch-day-ahead {
+  background: var(--cyan);
+}
+
+.swatch-actual {
+  background: var(--green);
+}
+
+@media (max-width: 900px) {
+  .comed-wall {
+    gap: 9px;
+    padding: 14px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-panel strong {
+    font-size: 24px;
+  }
+
+  .chart-notes {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chart-notes p {
+    text-align: left;
+    white-space: normal;
+  }
+}
+
+/* Sized for the 1920 x 1080 household displays; cards retain their live data. */
+@media (min-width: 1200px) {
+  body {
+    --muted: #b3c6d6;
+  }
+  main {
+    height: 100vh;
+    aspect-ratio: auto;
+    padding: 32px;
+    gap: 20px;
+  }
+  h1 {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+  .eyebrow,
+  .metric-label,
+  .status-pill {
+    font-size: 19px;
+  }
+  .header-status time {
+    font-size: 22px;
+  }
+  .metric-panel,
+  .summary-strip article,
+  .lead-strip article {
+    border-radius: 14px;
+    padding: 20px;
+    background: linear-gradient(145deg, #152a38, #101923);
+  }
+  .metric-panel strong,
+  .summary-strip strong,
+  .lead-strip strong {
+    font-size: 44px;
+  }
+  .metric-panel > span:last-child,
+  .summary-strip article > span:last-child,
+  .lead-strip article > span:last-child {
+    font-size: 20px;
+  }
+  .status-pill {
+    border-radius: 30px;
+    padding: 10px 18px;
+  }
+  .program-card,
+  .probe-card {
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .program-card h2,
+  .probe-card h2 {
+    font-size: 28px;
+  }
+  .program-card p,
+  .probe-card p,
+  .program-time,
+  .program-meta,
+  .probe-host {
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .chart-notes,
+  .cloudping-footer {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  body {
+    overflow: auto;
+  }
+  main {
+    height: auto;
+    min-height: 100vh;
+    aspect-ratio: auto;
+    overflow: visible;
+  }
+  .header-status {
+    min-width: 0;
+  }
+  .placeholder-card {
+    grid-column: 1 / -1;
+    min-height: 220px;
+  }
+}

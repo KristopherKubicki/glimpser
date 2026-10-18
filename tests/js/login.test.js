@@ -36,7 +36,7 @@ test("shows error when fields empty", () => {
   expect(err.textContent).toBe("Username and password are required.");
 });
 
-test("stores credentials when remember checked", () => {
+test("never stores credentials when remember checked", () => {
   initLogin();
   document.dispatchEvent(new Event("DOMContentLoaded"));
   const form = document.getElementById("login-form");
@@ -46,9 +46,8 @@ test("stores credentials when remember checked", () => {
   const evt = new Event("submit", { bubbles: true, cancelable: true });
   form.dispatchEvent(evt);
   const stored = localStorage.getItem("autoLogin");
-  expect(stored).toBe(
-    JSON.stringify({ username: "alice", password: "secret" }),
-  );
+  expect(stored).toBeNull();
+  expect(evt.defaultPrevented).toBe(false);
 });
 
 test("clears stored credentials when checkbox unchecked", () => {
@@ -67,27 +66,12 @@ test("clears stored credentials when checkbox unchecked", () => {
   expect(localStorage.getItem("autoLogin")).toBeNull();
 });
 
-test("attemptAutoLogin posts credentials and redirects", async () => {
-  localStorage.setItem(
-    "autoLogin",
-    JSON.stringify({ username: "bob", password: "pw" }),
-  );
-  Object.defineProperty(window, "location", {
-    writable: true,
-    configurable: true,
-    value: { pathname: "/login", href: "/login" },
-  });
-  global.fetch = jest.fn(() =>
-    Promise.resolve({ redirected: true, url: "/", ok: true }),
-  );
-  const result = await attemptAutoLogin();
-  expect(fetch).toHaveBeenCalledWith(
-    "/login",
-    expect.objectContaining({ method: "POST" }),
-  );
-  expect(result).toBe(true);
-  expect(window.location.href).toBe("/");
-  expect(window.IS_LOGGED_IN).toBe(true);
+test("purges legacy credentials without sending them", async () => {
+  localStorage.setItem("autoLogin", JSON.stringify({ username: "bob", password: "pw" }));
+  global.fetch = jest.fn();
+  expect(await attemptAutoLogin()).toBe(false);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(localStorage.getItem("autoLogin")).toBeNull();
 });
 
 test("failed auto login clears stored credentials", async () => {

@@ -57,7 +57,7 @@ def test_looks_like_onvif_ws_discovery_false_for_router_login_page():
     assert (
         _looks_like_onvif_ws_discovery(
             {
-                "xaddr": "http://192.168.2.7/Main_Login.asp",
+                "xaddr": "http://192.168.50.7/Main_Login.asp",
                 "types": "",
                 "scopes": "",
             }

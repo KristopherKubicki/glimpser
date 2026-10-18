@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09131f;
+        --panel: #132337;
+        --text: #edf5ff;
+        --muted: #adbdcf;
+        --good: #6ed8b2;
+        --bad: #ff9b95;
+        --line: #30465c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 20px;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          24px/1.3 system-ui,
+          sans-serif;
+      }
+      @media (min-width: 1001px) {
+        body {
+          width: 1920px;
+        }
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 650px 1fr;
+        gap: 16px;
+        height: 1040px;
+        min-height: 940px;
+      }
+      header {
+        grid-column: 1/-1;
+        height: 94px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        margin: 0;
+        font-size: 46px;
+        letter-spacing: -0.03em;
+      }
+      h2 {
+        font-size: 27px;
+        margin: 0 0 14px;
+      }
+      .stamp {
+        font-size: 20px;
+        color: var(--muted);
+      }
+      .metrics {
+        grid-column: 1/-1;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        height: 148px;
+      }
+      .metric,
+      .panel {
+        background: linear-gradient(130deg, #132337, #111d2b);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+      }
+      .metric span {
+        font-size: 20px;
+        color: var(--muted);
+      }
+      .metric strong {
+        display: block;
+        font-size: 42px;
+        margin: 8px 0;
+      }
+      .meter,
+      .groupbar {
+        height: 10px;
+        background: #324154;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .meter i,
+      .groupbar i {
+        display: block;
+        height: 100%;
+        background: var(--good);
+      }
+      .metric.bad .meter i {
+        background: var(--bad);
+      }
+      .good {
+        color: var(--good);
+      }
+      .bad,
+      .warn {
+        color: var(--bad);
+      }
+      .panel {
+        min-height: 0;
+        overflow: auto;
+      }
+      .groups {
+        display: grid;
+        gap: 14px;
+      }
+      .grouphead {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 23px;
+        margin-bottom: 7px;
+      }
+      .grouphead small {
+        font-size: 19px;
+        color: var(--muted);
+      }
+      .groupbar {
+        height: 13px;
+        background: #67404a;
+      }
+      .legend {
+        font-size: 18px;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+      .issues {
+        display: grid;
+        gap: 7px;
+      }
+      .issue {
+        border-left: 4px solid var(--bad);
+        border-radius: 8px;
+        padding: 7px 12px;
+        background: #1a293b;
+        min-height: 62px;
+      }
+      .issuehead {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 23px;
+      }
+      .issuehead b {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 65%;
+      }
+      .age {
+        font-size: 21px;
+        white-space: nowrap;
+        color: #f4cd81;
+      }
+      .detail {
+        color: var(--muted);
+        font-size: 19px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 4px;
+      }
+      .note {
+        font-size: 17px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      @media (max-width: 1000px) {
+        .shell {
+          display: block;
+          height: auto;
+        }
+        .metrics {
+          grid-template-columns: repeat(3, 1fr);
+          height: auto;
+          margin: 16px 0;
+        }
+        .panel {
+          margin: 16px 0;
+        }
+        header {
+          height: auto;
+          display: block;
+        }
+        .stamp {
+          margin-top: 10px;
+        }
+      }
+      .metric:nth-child(4) strong {
+        font-size: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    {% macro age(minutes) -%} {% if minutes is none %}Age unknown{% elif minutes
+    < 1 %}Just now{% elif minutes < 60 %}{{ minutes|int }}m ago{% elif minutes <
+    1440 %}{{ (minutes / 60)|int }}h {{ (minutes % 60)|int }}m ago{% else %}{{
+    (minutes / 1440)|int }}d ago{% endif %} {%- endmacro %}
+    <main class="shell">
+      <header>
+        <h1>System Glimpse</h1>
+        <div class="stamp">System snapshot · {{ generated_at }}</div>
+      </header>
+      <section class="metrics" aria-label="Runtime metrics">
+        {% for label,value,threshold in
+        [('CPU',metrics.cpu_usage,80),('Memory',metrics.memory_usage,80),('Disk',metrics.disk_usage,95)]
+        %}
+        <div class="metric {{ 'bad' if value >= threshold else '' }}">
+          <span>{{ label }}</span><strong>{{ value }}%</strong>
+          <div
+            class="meter"
+            role="meter"
+            aria-label="{{ label }} usage"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="{{ value }}"
+          >
+            <i style="width:{{ [100,[0,value]|max]|min }}%"></i>
+          </div>
+        </div>
+        {% endfor %}
+        <div class="metric">
+          <span>Uptime</span><strong>{{ metrics.uptime }}</strong>
+        </div>
+        <div class="metric">
+          <span>Configured feeds</span><strong>{{ template_count }}</strong>
+        </div>
+        <div class="metric">
+          <span>Capture failing</span
+          ><strong class="{{ 'bad' if summary.capture_failing else 'good' }}"
+            >{{ summary.capture_failing or 0 }}</strong
+          >
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Across your groups</h2>
+        <div class="legend">
+          Active feeds · Green: not flagged · Red: stale or failing
+        </div>
+        <div class="groups">
+          {% for row in group_rows %}
+          <div>
+            <div class="grouphead">
+              <b>{{ row.name }}</b
+              ><small>{{ row.failing }} issues / {{ row.total }} feeds</small>
+            </div>
+            <div
+              class="groupbar"
+              role="img"
+              aria-label="{{ row.name }}: {{ row.ok }} not flagged, {{ row.failing }} issues, {{ row.total }} total"
+            >
+              <i
+                style="width:{{ (row.ok / row.total * 100) if row.total else 0 }}%"
+              ></i>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="note">
+          Groups overlap. A successful capture does not prove its source image
+          is current.
+        </div>
+        {% if expected_offline_cameras %}
+        <details class="note">
+          <summary>
+            Expected offline · {{ expected_offline_cameras | length }}
+          </summary>
+          {% for camera in expected_offline_cameras %}
+          <p><b>{{ camera.name }}</b> · {{ camera.operator_note }}</p>
+          {% endfor %}
+          <p>
+            Excluded from active capture issues. Retained images are historical.
+          </p>
+        </details>
+        {% endif %}
+      </section>
+      <section class="panel">
+        <h2>Capture issues to check</h2>
+        <div class="issues">
+          {% for camera in problem_cameras[:8] %}
+          <article class="issue">
+            <div class="issuehead">
+              <b>{{ camera.name }}</b
+              ><span class="age"
+                >{{ age(camera.last_screenshot_age_minutes) }}</span
+              >
+            </div>
+            <div class="detail">
+              {{ camera.status }}{% if camera.issues %} · {{ camera.issues[:2] |
+              join('; ') | replace('capture_failed=1','Capture failed') |
+              replace('offline_since=','Offline since ') }}{% endif %}
+            </div>
+          </article>
+          {% else %}
+          <p class="good">No current capture issues.</p>
+          {% endfor %}
+        </div>
+        <div class="note">
+          Showing up to eight highest-priority issues. Ages describe saved
+          captures.
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
