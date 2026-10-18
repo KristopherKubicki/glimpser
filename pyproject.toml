@@ -70,7 +70,7 @@ glimpser-dashboard = "app.utils.console_dashboard:main"
 google-events = ["google-auth[requests]>=2.40,<3"]
 dev = [
   # Core dev tooling - all required for building
-  "black==26.5.1",
+  "black==26.10.1",
   "coverage>=7.9",
   "flake8>=7.2",
   "isort==9.0.1",
@@ -197,7 +197,7 @@ tag_format = "v$version"
 # Everything here installs with `pip install .[dev]`
 dev = [
   # ✂︎ existing dev deps kept (versions bumped where useful) ✂︎
-  "black==26.5.1",
+  "black==26.10.1",
   "coverage>=7.9",      # keep for standalone HTML reports
   "flake8>=7.2",
   "isort==9.0.1",       # now mirrors runtime pin
