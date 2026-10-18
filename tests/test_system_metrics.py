@@ -50,3 +50,57 @@ class TestFFmpegSupportCaching(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_collector_attributes_native_threads_and_fresh_child_objects():
+    from unittest.mock import Mock
+
+    children = []
+    for created, total in [(10, 1), (10, 3), (20, 100)]:
+        child = Mock(pid=200)
+        child.create_time.return_value = created
+        child.cpu_times.return_value = SimpleNamespace(user=total, system=0)
+        child.cmdline.return_value = ["/usr/bin/chrome"]
+        children.append([child])
+    proc = Mock()
+    proc.children.side_effect = children
+    proc.threads.side_effect = [
+        [SimpleNamespace(id=100, user_time=t, system_time=0)] for t in (1, 2, 3)
+    ]
+    snapshots = []
+    stop = Mock()
+    stop.is_set.side_effect = [False, False, False, True]
+    stop.wait.side_effect = lambda _: snapshots.append(
+        list(system_metrics.system_metrics["top_threads"])
+    )
+    with (
+        patch.object(system_metrics, "stop_event", stop),
+        patch.object(system_metrics, "system_metrics", {}),
+        patch.object(system_metrics, "thread_cpu_times", {}),
+        patch.object(system_metrics, "child_cpu_times", {}),
+        patch.object(system_metrics, "last_thread_sample", 0),
+        patch.object(system_metrics.time, "monotonic", side_effect=[0, 1, 2, 3]),
+        patch.object(system_metrics.psutil, "Process", return_value=proc),
+        patch.object(system_metrics.psutil, "cpu_count", return_value=4),
+        patch.object(system_metrics.psutil, "cpu_percent", return_value=50),
+        patch.object(
+            system_metrics.psutil,
+            "virtual_memory",
+            return_value=SimpleNamespace(percent=20),
+        ),
+        patch.object(
+            system_metrics.threading,
+            "enumerate",
+            return_value=[
+                SimpleNamespace(native_id=100, ident=9999, name="capture-worker")
+            ],
+        ),
+    ):
+        system_metrics.collect_system_metrics()
+    assert snapshots[0] == [{"id": 100, "name": "capture-worker", "cpu": 0.0}]
+    assert snapshots[1] == [
+        {"id": 200, "name": "chrome", "cpu": 50.0},
+        {"id": 100, "name": "capture-worker", "cpu": 25.0},
+    ]
+    # A new process reusing PID 200 must not inherit the old process's CPU.
+    assert snapshots[2] == [{"id": 100, "name": "capture-worker", "cpu": 25.0}]

@@ -193,7 +193,7 @@ export function initVideoControls() {
         if (playAllActive) {
           if (playAllObserver) playAllObserver.disconnect();
           videos.forEach((video) => {
-            const name = video.getAttribute("data-name");
+            const name = encodeURIComponent(video.getAttribute("data-name"));
             video.pause();
             video.loop = false;
             video.playbackRate = 1;
@@ -207,7 +207,7 @@ export function initVideoControls() {
             threshold: 0.25,
           });
           videos.forEach((video) => {
-            const name = video.getAttribute("data-name");
+            const name = encodeURIComponent(video.getAttribute("data-name"));
             const src = video.querySelector("source");
             src.src = `/clip/${name}`;
             video.dataset.hdLoaded = "true";
@@ -233,7 +233,7 @@ export function initVideoControls() {
         const videos = document.querySelectorAll(".templateDiv video");
         if (playAllObserver) playAllObserver.disconnect();
         videos.forEach((video) => {
-          const name = video.getAttribute("data-name");
+          const name = encodeURIComponent(video.getAttribute("data-name"));
           video.pause();
           video.loop = false;
           video.playbackRate = 1;
@@ -261,7 +261,7 @@ export function initVideoControls() {
 export function updateVideoSources() {
   const videos = document.querySelectorAll(".templateDiv video");
   videos.forEach((video) => {
-    const name = video.getAttribute("data-name");
+    const name = encodeURIComponent(video.getAttribute("data-name"));
     const timestamp = new Date().getTime();
     video.querySelector("source").src = `/clip/${name}?t=${timestamp}`;
     video.poster = `/last_screenshot/${name}?t=${timestamp}`;

@@ -80,9 +80,16 @@
         let drawTimer = null;
         let extendTimer = null;
         let goodFrameStreak = 0;
+        const rootEl = document.body;
 
         const setStatus = (text) => {
           statusEl.textContent = text;
+        };
+
+        const setCaptureState = (state, detail = "") => {
+          rootEl.dataset.sdmState = state;
+          rootEl.dataset.sdmReady = state === "ready" ? "1" : "";
+          rootEl.dataset.sdmError = state === "error" ? String(detail || "") : "";
         };
 
         const withToken = (u) => {
@@ -128,6 +135,9 @@
           if (drawTimer) window.clearInterval(drawTimer);
           stillEl.dataset.ready = "";
           goodFrameStreak = 0;
+          stillEl.style.opacity = "0";
+          videoEl.style.opacity = "1";
+          setCaptureState("waiting");
 
           const frameLooksLive = (w, h) => {
             try {
@@ -172,11 +182,17 @@
               stillEl.src = canvas.toDataURL("image/jpeg", 0.86);
               if (goodFrameStreak >= 2) {
                 stillEl.dataset.ready = "1";
+                stillEl.style.opacity = "1";
+                videoEl.style.opacity = "0";
+                setCaptureState("ready");
               }
               setStatus(`live ${w}x${h}`);
             } else {
               goodFrameStreak = 0;
               stillEl.dataset.ready = "";
+              stillEl.style.opacity = "0";
+              videoEl.style.opacity = "1";
+              setCaptureState("waiting");
               setStatus("waiting for video frame…");
             }
           }, 350);
@@ -239,6 +255,9 @@
           };
           pc.onconnectionstatechange = () => {
             if (pc && pc.connectionState) {
+              if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+                setCaptureState("error", pc.connectionState);
+              }
               setStatus(`state: ${pc.connectionState}`);
             }
           };
@@ -305,6 +324,7 @@
             throw new Error(`${err.message} [${sctp}]`);
           }
           startKeepAlive();
+          setCaptureState("streaming");
           setStatus("connected");
         };
 
@@ -313,6 +333,7 @@
         });
 
         start().catch((err) => {
+          setCaptureState("error", err.message);
           setStatus(`error: ${err.message}`);
         });
       })();

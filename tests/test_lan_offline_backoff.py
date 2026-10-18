@@ -28,6 +28,29 @@ class TestLanOfflineBackoff(unittest.TestCase):
         mock_offline.assert_called_once_with("cam1")
         self.assertTrue(entry.get("lan_offline_marked"))
 
+    def test_sdm_timeout_is_reported_and_backs_off_failed_job(self):
+        template = {"name": "cam1", "url": "sdm://example-home/device-1"}
+        throttle = {
+            template["url"]: {
+                "reason": "sdm_webrtc_preview_timeout",
+                "timeout": time.time() + 45,
+            }
+        }
+
+        with (
+            patch("app.utils.scheduling.throttle_cache", throttle),
+            patch("app.utils.scheduling.get_template", return_value=template),
+            patch("app.utils.scheduling.capture_or_download", return_value=False),
+            patch("app.utils.scheduling.set_capture_failed") as mock_set_failed,
+            patch("app.utils.scheduling.register_job_failure") as mock_job_failure,
+        ):
+            scheduling.update_camera("cam1", template)
+
+        mock_set_failed.assert_called_once_with(
+            "cam1", True, "sdm_webrtc_preview_timeout"
+        )
+        mock_job_failure.assert_called_once_with("cam1")
+
 
 if __name__ == "__main__":
     unittest.main()

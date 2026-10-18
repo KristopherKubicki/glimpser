@@ -1,20 +1,49 @@
 #!/bin/sh
-set -e
+set -eu
 
-# Create necessary directories
-mkdir -p /opt/glimpser/data/screenshots
-mkdir -p /opt/glimpser/data/video
-mkdir -p /opt/glimpser/data/summaries
-mkdir -p /opt/glimpser/logs
+case "${1:-}" in
+    configure) ;;
+    abort-upgrade|abort-remove|abort-deconfigure) exit 0 ;;
+    *) exit 0 ;;
+esac
 
-# Install Python dependencies
-python3 -m pip install /opt/glimpser
+if ! getent passwd glimpser >/dev/null; then
+    adduser --system --group --home /var/lib/glimpser --no-create-home glimpser
+fi
+install -d -m 0750 /var/lib/glimpser /opt/glimpser/data /opt/glimpser/logs
+install -d -m 0750 /opt/glimpser/data/screenshots /opt/glimpser/data/video /opt/glimpser/data/summaries
 
-# Set up the Glimpser service
-systemctl daemon-reload
-systemctl enable glimpser.service
-systemctl start glimpser.service
+# Never modify the distribution-managed Python environment. Bootstrap the exact
+# uv version already reviewed in the application lock, then install that lock.
+python3 -m venv /opt/glimpser/.venv
+uv_version=$(python3 - <<'PY'
+import tomllib
+with open('/opt/glimpser/uv.lock', 'rb') as stream:
+    packages = tomllib.load(stream)['package']
+versions = [p['version'] for p in packages if p['name'] == 'uv']
+if len(versions) != 1:
+    raise SystemExit('Expected exactly one locked uv version')
+print(versions[0])
+PY
+)
+/opt/glimpser/.venv/bin/python -m pip install --disable-pip-version-check "uv==$uv_version"
+UV_PROJECT_ENVIRONMENT=/opt/glimpser/.venv /opt/glimpser/.venv/bin/uv sync \
+    --project /opt/glimpser --locked --no-dev --no-editable --extra google-events \
+    --python /usr/bin/python3 --no-managed-python
+
+# Source and the virtual environment stay root-owned. Only runtime state belongs
+# to the service account, including state written by older root-run packages.
+chown -R --no-dereference glimpser:glimpser /var/lib/glimpser /opt/glimpser/data /opt/glimpser/logs
+
+# Preserve the administrator's enable/disable choice, and honor policy-rc.d.
+if deb-systemd-helper --quiet was-enabled glimpser.service; then
+    deb-systemd-helper enable glimpser.service >/dev/null
+fi
+deb-systemd-helper update-state glimpser.service >/dev/null
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    deb-systemd-invoke restart glimpser.service
+fi
 
 #DEBHELPER#
-
 exit 0

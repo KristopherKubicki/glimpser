@@ -22,3 +22,39 @@ def test_symlink_target_is_updated_without_replacing_link():
             assert os.path.islink(link)
             assert original_target != updated_target
             Image.open(target).verify()
+
+
+def test_map_caption_overlay_is_suppressed():
+    with tempfile.TemporaryDirectory() as tmp:
+        for camera_name in (
+            "Abt.com",
+            "AxisExperienceRooftop",
+            "CNWPowerHouseEast",
+            "DempsterBoatLaunch",
+            "Energy",
+            "FAA",
+            "FieldMuseum",
+            "FlightRadar",
+            "GPSJam",
+            "GrantPark",
+            "Midway",
+            "MidwayEarthCamLive",
+            "MidwayLive",
+            "NorthPointMarina",
+            "Ohare",
+            "Skydeck",
+            "HubitatControlPanel",
+            "HubitatExterior",
+            "UICSkyline",
+        ):
+            camera_dir = os.path.join(tmp, camera_name)
+            os.makedirs(camera_dir)
+            target = os.path.join(camera_dir, "frame.png")
+            Image.new("RGB", (160, 90), color="white").save(target)
+
+            original_target = open(target, "rb").read()
+            add_motion_and_caption(target, caption="This caption should not render")
+            updated_target = open(target, "rb").read()
+
+            assert original_target == updated_target
+            Image.open(target).verify()

@@ -26,6 +26,55 @@ class TestStatusDashboard(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Feed Status", resp.data)
 
+    @patch("app.utils.camera_health.build_camera_health_report")
+    @patch("app.routes.template_manager.get_templates")
+    @patch("app.routes.scheduling.get_system_metrics")
+    def test_system_glimpse_page_has_operator_summary(
+        self, mock_metrics, mock_templates, mock_health
+    ):
+        mock_metrics.return_value = {
+            "cpu_usage": 12,
+            "memory_usage": 34,
+            "disk_usage": 56,
+            "uptime": "4h 2m",
+        }
+        mock_templates.return_value = {"CameraA": {"groups": "example-site"}}
+        mock_health.return_value = {
+            "summary": {"capture_failing": 1},
+            "cameras": [
+                {
+                    "name": "CameraA",
+                    "groups": ["example-site"],
+                    "status": "failing",
+                    "capture_failed": True,
+                    "severity": 3,
+                    "last_screenshot_age_minutes": 42,
+                    "issues": ["capture_failed=1"],
+                }
+            ],
+        }
+
+        with (
+            patch(
+                "app.blueprints.status.VIEWER_CONFIG",
+                {"status_groups": ["example-site"]},
+            ),
+            patch(
+                "app.blueprints.status.render_template",
+                return_value="System Glimpse CameraA",
+            ) as render,
+        ):
+            resp = self.client.get("/system_glimpse")
+
+        self.assertEqual(
+            render.call_args.kwargs["group_rows"],
+            [{"name": "example-site", "total": 1, "failing": 1, "ok": 0}],
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"System Glimpse", resp.data)
+        self.assertIn(b"CameraA", resp.data)
+
 
 if __name__ == "__main__":
     unittest.main()

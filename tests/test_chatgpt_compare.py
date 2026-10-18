@@ -8,7 +8,7 @@ class TestChatGPTCompare(unittest.TestCase):
     @patch("app.utils.image_processing.os.path.exists", return_value=False)
     def test_missing_image(self, mock_exists):
         result = chatgpt_compare("p", ["missing.png"])
-        self.assertEqual(result, "Missing image")
+        self.assertIsNone(result)
 
     @patch("app.utils.image_processing.ChatGPTImageComparison.compare_images")
     @patch("app.utils.image_processing.os.path.exists", return_value=True)
@@ -16,7 +16,7 @@ class TestChatGPTCompare(unittest.TestCase):
     @patch("app.utils.image_processing.CHATGPT_KEY", "")
     def test_missing_key(self, mock_exists, mock_compare):
         result = chatgpt_compare("p", ["img.png"])
-        self.assertEqual(result, "Missing ChatGPT key")
+        self.assertIsNone(result)
         mock_compare.assert_not_called()
 
     @patch("app.utils.llm_cache.store")

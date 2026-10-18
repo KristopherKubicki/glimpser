@@ -105,6 +105,73 @@ def _local_summary_fallback(
     return _response_text_to_json(text)
 
 
+def _is_unsupported_max_tokens_error(result: object) -> bool:
+    """Return ``True`` when the API rejects ``max_tokens`` for this model."""
+
+    if not isinstance(result, dict):
+        return False
+    err = result.get("error")
+    if not isinstance(err, dict):
+        return False
+
+    param = str(err.get("param", "")).strip().lower()
+    message = str(err.get("message", "")).strip().lower()
+    code = str(err.get("code", "")).strip().lower()
+
+    if param == "max_tokens":
+        return True
+    if code == "unsupported_parameter" and "max_tokens" in message:
+        return True
+    return "unsupported parameter" in message and "max_tokens" in message
+
+
+def _request_chat_completion(
+    *,
+    url: str,
+    headers: dict[str, str],
+    payload: dict,
+    timeout: int,
+    retries: int = 2,
+):
+    """Issue a chat-completions request with token-parameter compatibility."""
+
+    response = request_with_retry(
+        "post",
+        url,
+        headers=headers,
+        json=payload,
+        timeout=timeout,
+        retries=retries,
+    )
+    try:
+        result = response.json()
+    except Exception:
+        result = None
+
+    if _is_unsupported_max_tokens_error(result) and "max_tokens" in payload:
+        compat_payload = dict(payload)
+        token_budget = int(compat_payload.pop("max_tokens", 0) or 0)
+        compat_payload["max_completion_tokens"] = token_budget
+        logging.info(
+            "Retrying chat completion with max_completion_tokens. model=%s",
+            compat_payload.get("model"),
+        )
+        response = request_with_retry(
+            "post",
+            url,
+            headers=headers,
+            json=compat_payload,
+            timeout=timeout,
+            retries=retries,
+        )
+        try:
+            result = response.json()
+        except Exception:
+            result = None
+
+    return response, result
+
+
 def summarize(
     prompt: str,
     history: str | None = None,
@@ -187,11 +254,10 @@ def summarize(
     }
 
     try:
-        response = request_with_retry(
-            "post",
-            url,
+        response, result = _request_chat_completion(
+            url=url,
             headers=headers,
-            json=payload,
+            payload=payload,
             timeout=timeout,
             retries=retries,
         )
@@ -220,7 +286,6 @@ def summarize(
                 llm_cache.store(cache_key, local, 0)
                 return local
             return None
-        result = response.json()
     except Exception as e:
         logging.warning("API response issue %s", e)
         local = _local_summary_fallback(prompt, history, lsummary_prompt)
@@ -291,14 +356,13 @@ def ask_question(question: str, history: str = "", *, timeout: int = 30) -> str 
     }
 
     try:
-        response = request_with_retry(
-            "post",
-            url,
+        _response, result = _request_chat_completion(
+            url=url,
             headers=headers,
-            json=payload,
+            payload=payload,
             timeout=timeout,
+            retries=2,
         )
-        result = response.json()
         return (
             result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
         )

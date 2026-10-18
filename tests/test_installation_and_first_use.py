@@ -40,6 +40,10 @@ class TestInstallationAndFirstUse(unittest.TestCase):
         config.VIDEO_DIRECTORY = self.original_video_dir
         config.SUMMARIES_DIRECTORY = self.original_summaries_dir
 
+        # Restore the engine after the initialization test rebinds it.
+        db.engine.dispose()
+        reload(db)
+
         # Remove the temporary directory and its contents
         shutil.rmtree(self.temp_dir)
 

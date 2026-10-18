@@ -89,7 +89,7 @@ class TestUtils(unittest.TestCase):
                 self.netmask = "255.255.255.0"
 
         mock_if_addrs.return_value = {
-            "enp6s0": [Addr("192.168.1.137"), Addr("192.168.2.137")]
+            "enp6s0": [Addr("192.168.1.137"), Addr("192.168.50.137")]
         }
 
         # Each connect attempt creates a new socket. First attempt fails; second

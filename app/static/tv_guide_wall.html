@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>TV Guide Wall</title>
+    <link rel="stylesheet" href="/static/css/tv_guide_wall.css" />
+  </head>
+  <body data-tv-guide-wall-auto>
+    <main id="tv-guide-wall" class="tv-guide-wall" data-ready="0">
+      <header class="tv-guide-header">
+        <div>
+          <p class="eyebrow">TV Guide</p>
+          <h1>New Tonight</h1>
+        </div>
+        <div class="header-status" aria-live="polite">
+          <span id="tv-guide-status" class="status-pill">Loading lineup</span>
+          <time id="tv-guide-updated">--</time>
+        </div>
+      </header>
+
+      <section class="lead-strip" aria-label="Tonight lineup summary">
+        <article>
+          <span class="metric-label">Programs</span>
+          <strong id="tv-guide-count">--</strong>
+        </article>
+        <article>
+          <span class="metric-label">Next up</span>
+          <strong id="tv-guide-next-title">--</strong>
+          <span id="tv-guide-next-meta">--</span>
+        </article>
+        <article>
+          <span class="metric-label">Source</span>
+          <strong><a id="tv-guide-source-name" href="https://www.tvguide.com/new-tonight/" style="color:inherit">TV Guide</a></strong>
+          <span>US evening schedule · Central Time</span>
+        </article>
+      </section>
+
+      <section id="tv-guide-grid" class="program-grid" aria-label="TV programs">
+        <article class="program-card placeholder-card">
+          <div>
+            <span class="program-time">--</span>
+            <h2>Loading lineup</h2>
+            <p>Fetching TV Guide New Tonight.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/static/js/tv_guide_wall.js"></script>
+  </body>
+</html>

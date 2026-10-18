@@ -20,7 +20,8 @@ class HostCaps:
     avoid_until_ts: float = 0.0
 
 
-_lock = threading.Lock()
+# Writers call get() while holding this lock, just like the per-URL cache.
+_lock = threading.RLock()
 _caps: dict[str, dict[str, Any]] = {}
 _last_persist = 0.0
 _loaded = False
@@ -30,13 +31,21 @@ def _now() -> float:
     return time.time()
 
 
+def cache_responsive(timeout: float = 0.05) -> bool:
+    """Check host-cache lock availability without hanging a health request."""
+    acquired = _lock.acquire(timeout=timeout)
+    if acquired:
+        _lock.release()
+    return acquired
+
+
 def _load() -> None:
     global _loaded
     if _loaded:
         return
     _loaded = True
     try:
-        with open(HOST_CAPS_PATH, "r", encoding="utf-8") as f:
+        with open(HOST_CAPS_PATH, encoding="utf-8") as f:
             data = json.load(f)
             if isinstance(data, dict):
                 _caps.update(data)

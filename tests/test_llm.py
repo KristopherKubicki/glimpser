@@ -124,6 +124,44 @@ class TestLLM(unittest.TestCase):
         call_args = mock_post.call_args[1]
         self.assertIn("Previous conversation", str(call_args["json"]["messages"]))
 
+    @patch("app.utils.llm.request_with_retry")
+    @patch("app.utils.llm.CHATGPT_KEY", "mock_api_key")
+    @patch("app.utils.llm.LLM_MODEL_VERSION", "mock_model_version")
+    @patch("app.utils.llm.LLM_SUMMARY_PROMPT", "Mock summary prompt")
+    def test_summarize_retries_with_max_completion_tokens(self, mock_post):
+        first = MagicMock()
+        first.status_code = 400
+        first.json.return_value = {
+            "error": {
+                "message": "Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens' instead.",
+                "type": "invalid_request_error",
+                "param": "max_tokens",
+                "code": "unsupported_parameter",
+            }
+        }
+
+        second = MagicMock()
+        second.status_code = 200
+        second.json.return_value = {
+            "choices": [{"message": {"content": "Recovered summary"}}],
+            "usage": {"total_tokens": 42},
+        }
+
+        mock_post.side_effect = [first, second]
+
+        start = time.time()
+        with patch("time.time", return_value=start):
+            result = summarize("Test prompt for token fallback")
+
+        ts = int(start + 0.5)
+        expected_result = json.dumps({ts: "Recovered summary"})
+        self.assertEqual(json.loads(result), json.loads(expected_result))
+
+        self.assertEqual(mock_post.call_count, 2)
+        second_payload = mock_post.call_args_list[1].kwargs["json"]
+        self.assertIn("max_completion_tokens", second_payload)
+        self.assertNotIn("max_tokens", second_payload)
+
 
 if __name__ == "__main__":
     unittest.main()

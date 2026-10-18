@@ -33,13 +33,26 @@ export function initTabs() {
     });
 
     const params = new URLSearchParams(window.location.search);
-    const tab =
-      persist && (params.get("tab") || localStorage.getItem(storageKey));
+    let saved = null;
+    if (persist) {
+      try {
+        saved = localStorage.getItem(storageKey);
+      } catch {
+        /* optional */
+      }
+    }
+    const tab = params.get("tab") || saved;
     if (tab) {
-      const btn = document.querySelector(`.tab-link[data-tab="${tab}"]`);
+      const btn = Array.from(tabs).find((button) => button.dataset.tab === tab);
       btn?.click();
       if (params.get("tab")) {
-        history.replaceState(null, "", window.location.pathname);
+        params.delete("tab");
+        const remaining = params.toString();
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + (remaining ? `?${remaining}` : ""),
+        );
       }
     }
   });

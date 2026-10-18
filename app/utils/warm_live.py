@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import collections
+import os
+import selectors
 import struct
 import subprocess
 import threading
 import time
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Deque, Dict, Generator, Optional, Tuple
 
 
 class _Mp4BoxParser:
@@ -26,7 +28,7 @@ class _Mp4BoxParser:
     def feed(self, data: bytes) -> None:
         self._buf.extend(data)
 
-    def _try_read_box(self) -> Optional[Tuple[str, bytes]]:
+    def _try_read_box(self) -> tuple[str, bytes] | None:
         if len(self._buf) < 8:
             return None
         size = struct.unpack(">I", self._buf[0:4])[0]
@@ -55,7 +57,7 @@ class _Mp4BoxParser:
             t = "????"
         return t, raw
 
-    def boxes(self) -> Generator[Tuple[str, bytes], None, None]:
+    def boxes(self) -> Generator[tuple[str, bytes], None, None]:
         while True:
             item = self._try_read_box()
             if item is None:
@@ -69,6 +71,7 @@ class WarmLiveConfig:
     init_timeout_seconds: float = 8.0
     max_cache_bytes: int = 2_000_000
     max_cached_fragments: int = 6
+    stall_timeout_seconds: float = 20.0
 
 
 class WarmLiveStream:
@@ -85,12 +88,13 @@ class WarmLiveStream:
         self._init = b""
         self._init_ready = False
         self._pending_frag: list[bytes] = []
-        self._frags: Deque[bytes] = collections.deque()
+        self._frags: collections.deque[tuple[int, bytes]] = collections.deque()
         self._frags_bytes = 0
         self._seq = 0
+        self._generation = 0
 
         self._subscribers = 0
-        self._last_use = time.time()
+        self._last_use = time.monotonic()
         self._stopping = False
         self._last_err = ""
 
@@ -106,31 +110,29 @@ class WarmLiveStream:
         self._frags.clear()
         self._frags_bytes = 0
         self._seq += 1
+        self._generation += 1
+        # Never leave an unread stderr pipe: FFmpeg can fill it and deadlock.
+        # Raw diagnostics can contain camera credentials; retain only exit status.
         self._proc = subprocess.Popen(
-            self._cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            self._cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0
         )
-        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, args=(self._proc,), daemon=True
+        )
         self._thread.start()
 
-    def _stop_locked(self) -> None:
+    def _stop_locked(self) -> subprocess.Popen | None:
         self._stopping = True
         p = self._proc
         self._proc = None
+        self._cv.notify_all()
+        return p
+
+    @staticmethod
+    def _terminate(p: subprocess.Popen | None) -> None:
+        """Reap the child without holding stream or manager locks."""
         if not p:
             return
-        try:
-            if p.stdout:
-                p.stdout.close()
-        except Exception:
-            pass
-        try:
-            if p.stderr:
-                raw = p.stderr.read(4096)
-                if raw:
-                    self._last_err = raw.decode(errors="replace").strip()
-                p.stderr.close()
-        except Exception:
-            pass
         try:
             if p.poll() is None:
                 p.kill()
@@ -146,7 +148,7 @@ class WarmLiveStream:
             self._frags_bytes > self._cfg.max_cache_bytes
             or len(self._frags) > self._cfg.max_cached_fragments
         ):
-            b = self._frags.popleft()
+            _, b = self._frags.popleft()
             self._frags_bytes -= len(b)
 
     def _finalize_fragment_locked(self) -> None:
@@ -156,133 +158,154 @@ class WarmLiveStream:
         self._pending_frag = []
         if not frag:
             return
-        self._frags.append(frag)
+        self._seq += 1
+        self._frags.append((self._seq, frag))
         self._frags_bytes += len(frag)
         self._trim_locked()
-        self._seq += 1
         self._cv.notify_all()
 
-    def _run(self) -> None:
+    def _run(self, p: subprocess.Popen) -> None:
         parser = _Mp4BoxParser()
-        while True:
-            with self._lock:
-                p = self._proc
-                stopping = self._stopping
-            if not p or stopping:
-                return
-
-            try:
-                chunk = p.stdout.read(64 * 1024) if p.stdout else b""
-            except Exception:
-                chunk = b""
-
-            if not chunk:
-                try:
-                    rc = p.poll()
-                except Exception:
-                    rc = 1
-                if rc is None:
-                    time.sleep(0.05)
-                    continue
-                with self._lock:
-                    try:
-                        if p.stderr:
-                            raw = p.stderr.read(4096)
-                            if raw:
-                                self._last_err = raw.decode(errors="replace").strip()
-                    except Exception:
-                        pass
-                    self._seq += 1
-                    self._cv.notify_all()
-                return
-
-            parser.feed(chunk)
-            for boxtype, raw in parser.boxes():
-                with self._lock:
-                    self._last_use = time.time()
-                    if not self._init_ready:
-                        if boxtype == "moof":
-                            self._init_ready = True
-                            self._pending_frag = [raw]
-                            self._seq += 1
-                            self._cv.notify_all()
-                        else:
-                            self._init += raw
+        last_data = time.monotonic()
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(p.stdout, selectors.EVENT_READ)
+                while True:
+                    with self._lock:
+                        if self._proc is not p or self._stopping:
+                            return
+                        if (
+                            not self._subscribers
+                            and time.monotonic() - self._last_use
+                            >= self._cfg.ttl_seconds
+                        ):
+                            self._stop_locked()
+                            return
+                        if (
+                            time.monotonic() - last_data
+                            >= self._cfg.stall_timeout_seconds
+                        ):
+                            self._last_err = "Live encoder stopped producing data"
+                            return
+                    # Read available bytes, not a full 64 KiB buffered read.
+                    # Polling also expires silent sources without another request.
+                    if not selector.select(timeout=0.1):
                         continue
-
-                    if boxtype == "moof":
-                        self._finalize_fragment_locked()
-                        self._pending_frag = [raw]
-                    else:
-                        self._pending_frag.append(raw)
+                    chunk = os.read(p.stdout.fileno(), 64 * 1024)
+                    if not chunk:
+                        return
+                    last_data = time.monotonic()
+                    parser.feed(chunk)
+                    for boxtype, raw in parser.boxes():
+                        with self._lock:
+                            if self._proc is not p:
+                                return
+                            if not self._init_ready:
+                                if boxtype == "moof":
+                                    self._init_ready = True
+                                    self._pending_frag = [raw]
+                                    self._cv.notify_all()
+                                else:
+                                    self._init += raw
+                                continue
+                            if boxtype == "moof":
+                                self._pending_frag = [raw]
+                            elif self._pending_frag:
+                                self._pending_frag.append(raw)
+                                if boxtype == "mdat":
+                                    # FFmpeg emits one mdat per moof. Publish now,
+                                    # without waiting for the next keyframe.
+                                    self._finalize_fragment_locked()
+        except (OSError, ValueError):
+            with self._lock:
+                if self._proc is p:
+                    self._last_err = "Live stream pipe failed"
+        finally:
+            with self._lock:
+                if self._proc is p:
+                    rc = p.poll()
+                    if rc not in (None, 0):
+                        self._last_err = f"Live encoder exited with status {rc}"
+                    self._stop_locked()
+            self._terminate(p)
+            if p.stdout:
+                p.stdout.close()
 
     def warm(self) -> None:
+        """Start or renew a stream's idle lease."""
         with self._lock:
-            self._last_use = time.time()
+            self._last_use = time.monotonic()
             self._start_locked()
 
     def subscribe(self) -> Generator[bytes, None, None]:
-        # If a client subscribes before we have the init segment, wait briefly
-        # so playback can start without needing a second request.
-        deadline = time.time() + float(self._cfg.init_timeout_seconds or 0)
-
-        with self._lock:
-            self._subscribers += 1
-            self._last_use = time.time()
-            self._start_locked()
-
-            while not self._init_ready:
-                if self._proc and self._proc.poll() is not None:
-                    return
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    return
-                self._cv.wait(timeout=min(1.0, remaining))
-
-            start_seq = self._seq
-            init = self._init
-            snap = list(self._frags)[-3:]
-
+        """Yield init and each fragment once, releasing the lease on every exit."""
+        deadline = time.monotonic() + float(self._cfg.init_timeout_seconds or 0)
+        registered = False
         try:
+            with self._lock:
+                self._subscribers += 1
+                registered = True
+                self._last_use = time.monotonic()
+                self._start_locked()
+                p = self._proc
+                generation = self._generation
+                while not self._init_ready:
+                    if self._proc is not p or self._stopping:
+                        return
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return
+                    self._cv.wait(timeout=min(0.1, remaining))
+                start_seq = self._seq
+                init = self._init
+                snap = list(self._frags)[-3:]
             if init:
                 yield init
-            for frag in snap:
+            for _, frag in snap:
                 if frag:
                     yield frag
 
             while True:
                 with self._lock:
-                    self._last_use = time.time()
-                    if (
-                        self._proc
-                        and self._proc.poll() is not None
-                        and start_seq == self._seq
-                    ):
+                    if self._generation != generation:
                         return
-                    self._cv.wait(timeout=1.0)
-                    if start_seq != self._seq:
-                        frags = list(self._frags)[-3:]
-                        start_seq = self._seq
-                    else:
-                        frags = []
-                for frag in frags:
+                    if self._frags and start_seq < self._frags[0][0] - 1:
+                        # A slow consumer fell outside the bounded cache. End
+                        # this generation so the player reconnects cleanly.
+                        return
+                    frags = [
+                        (seq, frag) for seq, frag in self._frags if seq > start_seq
+                    ]
+                    if not frags:
+                        if self._stopping:
+                            return
+                        self._cv.wait(timeout=0.1)
+                        continue
+                    start_seq = frags[-1][0]
+                for _, frag in frags:
                     if frag:
                         yield frag
         finally:
-            with self._lock:
-                self._subscribers = max(0, self._subscribers - 1)
+            if registered:
+                with self._lock:
+                    self._subscribers -= 1
+                    self._last_use = time.monotonic()
 
     def should_expire(self, now: float) -> bool:
+        """Check the idle lease using a monotonic timestamp."""
         with self._lock:
             if self._subscribers > 0:
                 return False
             return (now - self._last_use) >= self._cfg.ttl_seconds
 
     def stop(self) -> None:
+        """Wake subscribers and reap the encoder without blocking their lock."""
         with self._lock:
-            self._stop_locked()
+            p = self._stop_locked()
+        self._terminate(p)
 
     def last_error(self) -> str:
+        """Return a credential-free encoder failure description."""
         with self._lock:
             return self._last_err
 
@@ -291,7 +314,7 @@ class WarmLiveManager:
     def __init__(self, cfg: WarmLiveConfig | None = None) -> None:
         self._cfg = cfg or WarmLiveConfig()
         self._lock = threading.Lock()
-        self._streams: Dict[str, WarmLiveStream] = {}
+        self._streams: dict[str, WarmLiveStream] = {}
 
     def get_or_create(self, key: str, cmd: list[str]) -> WarmLiveStream:
         with self._lock:
@@ -302,19 +325,27 @@ class WarmLiveManager:
             return s
 
     def warm(self, key: str, cmd: list[str]) -> None:
-        self.get_or_create(key, cmd).warm()
         self._reap()
+        with self._lock:
+            s = self._streams.setdefault(key, WarmLiveStream(cmd, self._cfg))
+            s.warm()
 
     def subscribe(self, key: str, cmd: list[str]) -> Generator[bytes, None, None]:
-        s = self.get_or_create(key, cmd)
         self._reap()
+        with self._lock:
+            s = self._streams.setdefault(key, WarmLiveStream(cmd, self._cfg))
+            s.warm()
         yield from s.subscribe()
 
     def _reap(self) -> None:
-        now = time.time()
+        now = time.monotonic()
+        processes = []
         with self._lock:
             expired = [k for k, s in self._streams.items() if s.should_expire(now)]
             for k in expired:
                 s = self._streams.pop(k, None)
                 if s:
-                    s.stop()
+                    with s._lock:
+                        processes.append(s._stop_locked())
+        for p in processes:
+            WarmLiveStream._terminate(p)

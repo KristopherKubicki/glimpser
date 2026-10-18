@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>ComEd Price Wall</title>
+    <link rel="stylesheet" href="/static/css/comed_price_wall.css" />
+  </head>
+  <body data-comed-price-wall-auto>
+    <main id="comed-price-wall" class="comed-wall" data-ready="0">
+      <header class="comed-header">
+        <div>
+          <p class="eyebrow">ComEd hourly pricing</p>
+          <h1>Real-time power price</h1>
+        </div>
+        <div class="header-status" aria-live="polite">
+          <span id="comed-feed-status" class="status-pill">Loading feed</span>
+          <time id="comed-updated">--</time>
+        </div>
+      </header>
+
+      <section class="metric-strip" aria-label="Price summary">
+        <article class="metric-panel metric-current">
+          <span class="metric-label">Current</span>
+          <strong id="comed-current-price">--</strong>
+          <span id="comed-current-window">--</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Today forecast</span>
+          <strong id="comed-day-ahead-average">--</strong>
+          <span>day-ahead average</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Settled feed</span>
+          <strong id="comed-actual-average">--</strong>
+          <span id="comed-actual-label">--</span>
+        </article>
+        <article class="metric-panel">
+          <span class="metric-label">Peak window</span>
+          <strong id="comed-peak-price">--</strong>
+          <span id="comed-peak-hour">--</span>
+        </article>
+      </section>
+
+      <section class="chart-shell" aria-label="ComEd price chart">
+        <svg
+          id="comed-chart"
+          class="comed-chart"
+          viewBox="0 0 1200 520"
+          role="img"
+          aria-labelledby="comed-chart-title comed-chart-desc"
+        >
+          <title id="comed-chart-title">ComEd hourly price chart</title>
+          <desc id="comed-chart-desc">
+            Dark chart of ComEd day-ahead and settled hourly prices in cents per
+            kilowatt-hour.
+          </desc>
+          <rect class="chart-bg" width="1200" height="520" />
+          <g id="comed-thresholds" class="thresholds"></g>
+          <g id="comed-axis" class="chart-axis"></g>
+          <g id="comed-day-ahead-bars" class="day-ahead-bars"></g>
+          <g id="comed-actual-line" class="actual-line"></g>
+          <g id="comed-point-labels" class="point-labels"></g>
+        </svg>
+        <aside class="chart-notes" aria-label="Feed notes">
+          <div>
+            <span class="legend-swatch swatch-day-ahead"></span>
+            <span>Day-ahead hourly price</span>
+          </div>
+          <div>
+            <span class="legend-swatch swatch-actual"></span>
+            <span id="comed-actual-legend">Settled hourly price</span>
+          </div>
+          <p id="comed-warning">Waiting for ComEd feed data.</p>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="/static/js/comed_price_wall.js"></script>
+  </body>
+</html>

@@ -4,24 +4,36 @@ on:
   push:
     branches: ["main"]
 
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
 jobs:
   tag_release:
     permissions:
       contents: write
-      # "workflow" is not a valid permission key.
-      # A writeable contents token is sufficient for creating tags,
-      # which can then trigger other workflows.
+      # Dispatch the package build explicitly: GITHUB_TOKEN tag pushes do not
+      # trigger another workflow's push event.
+      actions: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Detect version change
         id: detect
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           git fetch --tags
-          NEW_VERSION=$(grep -oP '(?<=^version = ")[^"]+' pyproject.toml)
-          OLD_VERSION=$(git show ${{ github.event.before }}:pyproject.toml 2>/dev/null | grep -oP '(?<=^version = ")[^"]+' || echo "")
+          NEW_VERSION=$(python scripts/auto_tag_release.py --print-version)
+          OLD_VERSION=""
+          if git show "$BEFORE_SHA:pyproject.toml" > "$RUNNER_TEMP/prior-pyproject.toml" 2>/dev/null; then
+            OLD_VERSION=$(python scripts/auto_tag_release.py --print-version --version-file "$RUNNER_TEMP/prior-pyproject.toml")
+          fi
           echo "old=$OLD_VERSION" >> "$GITHUB_OUTPUT"
           echo "new=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
@@ -43,3 +55,9 @@ jobs:
         if: steps.detect.outputs.changed == 'true'
         run: |
           python scripts/auto_tag_release.py
+      - name: Dispatch tagged package build
+        if: steps.detect.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ steps.detect.outputs.new }}
+        run: gh workflow run release-packages.yml --ref "$RELEASE_TAG"

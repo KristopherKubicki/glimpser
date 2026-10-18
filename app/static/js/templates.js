@@ -45,15 +45,24 @@ export function initTemplates() {
       .getElementById("template-form")
       ?.closest("details");
     const slider = document.getElementById("grid-width-slider");
-    const isMobile = window.matchMedia(
-      "(hover: none) and (max-width: 767px)",
-    ).matches;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const templateList = document.getElementById("template-list");
     const captionToggle = document.getElementById("caption-toggle");
     const MAX_THUMBNAIL_HEIGHT = 1080;
     const ASPECT_RATIO = 9 / 16;
     const MAX_THUMBNAIL_WIDTH = Math.round(MAX_THUMBNAIL_HEIGHT / ASPECT_RATIO);
     const isGroupWall = document.body?.classList.contains("templates-wall");
+    const hasTemplateSurface = Boolean(
+      templateList ||
+        document.getElementById("captions-table") ||
+        document.getElementById("camera-table") ||
+        document.querySelector(".template-container") ||
+        form,
+    );
+
+    if (!hasTemplateSurface) {
+      return;
+    }
 
     if (slider) {
       // Auto-fit makes the templates view behave like a video wall (fill the viewport).
@@ -666,7 +675,13 @@ export async function loadTemplates() {
   const searchInput = document.getElementById("search-input");
   const selectedGroup = getSelectedGroup();
   const searchQuery = searchInput ? searchInput.value.toLowerCase() : "";
-  const url = `/templates?group=${selectedGroup}&search=${searchQuery}`;
+  const params = new URLSearchParams({
+    group: selectedGroup,
+    search: searchQuery,
+  });
+  if (document.getElementById("template-list")) params.set("viewer", "1");
+  if (window.currentDashboard) params.set("dashboard", window.currentDashboard);
+  const url = `/templates?${params}`;
   const slider = document.getElementById("grid-width-slider");
 
   const isGroupWall = document.body?.classList.contains("templates-wall");
@@ -1039,11 +1054,18 @@ export function setupCaptionsFilter() {
     const raw = cell.dataset.raw || cell.textContent;
     cell.dataset.raw = raw;
     if (!term) {
-      cell.innerHTML = raw;
+      cell.textContent = raw;
       return;
     }
     const regex = new RegExp(`(${escapeRegExp(term)})`, "gi");
-    cell.innerHTML = raw.replace(regex, "<mark>$1</mark>");
+    cell.replaceChildren();
+    raw.split(regex).forEach((part, index) => {
+      if (index % 2) {
+        const mark = document.createElement("mark");
+        mark.textContent = part;
+        cell.append(mark);
+      } else cell.append(document.createTextNode(part));
+    });
   };
 
   const filter = () => {
@@ -1064,7 +1086,7 @@ export function setupCaptionsFilter() {
       const captionCell = row.querySelector("td:nth-child(2)");
       if (show) highlight(captionCell, term);
       else if (captionCell)
-        captionCell.innerHTML =
+        captionCell.textContent =
           captionCell.dataset.raw || captionCell.textContent;
     });
   };

@@ -75,7 +75,7 @@ def check_camera_template(
         else:
             result["url_error"] = f"status {resp.status_code}"
     except Exception as exc:
-        result["url_error"] = str(exc)
+        result["url_error"] = type(exc).__name__
 
     if not result["valid_url"]:
         try:

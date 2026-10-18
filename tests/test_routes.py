@@ -172,7 +172,14 @@ class TestRoutes(unittest.TestCase):
     @patch("app.routes.session", {"user_id": 1})
     @patch("app.routes.render_template")
     @patch("app.routes.template_manager.get_templates")
-    def test_index(self, mock_get_templates, mock_render_template, mock_session_local):
+    @patch("app.routes.get_active_groups")
+    def test_index(
+        self,
+        mock_get_active_groups,
+        mock_get_templates,
+        mock_render_template,
+        mock_session_local,
+    ):
         dummy_user = SimpleNamespace(id=1)
 
         class DummyQuery:
@@ -200,11 +207,17 @@ class TestRoutes(unittest.TestCase):
 
         mock_session_local.return_value = DummySession()
         mock_get_templates.return_value = {"camera": {}}
+        mock_get_active_groups.return_value = ["example-home", "beach"]
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        mock_render_template.assert_called_with(
-            "index.html", template_details={"camera": {}}, page_title="Dashboard"
-        )
+        mock_render_template.assert_called_once()
+        args, context = mock_render_template.call_args
+        self.assertEqual(args, ("index.html",))
+        self.assertEqual(context["active_groups"], ["example-home", "beach"])
+        self.assertEqual(context["page_title"], "Dashboard")
+        self.assertEqual(context["landing_profile"]["key"], "public")
+        self.assertEqual(context["landing_scenes"], [])
+        self.assertFalse(context["landing_events_enabled"])
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -267,7 +280,10 @@ class TestRoutes(unittest.TestCase):
         mock_get_templates.return_value = {"template1": {}, "template2": {}}
         response = self.client.get("/templates?group=all")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json(), {"template1": {}, "template2": {}})
+        self.assertEqual(
+            response.get_json(),
+            {"template1": {"name": "template1"}, "template2": {"name": "template2"}},
+        )
 
     @patch("app.routes.SessionLocal")
     @patch("app.routes.session", {"user_id": 1})
@@ -599,7 +615,7 @@ class TestRoutes(unittest.TestCase):
         response = self.client.get("/group/group1")
         self.assertEqual(response.status_code, 200)
         mock_render_template.assert_called_with(
-            "group.html", group_name="group1", page_title="Group – group1"
+            "group.html", group_name="group1", page_title="Group - group1"
         )
 
     @patch("app.routes.SessionLocal")

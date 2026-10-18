@@ -258,8 +258,7 @@ class TestSceneCaptionCache(unittest.TestCase):
                 cache = scheduling._load_scene_caption_cache(tmp)
                 self.assertEqual(len(cache), 2)
                 self.assertNotIn(
-                    "sig1:"
-                    + scheduling.hashlib.sha1("prompt".encode()).hexdigest()[:12],
+                    "sig1:" + scheduling.hashlib.sha1(b"prompt").hexdigest()[:12],
                     cache,
                 )
 
@@ -560,6 +559,38 @@ class TestLowCpuCrawlerScheduling(unittest.TestCase):
 
         self.assertIsNotNone(camera_call)
         self.assertEqual(camera_call.kwargs["seconds"], 120)
+
+
+class TestCrawlerArchiveScheduling(unittest.TestCase):
+    @patch("app.utils.scheduling.get_templates")
+    @patch("app.utils.scheduling.calculate_optimal_offsets", return_value={"active": 0})
+    def test_schedule_crawlers_skips_archived_templates(
+        self, mock_offsets, mock_get_templates
+    ):
+        mock_get_templates.return_value = {
+            "active": {"name": "active", "frequency": 30, "groups": "traffic"},
+            "archived": {
+                "name": "archived",
+                "frequency": 30,
+                "groups": "archive,source-stale,traffic",
+            },
+        }
+
+        with patch("app.utils.scheduling.scheduler") as mock_scheduler:
+            mock_scheduler.get_jobs.return_value = [SimpleNamespace(id="archived")]
+            scheduling.schedule_crawlers()
+
+        mock_scheduler.remove_job.assert_called_once_with("archived")
+        scheduled_ids = {
+            call.kwargs.get("id") for call in mock_scheduler.add_job.call_args_list
+        }
+        self.assertIn("active", scheduled_ids)
+        self.assertIn("init_crawl", scheduled_ids)
+        self.assertNotIn("archived", scheduled_ids)
+        self.assertEqual(
+            mock_offsets.call_args.args[0],
+            {"active": {"name": "active", "frequency": 30, "groups": "traffic"}},
+        )
 
 
 if __name__ == "__main__":

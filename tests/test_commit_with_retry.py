@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from sqlalchemy.exc import OperationalError
 
@@ -7,17 +7,15 @@ from app.utils.db import commit_with_retry
 
 
 class TestCommitWithRetry(unittest.TestCase):
-    def test_retries_on_locked_error(self):
+    def test_locked_error_is_not_hidden_by_empty_commit(self):
         session = MagicMock()
-        session.commit.side_effect = [
-            OperationalError("stmt", {}, Exception("database is locked")),
-            None,
-        ]
-        with patch("app.utils.db.time.sleep") as mock_sleep:
+        error = OperationalError("stmt", {}, Exception("database is locked"))
+        session.commit.side_effect = [error, None]
+        with self.assertRaises(OperationalError) as caught:
             commit_with_retry(session, attempts=2, delay=0)
-        self.assertEqual(session.commit.call_count, 2)
-        session.rollback.assert_called_once()
-        mock_sleep.assert_called_once()
+        self.assertIs(caught.exception, error)
+        session.commit.assert_called_once()
+        session.rollback.assert_not_called()
 
     def test_raises_non_locked_error(self):
         session = MagicMock()

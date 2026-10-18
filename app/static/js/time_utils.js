@@ -8,6 +8,84 @@ function scoreTimestampCandidate(nowMs, candidate) {
   return diffMs >= 0 ? diffMs : Math.abs(diffMs) + 7 * 24 * 60 * 60 * 1000;
 }
 
+function parseNaiveTimestamp(raw) {
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/,
+  );
+  if (!match) return null;
+  const [, year, month, day, hour = "0", minute = "0", second = "0"] = match;
+  return {
+    day: Number(day),
+    hour: Number(hour),
+    minute: Number(minute),
+    month: Number(month) - 1,
+    second: Number(second),
+    year: Number(year),
+  };
+}
+
+function timezoneOffsetMs(timestampMs, timeZone) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      day: "2-digit",
+      hour: "2-digit",
+      hour12: false,
+      minute: "2-digit",
+      month: "2-digit",
+      second: "2-digit",
+      timeZone,
+      year: "numeric",
+    }).formatToParts(new Date(timestampMs));
+    const values = Object.fromEntries(
+      parts
+        .filter((part) => part.type !== "literal")
+        .map((part) => [part.type, Number(part.value)]),
+    );
+    const asUtc = Date.UTC(
+      values.year,
+      values.month - 1,
+      values.day,
+      values.hour,
+      values.minute,
+      values.second,
+    );
+    return asUtc - timestampMs;
+  } catch {
+    return null;
+  }
+}
+
+function localTimestampCandidate(parts) {
+  const localDate = new Date(
+    parts.year,
+    parts.month,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  const configuredTimezone = globalThis.process?.env?.TZ;
+  if (!configuredTimezone) {
+    return localDate;
+  }
+
+  const utcGuess = Date.UTC(
+    parts.year,
+    parts.month,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  const firstOffset = timezoneOffsetMs(utcGuess, configuredTimezone);
+  if (firstOffset === null) {
+    return localDate;
+  }
+  const firstCandidateMs = utcGuess - firstOffset;
+  const secondOffset = timezoneOffsetMs(firstCandidateMs, configuredTimezone);
+  return new Date(utcGuess - (secondOffset ?? firstOffset));
+}
+
 export function parseTimestamp(dateString) {
   if (!dateString) return null;
   if (dateString instanceof Date) {
@@ -44,7 +122,22 @@ export function parseTimestamp(dateString) {
   }
 
   const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw);
-  if (raw.includes("T")) {
+  const naiveParts = hasTimezone ? null : parseNaiveTimestamp(raw);
+  if (naiveParts) {
+    addCandidate(localTimestampCandidate(naiveParts));
+    addCandidate(
+      new Date(
+        Date.UTC(
+          naiveParts.year,
+          naiveParts.month,
+          naiveParts.day,
+          naiveParts.hour,
+          naiveParts.minute,
+          naiveParts.second,
+        ),
+      ),
+    );
+  } else if (raw.includes("T")) {
     if (hasTimezone) {
       addCandidate(raw);
     } else {

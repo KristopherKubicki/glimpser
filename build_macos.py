@@ -7,12 +7,13 @@ from pathlib import Path
 import PyInstaller.__main__
 
 ARGS = [
-    "app/__init__.py",
+    "main.py",
     "--name=Glimpser",
     "--onefile",
-    "--windowed",
-    "--add-data=app/templates:templates",
-    "--add-data=app/static:static",
+    "--console",
+    "--add-data=app/templates:app/templates",
+    "--add-data=app/static:app/static",
+    "--add-data=app/utils/ffmpeg_setup.py:app/utils",
     "--hidden-import=flask",
     "--hidden-import=flask_apscheduler",
     "--hidden-import=sqlalchemy",
@@ -32,8 +33,16 @@ ARGS = [
 
 def build() -> None:
     """Invoke PyInstaller with macOS settings."""
+    previous = os.environ.get("GLIMPSER_SKIP_DB_INIT")
+    os.environ["GLIMPSER_SKIP_DB_INIT"] = "1"
     os.chdir(Path(__file__).resolve().parent)
-    PyInstaller.__main__.run(ARGS)
+    try:
+        PyInstaller.__main__.run(ARGS)
+    finally:
+        if previous is None:
+            os.environ.pop("GLIMPSER_SKIP_DB_INIT", None)
+        else:
+            os.environ["GLIMPSER_SKIP_DB_INIT"] = previous
 
 
 def main() -> None:

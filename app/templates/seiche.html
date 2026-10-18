@@ -1,0 +1,1448 @@
+{% extends 'base.html' %} {% block body_class %}seiche-clock{% endblock %} {%
+block content %}
+<style>
+  body.seiche-clock {
+    --seiche-bg: #06131d;
+    --seiche-panel: rgba(231, 238, 230, 0.94);
+    --seiche-ink: #10212a;
+    --seiche-muted: #52676d;
+    --seiche-blue: #0d6178;
+    --seiche-cyan: #64c3d5;
+    --seiche-gold: #d49b35;
+    --seiche-red: #af4935;
+    background:
+      radial-gradient(
+        circle at 16% 10%,
+        rgba(100, 195, 213, 0.3),
+        transparent 28rem
+      ),
+      radial-gradient(
+        circle at 82% 8%,
+        rgba(212, 155, 53, 0.24),
+        transparent 26rem
+      ),
+      linear-gradient(145deg, #041018 0%, #0d2835 50%, #182714 100%);
+    color: var(--seiche-ink);
+    min-height: 100vh;
+  }
+
+  html:has(body.seiche-clock) {
+    background: #06131d;
+  }
+
+  body.seiche-clock .skip-link,
+  body.seiche-clock header,
+  body.seiche-clock header nav,
+  body.seiche-clock header .caption-chyron,
+  body.seiche-clock footer {
+    display: none;
+  }
+
+  body.seiche-clock header {
+    position: fixed;
+    z-index: 20;
+    top: 0.35rem;
+    left: 0.55rem;
+    width: auto;
+    background: transparent;
+  }
+
+  body.seiche-clock header h1 {
+    margin: 0;
+  }
+
+  body.seiche-clock header h1 img {
+    width: auto;
+    height: 1.45rem;
+    opacity: 0.82;
+    filter: drop-shadow(0 0.25rem 0.5rem rgba(0, 0, 0, 0.45));
+  }
+
+  body.seiche-clock main {
+    width: 100%;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .seiche-return {
+    position: fixed;
+    z-index: 50;
+    top: 0.65rem;
+    right: 0.65rem;
+    min-height: 2.7rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    background: rgba(3, 16, 25, 0.82);
+    color: #f2fbff;
+    font-weight: 750;
+    text-decoration: none;
+    box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .seiche-onepage {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns:
+      minmax(21rem, 0.95fr) minmax(22rem, 1.15fr)
+      minmax(20rem, 0.85fr);
+    grid-template-rows:
+      minmax(31rem, 1.55fr) minmax(8.4rem, 0.32fr)
+      minmax(7.5rem, 0.24fr);
+    gap: clamp(0.5rem, 0.8vw, 0.75rem);
+    padding: clamp(0.5rem, 0.8vw, 0.85rem);
+  }
+
+  .seiche-hero {
+    display: grid;
+    grid-column: 1 / span 2;
+    grid-row: 1;
+    grid-template-columns: minmax(21rem, 0.9fr) minmax(0, 1.12fr);
+    gap: clamp(0.75rem, 1.4vw, 1rem);
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .seiche-dial,
+  .seiche-card,
+  .seiche-station,
+  .seiche-section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    background: var(--seiche-panel);
+    box-shadow: 0 24px 72px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(16px);
+  }
+
+  .seiche-dial {
+    min-height: 0;
+    border-radius: 2.2rem;
+    padding: clamp(1rem, 2vw, 1.35rem);
+    display: grid;
+    place-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .seiche-dial::before {
+    content: "";
+    position: absolute;
+    inset: 1.8rem;
+    border-radius: 50%;
+    border: 1.1rem solid rgba(13, 97, 120, 0.16);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+      0 0 0 2rem rgba(100, 195, 213, 0.08);
+  }
+
+  .seiche-waterline {
+    position: absolute;
+    z-index: 1;
+    left: 11%;
+    right: 11%;
+    bottom: 23%;
+    height: clamp(3.4rem, 10vw, 6rem);
+    border-radius: 999px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(247, 244, 233, 0.45),
+        rgba(100, 195, 213, 0.28) 36%,
+        rgba(13, 97, 120, 0.72)
+      ),
+      repeating-linear-gradient(
+        115deg,
+        rgba(255, 255, 255, 0.28) 0 0.35rem,
+        transparent 0.35rem 1.15rem
+      );
+    box-shadow:
+      inset 0 0.35rem 1.4rem rgba(255, 255, 255, 0.24),
+      inset 0 -1rem 2rem rgba(4, 16, 24, 0.28);
+    transform: rotate(var(--tilt-deg, 0deg));
+    transform-origin: center;
+  }
+
+  .seiche-waterline::after {
+    content: "";
+    position: absolute;
+    inset: 28% 7%;
+    border-top: 2px dashed rgba(247, 244, 233, 0.68);
+  }
+
+  .seiche-dial-inner {
+    position: relative;
+    z-index: 2;
+    width: min(27rem, 82vw);
+    height: min(27rem, 82vw);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    background:
+      radial-gradient(circle, rgba(255, 255, 255, 0.72), transparent 64%),
+      conic-gradient(
+        from 210deg,
+        rgba(13, 97, 120, 0.88),
+        rgba(100, 195, 213, 0.52),
+        rgba(212, 155, 53, 0.75),
+        rgba(13, 97, 120, 0.88)
+      );
+    color: #f7f4e9;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.22);
+  }
+
+  .seiche-eyebrow {
+    margin: 0 0 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .seiche-title {
+    margin: 0;
+    color: #fffaf0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.3rem, 5.4vw, 4.8rem);
+    line-height: 0.86;
+    letter-spacing: -0.08em;
+    text-shadow: 0 0.2rem 1.2rem rgba(4, 16, 24, 0.45);
+  }
+
+  .seiche-level {
+    margin-top: 1rem;
+    color: #fffaf0;
+    font-size: clamp(1.9rem, 4.6vw, 3.6rem);
+    font-weight: 950;
+    line-height: 0.9;
+    text-shadow: 0 0.2rem 1rem rgba(4, 16, 24, 0.42);
+  }
+
+  .seiche-level span {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+
+  .seiche-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+
+  .seiche-card,
+  .seiche-station,
+  .seiche-section {
+    border-radius: 1.35rem;
+    padding: 0.78rem;
+  }
+
+  .seiche-card strong,
+  .seiche-station strong {
+    display: block;
+    color: var(--seiche-blue);
+    font-size: clamp(1.35rem, 3.5vw, 2.75rem);
+    line-height: 0.95;
+  }
+
+  .seiche-card span,
+  .seiche-station span,
+  .seiche-section p {
+    color: var(--seiche-muted);
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .seiche-card-grid > .seiche-card:not(.seiche-headline) {
+    display: grid;
+    align-content: center;
+    padding: 0.58rem 0.78rem;
+  }
+
+  .seiche-card-grid > .seiche-card:not(.seiche-headline) strong {
+    font-size: clamp(1.25rem, 2.85vw, 2.25rem);
+    line-height: 0.9;
+  }
+
+  .seiche-card-grid > .seiche-card:not(.seiche-headline) span {
+    font-size: 0.78rem;
+  }
+
+  .seiche-meter {
+    height: 0.55rem;
+    margin-top: 0.48rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(13, 97, 120, 0.12);
+  }
+
+  .seiche-meter span {
+    display: block;
+    width: min(calc(var(--meter-value, 0) * 6%), 100%);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--seiche-cyan), var(--seiche-gold));
+  }
+
+  .seiche-balance-meter {
+    height: 0.55rem;
+    margin-top: 0.48rem;
+    border-radius: 999px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+      90deg,
+      rgba(100, 195, 213, 0.32),
+      rgba(247, 244, 233, 0.44),
+      rgba(212, 155, 53, 0.32)
+    );
+  }
+
+  .seiche-balance-meter span {
+    position: absolute;
+    left: clamp(4%, calc(50% + var(--tilt-in, 0) * 4%), 96%);
+    top: 0;
+    width: 0.38rem;
+    height: 100%;
+    border-radius: 999px;
+    background: #08202a;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
+  }
+
+  .seiche-station-meter {
+    height: 0.5rem;
+    margin-top: 0.7rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.11);
+  }
+
+  .seiche-station-meter span {
+    display: block;
+    width: min(calc(var(--meter-value, 0) * 6%), 100%);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--seiche-cyan), var(--seiche-gold));
+  }
+
+  .seiche-compass {
+    width: 2.65rem;
+    height: 2.65rem;
+    margin: 0.25rem auto 0;
+    border-radius: 50%;
+    position: relative;
+    background:
+      radial-gradient(circle, rgba(255, 255, 255, 0.72), transparent 42%),
+      conic-gradient(
+        rgba(13, 97, 120, 0.16),
+        rgba(212, 155, 53, 0.28),
+        rgba(13, 97, 120, 0.16)
+      );
+    box-shadow: inset 0 0 0 1px rgba(8, 32, 42, 0.2);
+  }
+
+  .seiche-compass::before {
+    content: "N";
+    position: absolute;
+    left: 50%;
+    top: 0.32rem;
+    transform: translateX(-50%);
+    color: var(--seiche-muted);
+    font-size: 0.62rem;
+    font-weight: 900;
+  }
+
+  .seiche-compass::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.8rem;
+    height: 1.2rem;
+    background: var(--seiche-blue);
+    clip-path: polygon(50% 0, 100% 72%, 58% 58%, 50% 100%, 42% 58%, 0 72%);
+    transform: translate(-50%, -50%) rotate(var(--wind-deg, 0deg));
+    transform-origin: center;
+  }
+
+  .seiche-timeline {
+    margin-top: 0.8rem;
+    border-radius: 1rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(13, 97, 120, 0.09);
+  }
+
+  .seiche-sparkline {
+    width: 100%;
+    height: 2.7rem;
+    display: block;
+  }
+
+  .seiche-sparkline polyline {
+    fill: none;
+    stroke: var(--seiche-blue);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .seiche-sparkline line {
+    stroke: rgba(13, 97, 120, 0.18);
+    stroke-width: 1;
+  }
+
+  .seiche-timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--seiche-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .seiche-signal-strip {
+    display: grid;
+    grid-template-columns: auto repeat(2, minmax(0, 1fr));
+    gap: 0.42rem;
+    align-items: stretch;
+    margin: 0.6rem 0 0.2rem;
+  }
+
+  .seiche-signal-gauge {
+    width: 4.35rem;
+    height: 4.35rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+    background: conic-gradient(
+      var(--seiche-gold) calc(var(--signal-score, 0) * 1%),
+      rgba(13, 97, 120, 0.14) 0
+    );
+    color: #071820;
+    box-shadow: inset 0 0 0 1px rgba(8, 32, 42, 0.16);
+  }
+
+  .seiche-signal-gauge::before {
+    content: "";
+    position: absolute;
+    inset: 0.42rem;
+    border-radius: inherit;
+    background: rgba(246, 243, 231, 0.96);
+  }
+
+  .seiche-signal-gauge strong,
+  .seiche-signal-gauge span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .seiche-signal-gauge strong {
+    font-size: 1.35rem;
+    line-height: 0.9;
+  }
+
+  .seiche-signal-gauge span {
+    margin-top: -1.2rem;
+    color: var(--seiche-muted);
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .seiche-source-pill {
+    display: grid;
+    align-content: center;
+    border-radius: 1rem;
+    padding: 0.55rem 0.62rem;
+    background: rgba(13, 97, 120, 0.1);
+  }
+
+  .seiche-source-pill strong {
+    color: #081820;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  .seiche-source-pill span {
+    color: var(--seiche-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .seiche-headline {
+    grid-column: 1 / -1;
+    background: rgba(246, 243, 231, 0.96);
+  }
+
+  .seiche-headline .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .seiche-headline-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(15rem, 0.62fr);
+    gap: 0.65rem;
+    align-items: center;
+  }
+
+  .seiche-visual-status {
+    display: grid;
+    gap: 0.48rem;
+  }
+
+  .seiche-phase-lockup {
+    display: flex;
+    gap: 0.72rem;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .seiche-phase-arrow {
+    width: 3.65rem;
+    height: 3.65rem;
+    border-radius: 1.35rem;
+    display: grid;
+    place-items: center;
+    position: relative;
+    flex: 0 0 auto;
+    background: linear-gradient(
+      145deg,
+      rgba(100, 195, 213, 0.24),
+      rgba(13, 97, 120, 0.12)
+    );
+    box-shadow: inset 0 0 0 1px rgba(13, 97, 120, 0.18);
+  }
+
+  .seiche-phase-arrow::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-right: 0.95rem solid transparent;
+    border-left: 0.95rem solid transparent;
+  }
+
+  .seiche-visual-status[data-trend="falling"] .seiche-phase-arrow::before {
+    border-top: 1.75rem solid var(--seiche-blue);
+  }
+
+  .seiche-visual-status[data-trend="rising"] .seiche-phase-arrow::before {
+    border-bottom: 1.75rem solid var(--seiche-gold);
+  }
+
+  .seiche-visual-status[data-trend="near slack"] .seiche-phase-arrow::before {
+    width: 2rem;
+    height: 0.42rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--seiche-cyan);
+  }
+
+  .seiche-phase-word {
+    margin: 0;
+    color: #081820;
+    font-size: clamp(2.2rem, 3.7vw, 3.45rem);
+    line-height: 0.78;
+    letter-spacing: -0.08em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .seiche-mini-meters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.42rem;
+  }
+
+  .seiche-mini-meter {
+    border-radius: 999px;
+    padding: 0.28rem 0.5rem;
+    color: #0a222c;
+    background: rgba(13, 97, 120, 0.1);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .seiche-mini-meter strong {
+    color: var(--seiche-blue);
+    font-size: 0.86rem;
+  }
+
+  .seiche-visual-source {
+    color: var(--seiche-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .seiche-headline .seiche-signal-strip {
+    margin-top: 0;
+  }
+
+  .seiche-watch {
+    grid-column: 1;
+    grid-row: 3;
+    display: grid;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .seiche-camera-strip {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    display: grid;
+    grid-template-rows: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    gap: 0.7rem;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .seiche-camera-card {
+    min-width: 0;
+    min-height: 0;
+    border-radius: 1.2rem;
+    overflow: hidden;
+    position: relative;
+    background: #071820;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  }
+
+  .seiche-camera-featured {
+    min-height: 0;
+  }
+
+  .seiche-camera-kicker {
+    position: absolute;
+    z-index: 3;
+    top: 0.7rem;
+    right: 0.7rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.55rem;
+    color: #f7f4e9;
+    background: rgba(4, 16, 24, 0.72);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .seiche-camera-freshness {
+    position: absolute;
+    z-index: 4;
+    inset: 0 0 auto;
+    height: 0.28rem;
+    background: rgba(4, 16, 24, 0.38);
+  }
+
+  .seiche-camera-freshness::before {
+    content: "";
+    display: block;
+    width: calc(var(--freshness-pct, 0) * 1%);
+    height: 100%;
+    border-radius: 0 999px 999px 0;
+    background: linear-gradient(90deg, var(--seiche-cyan), #9fd6a4);
+    box-shadow: 0 0 1rem rgba(100, 195, 213, 0.36);
+  }
+
+  .seiche-camera-freshness[data-state="warm"]::before {
+    background: linear-gradient(90deg, #9fd6a4, var(--seiche-gold));
+  }
+
+  .seiche-camera-freshness[data-state="stale"]::before,
+  .seiche-camera-freshness[data-state="old"]::before {
+    background: linear-gradient(90deg, var(--seiche-gold), var(--seiche-red));
+  }
+
+  .seiche-camera-freshness[data-state="offline"]::before,
+  .seiche-camera-freshness[data-state="unknown"]::before {
+    background: var(--seiche-red);
+  }
+
+  .seiche-camera-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .seiche-camera-overlay {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 0.75rem;
+    color: #f7f4e9;
+    background: linear-gradient(180deg, transparent, rgba(4, 16, 24, 0.9));
+  }
+
+  .seiche-camera-overlay strong {
+    display: block;
+    font-size: 1rem;
+    line-height: 1.05;
+  }
+
+  .seiche-camera-overlay span {
+    color: rgba(247, 244, 233, 0.78);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .seiche-camera-carousel {
+    min-height: 0;
+    border-radius: 1.2rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .seiche-camera-track {
+    height: 100%;
+    display: flex;
+    gap: 0.7rem;
+    animation: seiche-camera-pan 34s linear infinite;
+  }
+
+  .seiche-camera-thumb {
+    flex: 0 0 calc(50% - 0.35rem);
+    min-width: 0;
+  }
+
+  @keyframes seiche-camera-pan {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(calc(-50% - 0.35rem));
+    }
+  }
+
+  .seiche-watch .seiche-card {
+    background: rgba(246, 243, 231, 0.9);
+  }
+
+  .seiche-watch h2,
+  .seiche-section h2 {
+    margin: 0 0 0.45rem;
+    color: #0d2932;
+    font-size: 1.12rem;
+  }
+
+  .seiche-watch .seiche-card {
+    display: grid;
+    align-content: center;
+    padding: 0.45rem 0.65rem;
+  }
+
+  .seiche-watch h2 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .seiche-watch p {
+    display: none;
+  }
+
+  .seiche-stations {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.7rem;
+    min-height: 0;
+    margin: 0;
+  }
+
+  .seiche-station {
+    background: #081a22;
+    color: #f7f4e9;
+    padding: 0.58rem 0.72rem;
+  }
+
+  .seiche-station strong {
+    color: var(--seiche-cyan);
+    font-size: clamp(1.65rem, 3vw, 2.25rem);
+  }
+
+  .seiche-station h3 {
+    margin: 0 0 0.22rem;
+    overflow: hidden;
+    color: #f7f4e9;
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .seiche-station span {
+    font-size: 0.7rem;
+  }
+
+  .seiche-station-sparkline {
+    width: 100%;
+    height: 2.05rem;
+    display: block;
+    margin-top: 0.22rem;
+  }
+
+  .seiche-station-sparkline polyline {
+    fill: none;
+    stroke: var(--seiche-cyan);
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .seiche-station-sparkline line {
+    stroke: rgba(247, 244, 233, 0.18);
+    stroke-width: 1;
+  }
+
+  .seiche-station-range {
+    height: 0.42rem;
+    margin-top: 0.22rem;
+    border-radius: 999px;
+    position: relative;
+    background: linear-gradient(
+      90deg,
+      rgba(100, 195, 213, 0.28),
+      rgba(247, 244, 233, 0.32),
+      rgba(212, 155, 53, 0.38)
+    );
+  }
+
+  .seiche-station-range i {
+    position: absolute;
+    top: -0.2rem;
+    left: clamp(4%, calc(var(--station-pos, 50) * 1%), 96%);
+    width: 0.36rem;
+    height: 0.8rem;
+    border-radius: 999px;
+    background: #f7f4e9;
+    box-shadow: 0 0 0 2px rgba(8, 32, 42, 0.5);
+  }
+
+  .seiche-meta {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.45rem;
+  }
+
+  .seiche-pill {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.22rem 0.42rem;
+    color: rgba(247, 244, 233, 0.82);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .seiche-sections {
+    grid-column: 2 / span 2;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.7rem;
+    min-height: 0;
+  }
+
+  .seiche-section {
+    padding: 0.58rem 0.75rem;
+  }
+
+  .seiche-section h2 {
+    margin-bottom: 0.28rem;
+    font-size: 1rem;
+  }
+
+  .seiche-section p {
+    margin: 0;
+    font-size: 0.76rem;
+    line-height: 1.08;
+  }
+
+  .seiche-lake-axis {
+    height: 2.65rem;
+    margin-top: 0.32rem;
+    border-radius: 2.2rem;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        ellipse at 50% 12%,
+        rgba(100, 195, 213, 0.22),
+        transparent 55%
+      ),
+      linear-gradient(180deg, rgba(13, 97, 120, 0.1), rgba(13, 97, 120, 0.28));
+    box-shadow: inset 0 0 0 1px rgba(8, 32, 42, 0.12);
+  }
+
+  .seiche-lake-axis::before {
+    content: "";
+    position: absolute;
+    inset: 0.55rem 32%;
+    border-radius: 48% 52% 44% 58%;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(100, 195, 213, 0.7),
+        rgba(13, 97, 120, 0.82)
+      ),
+      repeating-linear-gradient(
+        125deg,
+        rgba(255, 255, 255, 0.24) 0 0.28rem,
+        transparent 0.28rem 0.9rem
+      );
+    transform: rotate(-15deg);
+  }
+
+  .seiche-axis-dot {
+    position: absolute;
+    z-index: 1;
+    top: calc(var(--axis-y, 50) * 1%);
+    left: clamp(8%, calc(var(--axis-x, 50) * 1%), 92%);
+    transform: translate(-50%, -50%);
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: #f7f4e9;
+    box-shadow:
+      0 0 0 0.22rem rgba(13, 97, 120, 0.62),
+      0 0.45rem 1rem rgba(4, 16, 24, 0.2);
+  }
+
+  .seiche-axis-dot b {
+    position: absolute;
+    left: 50%;
+    top: 1.3rem;
+    transform: translateX(-50%);
+    color: #08202a;
+    font-size: 0.55rem;
+    letter-spacing: 0.08em;
+  }
+
+  .seiche-driver-meter {
+    height: 0.55rem;
+    margin-top: 0.28rem;
+    border-radius: 999px;
+    position: relative;
+    background: linear-gradient(
+      90deg,
+      rgba(100, 195, 213, 0.34),
+      rgba(247, 244, 233, 0.5),
+      rgba(212, 155, 53, 0.42)
+    );
+  }
+
+  .seiche-driver-meter::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -0.18rem;
+    width: 1px;
+    height: 1.05rem;
+    background: rgba(8, 32, 42, 0.45);
+  }
+
+  .seiche-driver-meter i {
+    position: absolute;
+    top: -0.25rem;
+    left: clamp(4%, calc(var(--driver-pct, 50) * 1%), 96%);
+    width: 0.5rem;
+    height: 1.2rem;
+    border-radius: 999px;
+    background: var(--seiche-blue);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
+  }
+
+  .seiche-driver-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.22rem;
+    color: var(--seiche-muted);
+    font-size: 0.56rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .seiche-moon-orbit {
+    width: 3.1rem;
+    height: 3.1rem;
+    margin: 0.18rem auto 0;
+    border-radius: 50%;
+    position: relative;
+    background: conic-gradient(
+      var(--seiche-gold) calc(var(--spring-signal, 0) * 100%),
+      rgba(13, 97, 120, 0.12) 0
+    );
+  }
+
+  .seiche-moon-orbit::before {
+    content: "";
+    position: absolute;
+    inset: 0.55rem;
+    border-radius: inherit;
+    background: rgba(246, 243, 231, 0.88);
+    box-shadow: inset 0 0 0 1px rgba(8, 32, 42, 0.14);
+  }
+
+  .seiche-moon-orbit span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    background: #081820;
+    transform: translate(-50%, -50%) rotate(var(--moon-angle, 0deg))
+      translateY(-1.2rem);
+    transform-origin: center;
+  }
+
+  .seiche-generated {
+    margin: 0.45rem 0 0;
+    color: var(--seiche-muted);
+    font-size: 0.88rem;
+  }
+
+  @media (max-width: 980px) {
+    .seiche-onepage {
+      display: block;
+      height: auto;
+      min-height: auto;
+      overflow: visible;
+    }
+
+    .seiche-hero,
+    .seiche-camera-strip,
+    .seiche-sections {
+      grid-template-columns: 1fr;
+      margin-bottom: 0.75rem;
+    }
+
+    .seiche-headline-top {
+      grid-template-columns: 1fr;
+    }
+
+    .seiche-camera-featured {
+      min-height: 13rem;
+      grid-row: auto;
+    }
+
+    .seiche-dial {
+      min-height: 25rem;
+    }
+
+    .seiche-stations,
+    .seiche-watch {
+      margin-bottom: 0.75rem;
+    }
+  }
+
+  @media (max-width: 680px) {
+    body.seiche-clock main {
+      padding: 0;
+    }
+
+    .seiche-onepage {
+      padding: 0.8rem;
+    }
+
+    .seiche-card-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+{% set pleasant_prairie_label = 'Pleasant Prairie' %} {% set summary =
+brief.get('summary', {}) %} {% set lake_tilt = brief.get('lake_tilt', {}) %} {%
+set wind = brief.get('wind', {}) %} {% set celestial = brief.get('celestial',
+{}) %} {% set tilt_in = lake_tilt.get('south_vs_milwaukee_in') if
+lake_tilt.get('south_vs_milwaukee_in') is not none else 0 %} {% set stations =
+brief.get('stations', []) %} {% set calumet = (stations | selectattr('id',
+'equalto', '9087044') | list | first) if stations else {} %} {% set primary =
+brief.get('pleasant_prairie', {}) %} {% set primary_site =
+summary.get('primary_site') or primary.get('name') or pleasant_prairie_label %}
+{% set primary_level = summary.get('primary_level_ft_lwd') if
+summary.get('primary_level_ft_lwd') is not none else
+summary.get('calumet_level_ft_lwd') %} {% set primary_trend =
+summary.get('primary_trend') or summary.get('calumet_trend') or 'unknown' %} {%
+set primary_range = summary.get('primary_range_24h_in') if
+summary.get('primary_range_24h_in') is not none else
+summary.get('calumet_range_24h_in') %} {% set primary_sparkline =
+primary.get('sparkline') if primary.get('sparkline') else
+calumet.get('sparkline') %}
+
+<a class="seiche-return" href="/?profile=living&amp;mode=medium">
+  Return to rotation
+</a>
+<div class="seiche-onepage">
+  <section class="seiche-hero" aria-labelledby="seiche-title">
+    <div class="seiche-dial">
+      <div
+        class="seiche-waterline"
+        style="--tilt-deg: {{ tilt_in / 3 }}deg"
+      ></div>
+      <div class="seiche-dial-inner">
+        <p class="seiche-eyebrow">Lake Michigan · {{ primary_site }}</p>
+        <h1 id="seiche-title" class="seiche-title">Seiche Clock</h1>
+        <div class="seiche-level">
+          {{ "%.2f"|format(primary_level) if primary_level is not none else
+          "unknown" }}
+          <span>ft LWD near {{ primary_site }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="seiche-card-grid">
+      <article class="seiche-card seiche-headline">
+        <div class="seiche-headline-top">
+          <div class="seiche-headline-copy">
+            {% set trend = primary_trend %}
+            <div class="seiche-visual-status" data-trend="{{ trend }}">
+              <div class="seiche-phase-lockup">
+                <div class="seiche-phase-arrow" aria-hidden="true"></div>
+                <div>
+                  <h1 class="seiche-phase-word">{{ trend }}</h1>
+                  <div
+                    class="seiche-mini-meters"
+                    aria-label="Seiche quick stats"
+                  >
+                    <span class="seiche-mini-meter"
+                      >24h
+                      <strong
+                        >{{ "%.1f"|format(primary_range) if primary_range is not
+                        none else "?" }} in</strong
+                      ></span
+                    >
+                    <span class="seiche-mini-meter"
+                      >tilt
+                      <strong
+                        >{{
+                        "%+.1f"|format(lake_tilt.get('south_vs_milwaukee_in'))
+                        if lake_tilt.get('south_vs_milwaukee_in') is not none
+                        else "?" }} in</strong
+                      ></span
+                    >
+                    <span class="seiche-mini-meter"
+                      >wind
+                      <strong
+                        >{{ wind.get('direction_cardinal') or '?' }} {{
+                        "%.0f"|format(wind.get('speed_mph')) if
+                        wind.get('speed_mph') is not none else "?" }}</strong
+                      ></span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="seiche-visual-source">
+                NOAA · {{ brief.get('generated_at_display', 'unknown') }}
+              </div>
+            </div>
+            <p class="sr-only">
+              {{ brief.get('headline', 'SeicheClock is waiting for data.') }} {{
+              brief.get('source') }}
+            </p>
+            {% if brief.get('stale_reason') %}
+            <p>Using stale artifact: {{ brief.get('stale_reason') }}</p>
+            {% endif %}
+          </div>
+          <div class="seiche-signal-strip" aria-label="Seiche signal summary">
+            <div
+              class="seiche-signal-gauge"
+              style="--signal-score: {{ summary.get('signal_score') or 0 }}"
+            >
+              <strong>{{ summary.get('signal_score') or 0 }}</strong>
+              <span>{{ summary.get('signal_label', 'signal') }}</span>
+            </div>
+            <div class="seiche-source-pill">
+              <strong
+                >{{ summary.get('fresh_water_level_sources', 0) }}/{{
+                summary.get('water_level_sources', 0) }}</strong
+              >
+              <span>NOAA gauges</span>
+            </div>
+            <div class="seiche-source-pill">
+              <strong>{{ beach_tiles|length }}</strong>
+              <span>shore cams</span>
+            </div>
+          </div>
+        </div>
+        {% if primary_sparkline %}
+        <div
+          class="seiche-timeline"
+          aria-label="{{ primary_site }} 24 hour water timeline"
+        >
+          <svg class="seiche-sparkline" viewBox="0 0 100 36" aria-hidden="true">
+            <line x1="0" y1="18" x2="100" y2="18" />
+            <polyline
+              points="{% for point in primary_sparkline %}{{ point.x }},{{ point.y }} {% endfor %}"
+            />
+          </svg>
+          <div class="seiche-timeline-labels">
+            <span>24h low</span>
+            <span>{{ primary_site }} proxy</span>
+            <span>now</span>
+          </div>
+        </div>
+        {% endif %}
+      </article>
+      <article class="seiche-card">
+        <strong
+          >{{ "%.1f"|format(primary_range) if primary_range is not none else "?"
+          }} in</strong
+        >
+        <span>{{ primary_site }} 24h swing</span>
+        <div
+          class="seiche-meter"
+          style="--meter-value: {{ primary_range or 0 }}"
+        >
+          <span></span>
+        </div>
+      </article>
+      <article class="seiche-card">
+        <strong>{{ primary_trend }}</strong>
+        <span>Current lakefront phase</span>
+        <div
+          class="seiche-meter"
+          style="--meter-value: {{ (primary.get('change_1h_in') or calumet.get('change_1h_in') or 0) | abs }}"
+        >
+          <span></span>
+        </div>
+      </article>
+      <article class="seiche-card">
+        <strong
+          >{{ "%+.1f"|format(lake_tilt.get('south_vs_milwaukee_in')) if
+          lake_tilt.get('south_vs_milwaukee_in') is not none else "?" }}
+          in</strong
+        >
+        <span>South shore vs Milwaukee</span>
+        <div class="seiche-balance-meter" style="--tilt-in: {{ tilt_in }}">
+          <span></span>
+        </div>
+      </article>
+      <article class="seiche-card">
+        <strong>{{ celestial.get('phase', 'moon') }}</strong>
+        <span>{{ celestial.get('spring_label', 'astronomical context') }}</span>
+        <div
+          class="seiche-meter"
+          style="--meter-value: {{ (celestial.get('spring_signal') or 0) * 16 }}"
+        >
+          <span></span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  {% if beach_tiles %}
+  <section class="seiche-camera-strip" aria-label="Beach and shoreline cameras">
+    {% set featured_tile = beach_tiles[0] %}
+    <article class="seiche-camera-card seiche-camera-featured">
+      <span
+        class="seiche-camera-freshness"
+        data-state="{{ featured_tile.freshness_state }}"
+        style="--freshness-pct: {{ featured_tile.freshness_pct }}"
+      ></span>
+      <div class="seiche-camera-kicker">
+        {{ beach_tiles|length }} live views
+      </div>
+      <img
+        src="{{ featured_tile.image_url }}"
+        loading="lazy"
+        alt="{{ featured_tile.name }} shoreline view"
+      />
+      <div class="seiche-camera-overlay">
+        <strong>{{ featured_tile.name }}</strong>
+        <span>{{ featured_tile.status }} · {{ featured_tile.age_label }}</span>
+      </div>
+    </article>
+    <div class="seiche-camera-carousel" aria-label="Additional beach cameras">
+      <div class="seiche-camera-track">
+        {% for tile in beach_tiles[1:9] %}
+        <article class="seiche-camera-card seiche-camera-thumb">
+          <span
+            class="seiche-camera-freshness"
+            data-state="{{ tile.freshness_state }}"
+            style="--freshness-pct: {{ tile.freshness_pct }}"
+          ></span>
+          <img
+            src="{{ tile.image_url }}"
+            loading="lazy"
+            alt="{{ tile.name }} shoreline view"
+          />
+          <div class="seiche-camera-overlay">
+            <strong>{{ tile.name }}</strong>
+            <span>{{ tile.status }} · {{ tile.age_label }}</span>
+          </div>
+        </article>
+        {% endfor %} {% for tile in beach_tiles[1:9] %}
+        <article
+          class="seiche-camera-card seiche-camera-thumb"
+          aria-hidden="true"
+        >
+          <span
+            class="seiche-camera-freshness"
+            data-state="{{ tile.freshness_state }}"
+            style="--freshness-pct: {{ tile.freshness_pct }}"
+          ></span>
+          <img
+            src="{{ tile.image_url }}"
+            loading="lazy"
+            alt="{{ tile.name }} shoreline carousel repeat"
+          />
+          <div class="seiche-camera-overlay">
+            <strong>{{ tile.name }}</strong>
+            <span>{{ tile.status }} · {{ tile.age_label }}</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="seiche-watch" aria-label="Seiche watch items">
+    {% for item in brief.get('watch_items', [])[:3] %}
+    <article class="seiche-card">
+      <h2>{{ item.get('title') }}</h2>
+      <p>{{ item.get('body') }}</p>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="seiche-stations" aria-label="NOAA station readings">
+    {% for station in brief.get('stations', []) %}
+    <article class="seiche-station">
+      <h3>{{ station.get('name') }} · {{ station.get('role') }}</h3>
+      {% if station.get('level_ft_lwd') is not none %}
+      <strong>{{ "%.3f"|format(station.get('level_ft_lwd')) }} ft</strong>
+      <span>above Low Water Datum</span>
+      {% if station.get('sparkline') %}
+      <svg
+        class="seiche-station-sparkline"
+        viewBox="0 0 100 36"
+        aria-hidden="true"
+      >
+        <line x1="0" y1="18" x2="100" y2="18" />
+        <polyline
+          points="{% for point in station.get('sparkline', []) %}{{ point.x }},{{ point.y }} {% endfor %}"
+        />
+      </svg>
+      {% endif %}
+      <div
+        class="seiche-station-range"
+        style="--station-pos: {{ station.get('position_24h_pct') or 50 }}"
+      >
+        <i></i>
+      </div>
+      <div class="seiche-meta">
+        <span class="seiche-pill">{{ station.get('trend') }}</span>
+        <span class="seiche-pill">{{ station.get('setup') }}</span>
+        <span class="seiche-pill"
+          >range {{ "%.1f"|format(station.get('range_24h_in')) }} in</span
+        >
+      </div>
+      {% else %}
+      <strong>offline</strong>
+      <span
+        >{{ station.get('message', 'No current water-level reading.') }}</span
+      >
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="seiche-sections">
+    <article class="seiche-section">
+      <h2>Lake Tilt</h2>
+      <p>{{ lake_tilt.get('label', 'unknown lake tilt') }}</p>
+      <div class="seiche-balance-meter" style="--tilt-in: {{ tilt_in }}">
+        <span></span>
+      </div>
+      <div class="seiche-lake-axis" aria-hidden="true">
+        {% for station in stations %}
+        <span
+          class="seiche-axis-dot"
+          style="
+            --axis-y:
+              {% if station.get('id') == '9087044' %}82{% elif station.get('id') == '9087057' %}50{% else %}18{% endif %};
+            --axis-x: {{ 50 + (station.get('anomaly_in') or 0) * 4 }};
+          "
+        >
+          <b
+            >{% if station.get('id') == '9087044' %}CAL{% elif station.get('id')
+            == '9087057' %}MIL{% else %}LUD{% endif %}</b
+          >
+        </span>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="seiche-section">
+      <h2>Wind Driver</h2>
+      <p>{{ wind.get('setup_hint', 'unknown wind setup') }}</p>
+      <div
+        class="seiche-compass"
+        style="--wind-deg: {{ wind.get('direction_deg') or 0 }}deg"
+        aria-label="Wind direction {{ wind.get('direction_cardinal', '') }}"
+      ></div>
+      <div
+        class="seiche-driver-meter"
+        style="--driver-pct: {{ wind.get('south_push_pct') if wind.get('south_push_pct') is not none else 50 }}"
+      >
+        <i></i>
+      </div>
+      <div class="seiche-driver-labels">
+        <span>drawdown</span>
+        <span>setup</span>
+      </div>
+    </article>
+    <article class="seiche-section">
+      <h2>Celestial Context</h2>
+      <p>{{ celestial.get('phase', 'moon') }}</p>
+      <div
+        class="seiche-moon-orbit"
+        style="
+          --spring-signal: {{ celestial.get('spring_signal') or 0 }};
+          --moon-angle: {{ celestial.get('phase_angle') or 0 }}deg;
+        "
+      >
+        <span></span>
+      </div>
+    </article>
+  </section>
+</div>
+{% endblock %}

@@ -10,14 +10,14 @@ Settings
 
 Example:
 {
-  "argyle": {
+  "site-one": {
     "project_id": "5be...",
     "client_id": "...apps.googleusercontent.com",
     "client_secret": "...",
-    "redirect_uri": "http://192.168.2.137:8082/integrations/google/callback",
+    "redirect_uri": "https://glimpser.example.net:8443/integrations/google/callback",
     "refresh_token": "..."
   },
-  "halsted": { ... }
+  "site-two": { ... }
 }
 
 Backward compatibility

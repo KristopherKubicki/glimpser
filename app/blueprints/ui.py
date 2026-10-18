@@ -20,23 +20,43 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
+    send_from_directory,
     session,
     url_for,
 )
 from flask_login import current_user
+
+from app.viewer_policy import VIEWER_CONFIG, dashboard_matches, viewer_template
 
 _MISSING_SCREENSHOT_LOG_INTERVAL_SECONDS = 300
 _missing_screenshot_log_ts: dict[str, float] = {}
 
 # Tiny per-process cache for the templates JSON payload. The templates UI polls
 # frequently; this keeps the endpoint responsive under load and enables ETag/304.
-_TEMPLATES_JSON_CACHE: dict[tuple[str, str, str], dict[str, object]] = {}
+_TEMPLATES_JSON_CACHE: dict[tuple[str, str, str, bool, str], dict[str, object]] = {}
 _TEMPLATES_JSON_CACHE_TTL_SECONDS = 1.0
 
 _GOOGLE_OAUTH_STATE_TTL_SECONDS = 30 * 60
 _google_oauth_states: dict[str, tuple[str, float]] = {}
 _google_oauth_states_lock = threading.Lock()
+_PTZ_DIRECTION_VECTORS: dict[str, tuple[float, float, float]] = {
+    "up": (0.0, 0.7, 0.0),
+    "down": (0.0, -0.7, 0.0),
+    "left": (-0.7, 0.0, 0.0),
+    "right": (0.7, 0.0, 0.0),
+    "up_left": (-0.6, 0.6, 0.0),
+    "up_right": (0.6, 0.6, 0.0),
+    "down_left": (-0.6, -0.6, 0.0),
+    "down_right": (0.6, -0.6, 0.0),
+    "zoom_in": (0.0, 0.0, 0.7),
+    "zoom_out": (0.0, 0.0, -0.7),
+}
+_PTZ_LENS_DIRECTIONS = {
+    "focus_near",
+    "focus_far",
+    "iris_open",
+    "iris_close",
+}
 
 
 def _store_google_oauth_state(state: str, profile: str) -> None:
@@ -77,14 +97,358 @@ def _log_missing_screenshot(name: str) -> None:
         logging.warning("Unable to serve screenshot for %s", key)
 
 
+def _normalize_ptz_presets(raw: object) -> list[dict[str, str]]:
+    """Return PTZ presets as ``[{token, name}, ...]``."""
+
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return []
+    if not isinstance(raw, list):
+        return []
+
+    presets: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        token = str(item.get("token") or "").strip()
+        if not token:
+            continue
+        name = str(item.get("name") or token).strip() or token
+        presets.append({"token": token, "name": name})
+    return presets
+
+
+def _looks_like_generic_preset_name(name: str, token: str) -> bool:
+    """Return ``True`` when a preset name is just vendor placeholder noise."""
+
+    normalized_name = str(name or "").strip().lower()
+    normalized_token = str(token or "").strip().lower()
+    if not normalized_name:
+        return True
+    if normalized_name == normalized_token:
+        return True
+    if (
+        normalized_name.startswith("preset ")
+        and normalized_name[7:].strip() == normalized_token
+    ):
+        return True
+    return False
+
+
+def _merge_ptz_presets(
+    discovered_raw: object, existing_raw: object | None = None
+) -> list[dict[str, str]]:
+    """Return discovered presets while preserving curated names for matching tokens."""
+
+    discovered = _normalize_ptz_presets(discovered_raw)
+    existing = _normalize_ptz_presets(existing_raw)
+    if not discovered:
+        return existing
+    if not existing:
+        return discovered
+
+    existing_by_token = {
+        str(item.get("token") or "").strip(): str(item.get("name") or "").strip()
+        for item in existing
+        if str(item.get("token") or "").strip()
+    }
+    merged: list[dict[str, str]] = []
+    for item in discovered:
+        token = str(item.get("token") or "").strip()
+        name = str(item.get("name") or token).strip() or token
+        existing_name = existing_by_token.get(token, "")
+        if existing_name and _looks_like_generic_preset_name(name, token):
+            name = existing_name
+        merged.append({"token": token, "name": name})
+    return merged
+
+
+def _ptz_state_from_template(details: dict[str, object] | None) -> dict[str, object]:
+    """Return UI-friendly PTZ metadata for a template."""
+
+    details = details or {}
+    presets = _normalize_ptz_presets(details.get("ptz_presets"))
+    enabled = bool(details.get("ptz_enabled")) and bool(
+        details.get("ptz_profile_token")
+    )
+    try:
+        speed = float(details.get("ptz_speed") or 0.6)
+    except (TypeError, ValueError):
+        speed = 0.6
+    speed = max(0.1, min(speed, 1.0))
+    try:
+        duration_ms = int(details.get("ptz_duration_ms") or 450)
+    except (TypeError, ValueError):
+        duration_ms = 450
+    duration_ms = max(100, min(duration_ms, 10000))
+    vendor_driver = str(details.get("ptz_vendor_driver") or "").strip()
+    return {
+        "enabled": enabled,
+        "service": str(details.get("ptz_service") or "").strip(),
+        "profile_token": str(details.get("ptz_profile_token") or "").strip(),
+        "profile_name": str(details.get("ptz_profile_name") or "").strip(),
+        "presets": presets,
+        "speed": speed,
+        "duration_ms": duration_ms,
+        "vendor_driver": vendor_driver,
+        "supports_lens_controls": vendor_driver == "uid_cgi",
+    }
+
+
+def _build_ptz_template_updates(
+    endpoints: dict[str, object], existing: dict[str, object] | None = None
+) -> dict[str, object]:
+    """Return PTZ template updates while preserving existing state when needed."""
+
+    existing = existing or {}
+    existing_presets = _normalize_ptz_presets(existing.get("ptz_presets"))
+    presets = _merge_ptz_presets(
+        endpoints.get("ptz_presets"), existing.get("ptz_presets")
+    )
+    ptz_service = str(
+        endpoints.get("ptz_service") or existing.get("ptz_service") or ""
+    ).strip()
+    profile_token = str(
+        endpoints.get("profile_token") or existing.get("ptz_profile_token") or ""
+    ).strip()
+    profile_name = str(
+        endpoints.get("profile_name") or existing.get("ptz_profile_name") or ""
+    ).strip()
+    vendor_driver = str(
+        endpoints.get("ptz_vendor_driver") or existing.get("ptz_vendor_driver") or ""
+    ).strip()
+    enabled = bool(ptz_service) and bool(profile_token)
+    return {
+        "ptz_enabled": enabled,
+        "ptz_service": ptz_service,
+        "ptz_profile_token": profile_token,
+        "ptz_profile_name": profile_name,
+        "ptz_presets": json.dumps(
+            presets if presets else existing_presets, separators=(",", ":")
+        ),
+        "ptz_vendor_driver": vendor_driver,
+    }
+
+
+def _probe_onvif_metadata(
+    url: str,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+    replace_url: bool = False,
+    existing: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Probe ONVIF metadata without forcing the capture URL to change."""
+
+    from app import routes
+
+    endpoints = routes.camera_discovery.autodetect_onvif_endpoints(
+        url,
+        username=username,
+        password=password,
+    )
+    endpoints["ptz_vendor_driver"] = routes.camera_discovery.detect_ptz_vendor_driver(
+        url,
+        username=username,
+        password=password,
+    )
+    updates = _build_ptz_template_updates(endpoints, existing=existing)
+    if replace_url:
+        if endpoints.get("snapshot"):
+            updates["url"] = str(endpoints["snapshot"])
+        elif endpoints.get("stream"):
+            updates["url"] = str(endpoints["stream"])
+    return updates
+
+
 def create_blueprint() -> Blueprint:
     """Create and return the UI blueprint with web routes."""
 
     from app import routes
     from app.utils import recovery
+    from app.utils.sun_calibration import (
+        bearing_to_cardinal,
+        build_sun_calibration_evidence,
+        estimate_camera_bearing,
+        sun_frame_payload,
+    )
     from app.utils.validators import validate_group_name
 
     bp = Blueprint("ui", __name__)
+    non_sun_groups = {
+        "archive",
+        "bodycam",
+        "cosmic",
+        "dashboard",
+        "emergency",
+        "flights",
+        "health",
+        "map",
+        "maps",
+        "network",
+        "ops",
+        "plants",
+        "ptz",
+        "source-stale",
+        "telemetry",
+    }
+    non_sun_name_tokens = (
+        "aqi",
+        "bingmaps",
+        "fast.com",
+        "fires",
+        "flightradar",
+        "googlemaps",
+        "hubitat",
+        "lightning",
+        "police",
+        "redfin",
+        "sigalert",
+        "waze",
+        "wind",
+        "zoomearth",
+    )
+    non_sun_direction_tokens = ("interior", "plant")
+
+    def _calibration_float(value: object) -> float | None:
+        try:
+            if value in {None, ""}:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _calibration_screenshots_for_template(
+        name: str, *, max_count: int | None = None
+    ) -> list[str]:
+        camera_dir = Path(routes.SCREENSHOT_DIRECTORY) / name
+        if not camera_dir.exists():
+            return []
+        filenames = [
+            item.name
+            for item in camera_dir.iterdir()
+            if item.is_file()
+            and item.name.startswith(f"{name}_")
+            and item.name.endswith(".png")
+            and ".tmp" not in item.name
+            and ".partial" not in item.name
+        ]
+        filenames = routes.template_manager.sort_canonical_screenshot_filenames(
+            name, filenames, reverse=True
+        )
+        if max_count is None:
+            return filenames
+        return filenames[:max_count]
+
+    def _calibration_camera_payload(name: str, template: dict[str, object]) -> dict:
+        latitude = _calibration_float(template.get("camera_latitude"))
+        longitude = _calibration_float(template.get("camera_longitude"))
+        screenshots = _calibration_screenshots_for_template(name)
+        groups = [
+            group.strip()
+            for group in str(template.get("groups") or "").split(",")
+            if group.strip()
+        ]
+        fov = _calibration_float(template.get("view_horizontal_fov_degrees"))
+        has_location = latitude is not None and longitude is not None
+        frame_count = len(screenshots)
+        lower_name = name.lower()
+        lower_groups = {group.lower() for group in groups}
+        lower_direction = str(template.get("view_direction") or "").lower()
+        is_non_sun_source = (
+            bool(non_sun_groups.intersection(lower_groups))
+            or any(token in lower_name for token in non_sun_name_tokens)
+            or any(token in lower_direction for token in non_sun_direction_tokens)
+        )
+        if not has_location:
+            calibration_reason = "missing camera coordinates"
+        elif frame_count < 1:
+            calibration_reason = "no history frames"
+        elif is_non_sun_source:
+            calibration_reason = "map/dashboard source"
+        else:
+            calibration_reason = "ready"
+        return {
+            "name": name,
+            "groups": groups,
+            "location_label": str(template.get("camera_location_label") or ""),
+            "latitude": latitude,
+            "longitude": longitude,
+            "has_location": has_location,
+            "frame_count": frame_count,
+            "calibration_candidate": calibration_reason == "ready",
+            "calibration_reason": calibration_reason,
+            "current_bearing_degrees": _calibration_float(
+                template.get("view_bearing_degrees")
+            ),
+            "current_direction": str(template.get("view_direction") or ""),
+            "horizontal_fov_degrees": fov or 90.0,
+            "pose_confidence": str(template.get("view_pose_confidence") or ""),
+            "pose_evidence": str(template.get("view_pose_evidence") or ""),
+        }
+
+    def _calibration_best_frame(
+        name: str,
+        template: dict[str, object],
+        *,
+        history_limit: int = 1500,
+    ) -> dict[str, object] | None:
+        latitude = _calibration_float(template.get("camera_latitude"))
+        longitude = _calibration_float(template.get("camera_longitude"))
+        if latitude is None or longitude is None:
+            return None
+
+        best_frame: dict[str, object] | None = None
+        for filename in _calibration_screenshots_for_template(
+            name, max_count=history_limit
+        ):
+            payload = sun_frame_payload(name, filename, latitude, longitude)
+            if not payload:
+                continue
+            if best_frame is None or (
+                int(payload.get("score") or 0),
+                str(payload.get("captured_at") or ""),
+            ) > (
+                int(best_frame.get("score") or 0),
+                str(best_frame.get("captured_at") or ""),
+            ):
+                best_frame = payload
+
+        if best_frame:
+            best_frame["image_url"] = url_for(
+                "media.view_screenshot", name=name, filename=best_frame["filename"]
+            )
+        return best_frame
+
+    def _calibration_status(camera: dict[str, object]) -> dict[str, object]:
+        has_operator_bearing = camera.get(
+            "current_bearing_degrees"
+        ) is not None and str(camera.get("pose_confidence") or "") in {
+            "operator",
+            "calibrated",
+        }
+        has_any_bearing = camera.get("current_bearing_degrees") is not None
+        if has_operator_bearing:
+            return {
+                "key": "calibrated",
+                "label": "Calibrated",
+                "needs_calibration": False,
+            }
+        if has_any_bearing:
+            return {
+                "key": "review",
+                "label": "Review estimate",
+                "needs_calibration": True,
+            }
+        return {
+            "key": "needs_bearing",
+            "label": "Needs bearing",
+            "needs_calibration": True,
+        }
 
     @bp.route("/danger", methods=["GET", "POST"], endpoint="danger_mode")
     @routes.login_required
@@ -95,7 +459,20 @@ def create_blueprint() -> Blueprint:
             action = request.form.get("action")
             if action == "update_shortcut":
                 path_val = request.form.get("shortcut_path")
-                path = Path(path_val) if path_val else None
+                # Only update known application shortcuts, never arbitrary files
+                # selected through a web request.
+                path = None
+                if path_val:
+                    path = next(
+                        (
+                            candidate
+                            for candidate in routes.LINUX_PATHS
+                            if str(candidate) == path_val
+                        ),
+                        None,
+                    )
+                    if path is None:
+                        routes.abort(400, "Unknown Chrome shortcut")
                 paths, msg = routes.update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
@@ -458,12 +835,279 @@ def create_blueprint() -> Blueprint:
         )
         return ("", 204)
 
+    @bp.route("/kiosk_indicators", methods=["POST"])
+    def ingest_kiosk_indicator():
+        """Accept only dedicated, authenticated Hubitat indicator signals."""
+        from app.utils import kiosk_indicators
+
+        if not kiosk_indicators.authenticated(request.headers.get("Authorization", "")):
+            abort(401)
+        if request.content_length is None or request.content_length > 2048:
+            abort(413)
+        try:
+            kiosk_indicators.accept(request.get_json(silent=True), time.time())
+        except (ValueError, TypeError, OverflowError):
+            abort(400)
+        return jsonify({"ok": True})
+
+    @bp.route("/kiosk_indicators", methods=["GET"])
+    @routes.login_required
+    def kiosk_indicators():
+        """Return fresh room-scoped indicators without private message content."""
+        from app.utils.kiosk_indicators import snapshot
+
+        profile = request.args.get("profile", "")
+        if profile not in {"office", "living"}:
+            abort(400)
+        response = jsonify(snapshot(profile))
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    # Per-process heartbeat state is deliberately reset on server restart.
+    # The kiosk-side monitor grants a startup grace period when age is unknown.
+    kiosk_heartbeats = {}
+
+    @bp.route("/kiosk_health", methods=["GET", "POST"])
+    @routes.login_required
+    def kiosk_health():
+        """Report browser rendering-loop activity for the requesting kiosk only."""
+        import time
+
+        profile = request.args.get("profile", "")
+        if profile not in {"office", "living"}:
+            abort(400)
+        key = (request.remote_addr, profile)
+        now = time.monotonic()
+        # Bound retained state even when many authenticated clients visit.
+        for old_key, stamp in list(kiosk_heartbeats.items()):
+            if now - stamp > 3600:
+                kiosk_heartbeats.pop(old_key, None)
+        if request.method == "POST":
+            if len(kiosk_heartbeats) < 256 or key in kiosk_heartbeats:
+                kiosk_heartbeats[key] = now
+            return ("", 204)
+        stamp = kiosk_heartbeats.get(key)
+        response = jsonify({"age_seconds": round(now - stamp, 1) if stamp else None})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     @bp.route("/clock", endpoint="clock_page")
     @routes.login_required
     def clock_page():
         """Render a standalone clock page."""
 
         return render_template("clock.html", page_title="Clock")
+
+    @bp.route("/sun-calibration", endpoint="sun_calibration")
+    @routes.login_required
+    def sun_calibration():
+        """Render the operator game for sun-based camera bearing calibration."""
+
+        return render_template("sun_calibration.html", page_title="Sun Calibration")
+
+    @bp.route("/api/sun-calibration/cameras", endpoint="sun_calibration_cameras")
+    @routes.login_required
+    def sun_calibration_cameras():
+        """Return cameras that can participate in sun bearing calibration."""
+
+        templates = routes.template_manager.get_templates()
+        cameras = [
+            _calibration_camera_payload(name, template)
+            for name, template in sorted(templates.items())
+        ]
+        cameras.sort(
+            key=lambda item: (
+                not bool(item["calibration_candidate"]),
+                not bool(item["has_location"]),
+                not bool(item["frame_count"]),
+                str(item["name"]).lower(),
+            )
+        )
+        return jsonify({"cameras": cameras})
+
+    @bp.route("/api/sun-calibration/queue", endpoint="sun_calibration_queue")
+    @routes.login_required
+    def sun_calibration_queue():
+        """Return the ranked operator queue for sun bearing calibration."""
+
+        try:
+            history_limit = int(request.args.get("history_limit", 1500))
+        except (TypeError, ValueError):
+            history_limit = 1500
+        history_limit = max(100, min(history_limit, 3000))
+
+        templates = routes.template_manager.get_templates()
+        queue = []
+        for name, template in sorted(templates.items()):
+            camera = _calibration_camera_payload(name, template)
+            if not camera["calibration_candidate"]:
+                continue
+            best_frame = _calibration_best_frame(
+                name, template, history_limit=history_limit
+            )
+            status = _calibration_status(camera)
+            queue.append(
+                {
+                    "camera": camera,
+                    "best_frame": best_frame,
+                    "status": status,
+                }
+            )
+
+        queue.sort(
+            key=lambda item: (
+                not bool(item["status"]["needs_calibration"]),
+                -int((item["best_frame"] or {}).get("score") or 0),
+                str(item["camera"]["name"]).lower(),
+            )
+        )
+        return jsonify({"queue": queue})
+
+    @bp.route(
+        "/api/sun-calibration/<string:template_name>/frames",
+        endpoint="sun_calibration_frames",
+    )
+    @routes.login_required
+    def sun_calibration_frames(template_name: routes.TemplateName):
+        """Return recent history frames with computed sun position metadata."""
+
+        raw_name = str(template_name)
+        template_name = routes.validate_template_name(raw_name)
+        if template_name is None:
+            return jsonify({"error": "invalid_template"}), 400
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        latitude = _calibration_float(template.get("camera_latitude"))
+        longitude = _calibration_float(template.get("camera_longitude"))
+        if latitude is None or longitude is None:
+            return jsonify({"error": "missing_camera_location"}), 400
+
+        try:
+            limit = int(request.args.get("limit", 48))
+        except (TypeError, ValueError):
+            limit = 48
+        limit = max(1, min(limit, 100))
+        try:
+            history_limit = int(request.args.get("history_limit", 720))
+        except (TypeError, ValueError):
+            history_limit = 720
+        history_limit = max(limit, min(history_limit, 3000))
+
+        frames = []
+        for filename in _calibration_screenshots_for_template(
+            template_name, max_count=history_limit
+        ):
+            payload = sun_frame_payload(template_name, filename, latitude, longitude)
+            if not payload:
+                continue
+            payload["image_url"] = url_for(
+                "media.view_screenshot", name=template_name, filename=filename
+            )
+            frames.append(payload)
+
+        frames.sort(
+            key=lambda item: (
+                int(item.get("score") or 0),
+                str(item.get("captured_at") or ""),
+            ),
+            reverse=True,
+        )
+        frames = frames[:limit]
+        return jsonify(
+            {
+                "camera": _calibration_camera_payload(template_name, template),
+                "frames": frames,
+            }
+        )
+
+    @bp.route(
+        "/api/sun-calibration/<string:template_name>/bearing",
+        methods=["POST"],
+        endpoint="sun_calibration_bearing",
+    )
+    @routes.login_required
+    def sun_calibration_bearing(template_name: routes.TemplateName):
+        """Save a camera bearing inferred from a sun position observation."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            return jsonify({"error": "invalid_template"}), 400
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        data = request.get_json(silent=True) or {}
+        filename = str(data.get("filename") or "")
+        frame_position = str(data.get("frame_position") or "")
+        note = str(data.get("note") or "").strip()
+
+        screenshots = set(_calibration_screenshots_for_template(template_name))
+        if filename not in screenshots:
+            return jsonify({"error": "invalid_frame"}), 400
+
+        latitude = _calibration_float(template.get("camera_latitude"))
+        longitude = _calibration_float(template.get("camera_longitude"))
+        if latitude is None or longitude is None:
+            return jsonify({"error": "missing_camera_location"}), 400
+
+        try:
+            horizontal_fov = float(
+                data.get("horizontal_fov_degrees")
+                or template.get("view_horizontal_fov_degrees")
+                or 90.0
+            )
+        except (TypeError, ValueError):
+            return jsonify({"error": "invalid_horizontal_fov"}), 400
+
+        payload = sun_frame_payload(template_name, filename, latitude, longitude)
+        if not payload:
+            return jsonify({"error": "invalid_frame_timestamp"}), 400
+
+        try:
+            bearing = estimate_camera_bearing(
+                float(payload["sun_azimuth_degrees"]),
+                horizontal_fov,
+                frame_position,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc).replace(" ", "_")}), 400
+
+        direction = bearing_to_cardinal(bearing)
+        evidence = build_sun_calibration_evidence(
+            filename=filename,
+            captured_at=str(payload["captured_at"]),
+            sun_azimuth_degrees=float(payload["sun_azimuth_degrees"]),
+            sun_elevation_degrees=float(payload["sun_elevation_degrees"]),
+            frame_position=frame_position,
+            horizontal_fov_degrees=horizontal_fov,
+            note=note,
+        )
+        description = str(template.get("view_description") or "").strip()
+        if not description:
+            description = "Camera bearing calibrated from historical sun position."
+
+        updates = {
+            "view_bearing_degrees": bearing,
+            "view_direction": direction,
+            "view_horizontal_fov_degrees": horizontal_fov,
+            "view_pose_confidence": "operator",
+            "view_pose_evidence": evidence,
+            "view_description": description,
+            "view_metadata_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        if not routes.template_manager.save_template(template_name, updates):
+            return jsonify({"error": "save_failed"}), 500
+
+        return jsonify(
+            {
+                "ok": True,
+                "bearing_degrees": bearing,
+                "direction": direction,
+                "evidence": evidence,
+            }
+        )
 
     @bp.route("/latest_frame/<string:template_name>", endpoint="latest_frame")
     @routes.login_required
@@ -583,15 +1227,14 @@ def create_blueprint() -> Blueprint:
 
             if url and ("onvif" in url or urlparse(url).path in {"", "/"}):
                 try:
-                    endpoints = routes.camera_discovery.autodetect_onvif_endpoints(
-                        url,
-                        username=data.get("auth_username") or None,
-                        password=data.get("auth_password") or None,
+                    data.update(
+                        _probe_onvif_metadata(
+                            url,
+                            username=data.get("auth_username") or None,
+                            password=data.get("auth_password") or None,
+                            replace_url=True,
+                        )
                     )
-                    if endpoints.get("snapshot"):
-                        data["url"] = endpoints["snapshot"]
-                    elif endpoints.get("stream"):
-                        data["url"] = endpoints["stream"]
                 except Exception as exc:  # pragma: no cover - network issues
                     logging.error("ONVIF autodetect failed for %s: %s", url, exc)
             if routes.template_manager.save_template(template_name, data):
@@ -607,7 +1250,9 @@ def create_blueprint() -> Blueprint:
                 if session_user is not None
                 else (request.remote_addr or "anon")
             )
-            cache_key = (user_id, group, search_query)
+            viewer = request.args.get("viewer") == "1" or session_user is None
+            dashboard = request.args.get("dashboard", "")
+            cache_key = (user_id, group, search_query, viewer, dashboard)
             now = time.time()
             entry = _TEMPLATES_JSON_CACHE.get(cache_key)
             if (
@@ -633,6 +1278,10 @@ def create_blueprint() -> Blueprint:
             templates = routes.template_manager.get_templates()
             filtered_templates: dict[str, dict[str, str]] = {}
             for name, template in templates.items():
+                if not dashboard_matches(dashboard, name, template):
+                    continue
+                if viewer:
+                    template = viewer_template(name, template)
                 template_groups = template.get("groups", "").split(",")
                 if (group == "all" or group in template_groups) and (
                     not search_query
@@ -697,10 +1346,12 @@ def create_blueprint() -> Blueprint:
         )
         lvideos = routes.template_manager.get_videos_for_template(template_name)
         object_tokens = ["person", "car", "dog", "cat", "truck", "bus", "bicycle"]
+        ptz_state = _ptz_state_from_template(template_details)
         return render_template(
             "template_details.html",
             template_name=template_name,
             template_details=template_details,
+            ptz_state=ptz_state,
             quarantine_active=quarantine_active,
             quarantine_remaining=quarantine_remaining,
             quarantine_reason=quarantine_reason,
@@ -770,12 +1421,12 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def recovery_preview_file(filename: str):
-        safe_name = Path(filename).name
-        path = recovery.RECOVERY_DIR / safe_name
-        if not path.exists():
+        if not re.fullmatch(r"recovery_[a-f0-9]{32}\.(?:png|mp4)", filename):
             routes.abort(404)
-        mimetype = "image/png" if path.suffix == ".png" else "video/mp4"
-        return send_file(path, mimetype=mimetype, max_age=0)
+        mimetype = "image/png" if filename.endswith(".png") else "video/mp4"
+        return send_from_directory(
+            recovery.RECOVERY_DIR, filename, mimetype=mimetype, max_age=0
+        )
 
     @bp.route(
         "/recovery/apply/<string:template_name>",
@@ -800,13 +1451,16 @@ def create_blueprint() -> Blueprint:
             logging.warning("Job removal failed for %s: %s", template_name, exc)
         routes.screenshots.create_blank_frame(template_name)
         try:
-            seconds = int(template.get("frequency", 30 * 60))
+            seconds = 60 * max(1, int(template.get("frequency") or 30))
             routes.scheduling.scheduler.add_job(
                 func=routes.scheduling.update_camera,
                 trigger="interval",
                 seconds=seconds,
                 args=[template_name, template],
                 id=template_name,
+                executor=routes.scheduling.camera_executor(template),
+                max_instances=1,
+                coalesce=True,
                 replace_existing=True,
             )
         except Exception as exc:  # pragma: no cover - scheduler failure
@@ -1211,7 +1865,20 @@ def create_blueprint() -> Blueprint:
                 routes.flash("SMS test triggered. Check logs for results.", "info")
             elif action == "update_shortcut":
                 path_val = request.form.get("shortcut_path")
-                path = Path(path_val) if path_val else None
+                # Only update known application shortcuts, never arbitrary files
+                # selected through a web request.
+                path = None
+                if path_val:
+                    path = next(
+                        (
+                            candidate
+                            for candidate in routes.LINUX_PATHS
+                            if str(candidate) == path_val
+                        ),
+                        None,
+                    )
+                    if path is None:
+                        routes.abort(400, "Unknown Chrome shortcut")
                 paths, msg = routes.update_chrome_shortcuts_info(path)
                 if paths:
                     joined = ", ".join(str(p) for p in paths)
@@ -1367,6 +2034,68 @@ def create_blueprint() -> Blueprint:
         return "." in filename and filename.rsplit(".", 1)[1].lower() == "json"
 
     @bp.route(
+        "/templates/<string:template_name>/event_buffer/test",
+        methods=["POST"],
+        endpoint="event_buffer_test",
+    )
+    @routes.login_required
+    def event_buffer_test(template_name: routes.TemplateName):
+        """Dry-run LAN event-buffer eligibility for a template form."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        payload = dict(template)
+        payload.update(request.form.to_dict())
+        if "event_buffer_enabled" not in request.form:
+            payload["event_buffer_enabled"] = "false"
+        try:
+            sanitized = routes.validate_update_data(payload)
+        except ValueError as exc:
+            return jsonify({"ok": False, "status": "blocked", "message": str(exc)}), 400
+
+        eligible, reason = routes.validators.event_buffer_eligibility(sanitized)
+        if not eligible:
+            return jsonify({"ok": False, "status": "blocked", "message": reason}), 400
+
+        return jsonify(
+            {
+                "ok": True,
+                "status": "ok",
+                "message": (
+                    f"{sanitized['event_buffer_fps']} fps, "
+                    f"{sanitized['event_buffer_pre_seconds']}s pre, "
+                    f"{sanitized['event_buffer_post_seconds']}s post, "
+                    f"{sanitized['event_buffer_seconds']}s ring, "
+                    f"{sanitized['event_buffer_backoff_seconds']}s backoff"
+                ),
+            }
+        )
+
+    @bp.route(
+        "/templates/<string:template_name>/event_buffer/status",
+        methods=["GET"],
+        endpoint="event_buffer_status",
+    )
+    @routes.login_required
+    def event_buffer_status(template_name: routes.TemplateName):
+        """Return live LAN event-buffer status for a template."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        status = routes.event_buffer.event_buffer_status(template_name)
+        return jsonify({"ok": True, "status": "ok", **status})
+
+    @bp.route(
         "/update_template/<string:template_name>",
         methods=["POST"],
         endpoint="update_template",
@@ -1378,6 +2107,28 @@ def create_blueprint() -> Blueprint:
         template_name = routes.validate_template_name(str(template_name))
         if template_name is None:
             routes.abort(404)
+        target_name = template_name
+        submitted_name = request.form.get("name")
+        if submitted_name is not None:
+            try:
+                submitted_name = routes.validate_template_name(str(submitted_name))
+            except Exception:
+                submitted_name = None
+            if submitted_name is None:
+                if request.is_json:
+                    return jsonify({"error": "Invalid template name"}), 400
+                routes.flash("Invalid template name", "error")
+                return redirect("/templates/" + template_name)
+            if submitted_name != template_name:
+                try:
+                    target_name = routes.template_manager.rename_template(
+                        template_name, submitted_name
+                    )
+                except ValueError as exc:
+                    if request.is_json:
+                        return jsonify({"error": str(exc)}), 400
+                    routes.flash(str(exc), "error")
+                    return redirect("/templates/" + template_name)
         updated_data = {
             "url": request.form.get("url"),
             "frequency": request.form.get("frequency"),
@@ -1394,6 +2145,33 @@ def create_blueprint() -> Blueprint:
             "object_filter": request.form.get("object_filter"),
             "object_confidence": request.form.get("object_confidence", 0.5),
             "motion": request.form.get("motion", 0.2),
+            "stabilize_mode": request.form.get("stabilize_mode"),
+            "capture_rotate_degrees": request.form.get("capture_rotate_degrees"),
+            "night_enhance_mode": request.form.get("night_enhance_mode"),
+            "deflicker_mode": request.form.get("deflicker_mode"),
+            "source_template": request.form.get("source_template"),
+            "burst_enhance_mode": request.form.get("burst_enhance_mode"),
+            "burst_enhance_profile": request.form.get("burst_enhance_profile"),
+            "burst_enhance_roi": request.form.get("burst_enhance_roi"),
+            "capture_crop_roi": request.form.get("capture_crop_roi"),
+            "lens_correction_spec": request.form.get("lens_correction_spec"),
+            "horizon_level_mode": request.form.get("horizon_level_mode"),
+            "horizon_level_roi": request.form.get("horizon_level_roi"),
+            "composite_view_mode": request.form.get("composite_view_mode"),
+            "composite_view_spec": request.form.get("composite_view_spec"),
+            "event_buffer_enabled": request.form.get("event_buffer_enabled", "false"),
+            "event_buffer_profile": request.form.get("event_buffer_profile"),
+            "event_buffer_fps": request.form.get("event_buffer_fps"),
+            "event_buffer_seconds": request.form.get("event_buffer_seconds"),
+            "event_buffer_width": request.form.get("event_buffer_width"),
+            "event_buffer_pre_seconds": request.form.get("event_buffer_pre_seconds"),
+            "event_buffer_post_seconds": request.form.get("event_buffer_post_seconds"),
+            "event_buffer_format": request.form.get("event_buffer_format"),
+            "event_buffer_backoff_seconds": request.form.get(
+                "event_buffer_backoff_seconds"
+            ),
+            "disable_autocrop": request.form.get("disable_autocrop", "false").lower()
+            in ["true", "1", "t", "y", "yes", "on"],
             "invert": request.form.get("invert", "false").lower()
             in ["true", "1", "t", "y", "yes", "on"],
             "dark": request.form.get("dark", "false").lower()
@@ -1428,17 +2206,17 @@ def create_blueprint() -> Blueprint:
         # to autodetect the best snapshot/stream endpoint.
         if url and ("onvif" in url or urlparse(url).path in {"", "/"}):
             try:
-                endpoints = routes.camera_discovery.autodetect_onvif_endpoints(
+                onvif_updates = _probe_onvif_metadata(
                     url,
                     username=updated_data.get("auth_username") or None,
                     password=updated_data.get("auth_password") or None,
+                    replace_url=True,
                 )
-                if endpoints.get("snapshot"):
-                    updated_data["url"] = endpoints["snapshot"]
-                elif endpoints.get("stream"):
-                    updated_data["url"] = endpoints["stream"]
             except Exception as exc:  # pragma: no cover - network issues
                 logging.error("ONVIF autodetect failed for %s: %s", url, exc)
+                onvif_updates = {}
+        else:
+            onvif_updates = {}
 
         for key in list(updated_data.keys()):
             if updated_data.get(key) is None:
@@ -1450,28 +2228,155 @@ def create_blueprint() -> Blueprint:
                 return jsonify({"error": str(exc)}), 400
             routes.flash(str(exc), "error")
             return redirect("/templates/" + template_name)
-        routes.template_manager.save_template(template_name, updated_data)
+        updated_data.update(onvif_updates)
+        routes.template_manager.save_template(target_name, updated_data)
+        for job_name in {template_name, target_name}:
+            try:
+                routes.scheduling.scheduler.remove_job(job_name)
+            except LookupError:
+                pass
+        routes.screenshots.create_blank_frame(target_name)
+        updated_data = routes.template_manager.get_template(target_name) or updated_data
         try:
-            routes.scheduling.scheduler.remove_job(template_name)
-        except LookupError as exc:
-            logging.warning("Job removal failed for %s: %s", template_name, exc)
-        routes.screenshots.create_blank_frame(template_name)
-        routes.template_manager.get_template(template_name)
-        try:
-            seconds = int(updated_data.get("frequency", 30 * 60))
+            seconds = 60 * max(1, int(updated_data.get("frequency") or 30))
             routes.scheduling.scheduler.add_job(
                 func=routes.scheduling.update_camera,
                 trigger="interval",
                 seconds=seconds,
-                args=[template_name, updated_data],
-                id=template_name,
+                args=[target_name, updated_data],
+                id=target_name,
+                executor=routes.scheduling.camera_executor(updated_data),
+                max_instances=1,
+                coalesce=True,
                 replace_existing=True,
             )
         except Exception as e:  # pragma: no cover - scheduler failure
             logging.error("job schedule error: %s", e)
         if request.is_json:
             return jsonify({"message": "Template updated successfully!"})
-        return redirect("/templates/" + template_name)
+        return redirect("/templates/" + target_name)
+
+    @bp.route(
+        "/templates/<string:template_name>/ptz/refresh",
+        methods=["POST"],
+        endpoint="refresh_template_ptz",
+    )
+    @routes.login_required
+    def refresh_template_ptz(template_name: routes.TemplateName):
+        """Probe and persist ONVIF PTZ metadata for ``template_name``."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        updates = _probe_onvif_metadata(
+            str(template.get("url") or ""),
+            username=template.get("auth_username") or None,
+            password=template.get("auth_password") or None,
+            replace_url=False,
+            existing=template,
+        )
+        routes.template_manager.save_template(template_name, updates)
+        refreshed = routes.template_manager.get_template(template_name)
+        return jsonify(
+            {
+                "ok": bool(refreshed and refreshed.get("ptz_enabled")),
+                "ptz": _ptz_state_from_template(refreshed),
+            }
+        )
+
+    @bp.route(
+        "/templates/<string:template_name>/ptz",
+        methods=["POST"],
+        endpoint="control_template_ptz",
+    )
+    @routes.login_required
+    def control_template_ptz(template_name: routes.TemplateName):
+        """Execute a PTZ action for ``template_name`` using PTZ controls."""
+
+        template_name = routes.validate_template_name(str(template_name))
+        if template_name is None:
+            routes.abort(404)
+        template = routes.template_manager.get_template(template_name)
+        if not template:
+            routes.abort(404)
+
+        payload = request.get_json(silent=True) or {}
+        action = str(payload.get("action") or "").strip().lower()
+        if action not in {"move", "stop", "preset"}:
+            return jsonify({"ok": False, "error": "invalid_action"}), 400
+
+        ptz_kwargs: dict[str, object] = {
+            "action": action,
+            "username": template.get("auth_username") or None,
+            "password": template.get("auth_password") or None,
+            "profile_token": template.get("ptz_profile_token") or None,
+            "ptz_service": template.get("ptz_service") or None,
+        }
+        if action == "move":
+            direction = str(payload.get("direction") or "").strip().lower()
+            if (
+                direction not in _PTZ_DIRECTION_VECTORS
+                and direction not in _PTZ_LENS_DIRECTIONS
+            ):
+                return jsonify({"ok": False, "error": "invalid_direction"}), 400
+            try:
+                speed = float(template.get("ptz_speed") or 0.6)
+            except (TypeError, ValueError):
+                speed = 0.6
+            speed = max(0.1, min(speed, 1.0))
+            try:
+                default_duration_ms = int(template.get("ptz_duration_ms") or 450)
+            except (TypeError, ValueError):
+                default_duration_ms = 450
+            default_duration_ms = max(100, min(default_duration_ms, 10000))
+            ptz_kwargs.update(
+                {
+                    "direction": direction,
+                    "vendor_driver": template.get("ptz_vendor_driver") or None,
+                    "duration_ms": payload.get("duration_ms", default_duration_ms),
+                }
+            )
+            if direction in _PTZ_DIRECTION_VECTORS:
+                pan, tilt, zoom = _PTZ_DIRECTION_VECTORS[direction]
+                ptz_kwargs.update(
+                    {
+                        "pan": pan * speed,
+                        "tilt": tilt * speed,
+                        "zoom": zoom * speed,
+                    }
+                )
+        elif action == "preset":
+            preset_token = str(payload.get("preset_token") or "").strip()
+            if not preset_token:
+                return jsonify({"ok": False, "error": "missing_preset"}), 400
+            ptz_kwargs["preset_token"] = preset_token
+
+        from app.utils import ptz_views
+
+        try:
+            with ptz_views.manual(template_name):
+                result = routes.camera_discovery.control_ptz(
+                    str(template.get("url") or ""), **ptz_kwargs
+                )
+        except ptz_views.Busy:
+            return jsonify({"ok": False, "error": "ptz_busy_retry"}), 409
+        metadata = result.get("metadata") if isinstance(result, dict) else None
+        if isinstance(metadata, dict):
+            routes.template_manager.save_template(
+                template_name, _build_ptz_template_updates(metadata, existing=template)
+            )
+        refreshed = routes.template_manager.get_template(template_name)
+        body = {
+            "ok": bool(result.get("ok")),
+            "ptz": _ptz_state_from_template(refreshed),
+        }
+        if result.get("error"):
+            body["error"] = result["error"]
+        return jsonify(body), 200 if body["ok"] else 400
 
     @bp.route("/status", endpoint="status")
     @routes.login_required
@@ -1832,6 +2737,32 @@ def create_blueprint() -> Blueprint:
         routes.flash("Google Home disconnected.", "success")
         return redirect(url_for("ui.google_home", profile=profile))
 
+    @bp.route("/kiosk_live_config")
+    @routes.login_required
+    def kiosk_live_config():
+        """Issue a scoped, short-lived Google session token for verified views."""
+        from app.utils import google_sdm
+
+        camera = request.args.get("camera", "")
+        if camera not in VIEWER_CONFIG.get("google_live_cameras", []):
+            abort(404)
+        details = routes.template_manager.get_template(camera) or {}
+        if details.get("private_camera"):
+            abort(403)
+        profile, device_id = google_sdm.parse_sdm_url(details.get("url", ""))
+        if not device_id:
+            abort(404)
+        profile = profile or "default"
+        response = jsonify(
+            {
+                "profile": profile,
+                "device_id": device_id,
+                "token": google_sdm.issue_webrtc_preview_token(profile, device_id),
+            }
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     def _google_webrtc_request_args() -> tuple[str, str, str]:
         """Return normalized `(profile, device_id, token)` from request params/body."""
 
@@ -1947,15 +2878,17 @@ def create_blueprint() -> Blueprint:
                 device_id,
                 exc,
             )
-            return jsonify({"ok": False, "error": str(exc)}), 502
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         logging.info(
             "google_webrtc_start ok profile=%s device=%s media_session=%s answer_len=%s",
             profile,
             device_id[:12] + "…" if len(device_id) > 12 else device_id,
-            stream.media_session_id[:12] + "…"
-            if len(stream.media_session_id) > 12
-            else stream.media_session_id,
+            (
+                stream.media_session_id[:12] + "…"
+                if len(stream.media_session_id) > 12
+                else stream.media_session_id
+            ),
             len(stream.answer_sdp or ""),
         )
         return jsonify(
@@ -1963,9 +2896,9 @@ def create_blueprint() -> Blueprint:
                 "ok": True,
                 "answer_sdp": stream.answer_sdp,
                 "media_session_id": stream.media_session_id,
-                "expires_at": stream.expires_at.isoformat()
-                if stream.expires_at
-                else None,
+                "expires_at": (
+                    stream.expires_at.isoformat() if stream.expires_at else None
+                ),
             }
         )
 
@@ -1997,8 +2930,8 @@ def create_blueprint() -> Blueprint:
             expires_at = google_sdm.extend_webrtc_stream(
                 device_name, media_session_id, profile
             )
-        except Exception as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 502
+        except Exception:
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         return jsonify(
             {
@@ -2033,8 +2966,8 @@ def create_blueprint() -> Blueprint:
                 f"sdm://{profile}/{device_id}"
             )
             google_sdm.stop_webrtc_stream(device_name, media_session_id, profile)
-        except Exception as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 502
+        except Exception:
+            return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
 
         return jsonify({"ok": True})
 
@@ -2117,7 +3050,7 @@ def create_blueprint() -> Blueprint:
 
         profile = (request.args.get("profile") or "").strip() or "default"
         list_error = ""
-        # Default new imports into the house profile group (argyle/beach/halsted)
+        # Default new imports into the selected household profile group
         # when possible, so they appear in the expected video wall immediately.
         default_group = validate_group_name(profile) or "google_home"
 
@@ -2289,7 +3222,23 @@ def create_blueprint() -> Blueprint:
         if not isinstance(stored, dict):
             stored = {}
 
-        mode = "emulator"
+        mode = str(stored.get("mode") or "external").strip().lower()
+        if mode not in {"emulator", "external"}:
+            mode = "external"
+        bridge_url = str(stored.get("bridge_url") or "").strip()
+        api_token = str(stored.get("api_token") or "").strip()
+        devices_path = str(stored.get("devices_path") or "/api/devices").strip()
+        snapshot_path = str(
+            stored.get("snapshot_path") or "/api/cameras/{device_id}/snapshot"
+        ).strip()
+        verify_tls = str(stored.get("verify_tls", "true")).strip().lower() in {
+            "true",
+            "1",
+            "yes",
+            "on",
+            "y",
+            "t",
+        }
         emulator_adb_path = str(stored.get("emulator_adb_path") or "").strip()
         emulator_adb_serial = str(stored.get("emulator_adb_serial") or "").strip()
         emulator_launch_cmd = str(stored.get("emulator_launch_cmd") or "").strip()
@@ -2326,6 +3275,11 @@ def create_blueprint() -> Blueprint:
             selected_profile=selected,
             configured=configured,
             mode=mode,
+            bridge_url=bridge_url,
+            api_token=api_token,
+            devices_path=devices_path,
+            snapshot_path=snapshot_path,
+            verify_tls=verify_tls,
             emulator_adb_path=emulator_adb_path,
             emulator_adb_serial=emulator_adb_serial,
             emulator_launch_cmd=emulator_launch_cmd,
@@ -2335,7 +3289,7 @@ def create_blueprint() -> Blueprint:
             emulator_devices_json=emulator_devices_json,
             emulator_settle_seconds=emulator_settle_seconds,
             suggested_group=suggested_group,
-            page_title="Eufy ADB",
+            page_title="Eufy Integration",
         )
 
     @bp.route(
@@ -2359,7 +3313,23 @@ def create_blueprint() -> Blueprint:
             )
             return redirect(url_for("ui.eufy_home"))
 
-        mode = "emulator"
+        mode = (request.form.get("mode") or "").strip().lower() or "external"
+        if mode not in {"emulator", "external"}:
+            mode = "external"
+        bridge_url = (request.form.get("bridge_url") or "").strip().rstrip("/")
+        api_token = (request.form.get("api_token") or "").strip()
+        devices_path = (
+            request.form.get("devices_path") or ""
+        ).strip() or "/api/devices"
+        snapshot_path = (
+            request.form.get("snapshot_path") or ""
+        ).strip() or "/api/cameras/{device_id}/snapshot"
+        verify_tls = str(request.form.get("verify_tls") or "").lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+        }
         emulator_adb_path = (request.form.get("emulator_adb_path") or "").strip()
         emulator_adb_serial = (request.form.get("emulator_adb_serial") or "").strip()
         emulator_launch_cmd = (request.form.get("emulator_launch_cmd") or "").strip()
@@ -2396,8 +3366,17 @@ def create_blueprint() -> Blueprint:
         if not isinstance(existing, dict):
             existing = {}
 
+        if mode == "external" and not bridge_url:
+            routes.flash("Bridge URL is required for external bridge mode.", "error")
+            return redirect(url_for("ui.eufy_home", profile=profile))
+
         payload[profile] = {
             "mode": mode,
+            "bridge_url": bridge_url,
+            "api_token": api_token,
+            "devices_path": devices_path,
+            "snapshot_path": snapshot_path,
+            "verify_tls": verify_tls,
             "emulator_adb_path": emulator_adb_path,
             "emulator_adb_serial": emulator_adb_serial,
             "emulator_launch_cmd": emulator_launch_cmd,
@@ -2421,10 +3400,10 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def eufy_captcha():
-        """Disabled: Eufy runs in ADB-only mode."""
+        """Disabled: native captcha flow stays off in bridge/emulator deployments."""
         profile = (request.form.get("profile") or "").strip().lower() or "default"
         routes.flash(
-            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "Eufy API/web captcha flow is disabled. Use the external bridge or VM / Emulator integration.",
             "info",
         )
         return redirect(url_for("ui.eufy_home", profile=profile))
@@ -2436,10 +3415,10 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def eufy_captcha_auto():
-        """Disabled: Eufy runs in ADB-only mode."""
+        """Disabled: native captcha flow stays off in bridge/emulator deployments."""
         profile = (request.form.get("profile") or "").strip().lower() or "default"
         routes.flash(
-            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "Eufy API/web captcha flow is disabled. Use the external bridge or VM / Emulator integration.",
             "info",
         )
         return redirect(url_for("ui.eufy_home", profile=profile))
@@ -2451,10 +3430,10 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def eufy_captcha_request():
-        """Disabled: Eufy runs in ADB-only mode."""
+        """Disabled: native captcha flow stays off in bridge/emulator deployments."""
         profile = (request.form.get("profile") or "").strip().lower() or "default"
         routes.flash(
-            "Eufy API/web captcha flow is disabled. Use ADB-only integration.",
+            "Eufy API/web captcha flow is disabled. Use the external bridge or VM / Emulator integration.",
             "info",
         )
         return redirect(url_for("ui.eufy_home", profile=profile))
@@ -2466,10 +3445,10 @@ def create_blueprint() -> Blueprint:
     )
     @routes.login_required
     def eufy_webportal_bootstrap():
-        """Disabled: Eufy runs in ADB-only mode."""
+        """Disabled: web portal bootstrap stays off in bridge/emulator deployments."""
         profile = (request.form.get("profile") or "").strip().lower() or "default"
         routes.flash(
-            "Eufy web portal bootstrap is disabled. Use ADB-only integration.",
+            "Eufy web portal bootstrap is disabled. Use the external bridge or VM / Emulator integration.",
             "info",
         )
         return redirect(url_for("ui.eufy_home", profile=profile))
@@ -2603,9 +3582,11 @@ def create_blueprint() -> Blueprint:
                     variants,
                     key=lambda item: (
                         # Prefer templates that already captured at least once.
-                        1
-                        if str(item[1].get("last_screenshot_time") or "").strip()
-                        else 0,
+                        (
+                            1
+                            if str(item[1].get("last_screenshot_time") or "").strip()
+                            else 0
+                        ),
                         # Prefer human-readable names over "-2/-3" suffixes.
                         1 if not re.search(r"-\d+$", item[0]) else 0,
                         # Prefer currently healthy templates over failed ones.
@@ -2640,7 +3621,7 @@ def create_blueprint() -> Blueprint:
                             "stealth": False,
                             "headless": False,
                             "dark": True,
-                            "notes": "Imported from Eufy ADB integration.",
+                            "notes": "Imported from Eufy integration.",
                         },
                     )
                     if ok:
@@ -2666,7 +3647,7 @@ def create_blueprint() -> Blueprint:
                         "stealth": False,
                         "headless": False,
                         "dark": True,
-                        "notes": "Imported from Eufy ADB integration.",
+                        "notes": "Imported from Eufy integration.",
                     },
                 )
                 if ok:
@@ -2778,9 +3759,10 @@ def create_blueprint() -> Blueprint:
             if vp != profile or vd != device_id:
                 abort(403)
 
+        source_headers = {}
         try:
             payload, content_type = eufy_cloud.fetch_snapshot(
-                profile, device_id, timeout=20
+                profile, device_id, timeout=20, response_headers=source_headers
             )
         except Exception as exc:
             logging.warning(
@@ -2789,9 +3771,13 @@ def create_blueprint() -> Blueprint:
                 device_id,
                 exc,
             )
-            return Response(str(exc), status=502, mimetype="text/plain")
+            return Response(
+                "Camera image unavailable", status=502, mimetype="text/plain"
+            )
 
         resp = Response(payload, mimetype=content_type or "image/jpeg")
+        if source_headers.get("Last-Modified"):
+            resp.headers["Last-Modified"] = source_headers["Last-Modified"]
         resp.headers["Cache-Control"] = "no-store, max-age=0"
         return resp
 

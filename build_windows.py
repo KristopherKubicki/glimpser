@@ -7,12 +7,13 @@ from pathlib import Path
 import PyInstaller.__main__
 
 ARGS = [
-    "app/__init__.py",  # Entry point of the application
+    "main.py",  # Entry point of the application
     "--name=Glimpser",  # Name of the executable
     "--onefile",  # Create a one-file bundled executable
-    "--windowed",  # Disable console window
-    "--add-data=app/templates:templates",  # Include templates directory
-    "--add-data=app/static:static",  # Include static directory
+    "--console",  # Keep CLI output available for service diagnostics
+    "--add-data=app/templates:app/templates",  # Include templates directory
+    "--add-data=app/static:app/static",  # Include static directory
+    "--add-data=app/utils/ffmpeg_setup.py:app/utils",
     "--hidden-import=flask",  # Include hidden import flask
     "--hidden-import=flask_apscheduler",  # Include hidden import flask_apscheduler
     "--hidden-import=sqlalchemy",  # Include hidden import sqlalchemy

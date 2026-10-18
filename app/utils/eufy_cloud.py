@@ -13,6 +13,8 @@ server-side.
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -24,6 +26,7 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass
+from email.utils import format_datetime, parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import quote, urlparse
 
@@ -41,7 +44,6 @@ _EUFY_SERVER_PUBLIC_KEY = (
     "04c5c00c4f8d1197cc7c3167c52bf7acb054d722f0ef08dcd7e0883236e0d72a"
     "3868d9750cb47fa4619248f3d83f0f662671dadc6e2d31c2f41db0161651c7c076"
 )
-_EUFY_OPENUDID = "5e4621b0152c0d00"
 _NATIVE_REFRESH_GRACE_SECONDS = 60.0
 _EUFY_CAPTCHA_LENGTH = 4
 
@@ -58,6 +60,29 @@ _EMULATOR_BOOT_LOCKS: dict[str, threading.Lock] = {}
 _EMULATOR_BOOT_LAST_START: dict[str, float] = {}
 _EUFY_EMULATOR_ONLY = True
 _EUFY_EMULATOR_WEBPORTAL_FALLBACK = False
+
+_EUFY_WIFI_SOLAR_DEVICE_IDS = {
+    item.strip().lower()
+    for item in os.getenv(
+        "EUFY_WIFI_SOLAR_DEVICE_IDS",
+        "driveway,gravel,maple-tree",
+    ).split(",")
+    if item.strip()
+}
+_EUFY_JETTY_SOLAR_DEVICE_IDS = {
+    item.strip().lower()
+    for item in os.getenv(
+        "EUFY_JETTY_SOLAR_DEVICE_IDS",
+        "north-jetty,shore",
+    ).split(",")
+    if item.strip()
+}
+_EUFY_WIFI_SOLAR_TIMEOUT_SECONDS = float(
+    os.getenv("EUFY_WIFI_SOLAR_TIMEOUT_SECONDS", "35")
+)
+_EUFY_JETTY_SOLAR_TIMEOUT_SECONDS = float(
+    os.getenv("EUFY_JETTY_SOLAR_TIMEOUT_SECONDS", "50")
+)
 
 _NATIVE_DEFAULT_HEADERS = {
     "User-Agent": "EufySecurity/4.6.0_1630 (Android 12; ONEPLUS A3003)",
@@ -191,8 +216,10 @@ def resolve_profile(profile: str = "default") -> EufyCloudProfile | None:
         mode = "emulator"
     if mode not in {"external", "webportal", "emulator"}:
         mode = "external"
-    if _EUFY_EMULATOR_ONLY and mode != "emulator":
-        # Force emulator mode so no native/webportal cloud API paths run.
+    if _EUFY_EMULATOR_ONLY and mode not in {"emulator", "external"}:
+        # Keep native/webportal cloud API paths disabled in this deployment,
+        # but still allow a narrow external bridge (for example a Mac-hosted
+        # helper service that exposes device and snapshot endpoints).
         mode = "emulator"
 
     bridge_url = str(value.get("bridge_url") or "").strip().rstrip("/")
@@ -1436,11 +1463,25 @@ def _native_decrypt_payload(data: str, key: bytes) -> object:
         raise EufyCloudError("Failed to parse Eufy encrypted payload") from exc
 
 
+def _native_device_id() -> str:
+    """Keep a stable per-installation ID, with an explicit migration override."""
+    configured = os.getenv("GLIMPSER_EUFY_OPENUDID", "").strip()
+    if configured:
+        if not re.fullmatch(r"[0-9a-fA-F]{16}", configured):
+            raise EufyCloudError("Invalid configured Eufy device identifier")
+        return configured.lower()
+    return hmac.new(
+        str(config.SECRET_KEY).encode(),
+        b"glimpser-eufy-device-id-v1",
+        hashlib.sha256,
+    ).hexdigest()[:16]
+
+
 def _native_headers(country: str) -> dict[str, str]:
     headers = dict(_NATIVE_DEFAULT_HEADERS)
     headers["Country"] = country.upper()
     headers["Timezone"] = time.strftime("GMT%z")
-    headers["Openudid"] = _EUFY_OPENUDID
+    headers["Openudid"] = _native_device_id()
     return headers
 
 
@@ -2970,9 +3011,9 @@ def list_devices(profile: str = "default", *, timeout: float = 12.0) -> list[dic
     if not prof:
         raise EufyCloudError(f"Eufy cloud profile '{profile}' is not configured")
 
-    if _EUFY_EMULATOR_ONLY and prof.mode != "emulator":
+    if _EUFY_EMULATOR_ONLY and prof.mode not in {"emulator", "external"}:
         raise EufyCloudError(
-            "Eufy web/native cloud modes are disabled. Use VM / Emulator (ADB)."
+            "Eufy web/native cloud modes are disabled. Use the external bridge or VM / Emulator (ADB)."
         )
 
     if prof.mode == "emulator":
@@ -3063,21 +3104,442 @@ def _snapshot_url_for_device(profile: EufyCloudProfile, device_id: str) -> str:
     return _join_url(profile.bridge_url, path)
 
 
+def _snapshot_timeout_for_device(device_id: str, timeout: float) -> float:
+    """Give slow solar cameras enough wake time without changing all Eufy cams."""
+
+    clean = str(device_id or "").strip().lower()
+    if clean in _EUFY_WIFI_SOLAR_DEVICE_IDS:
+        return max(float(timeout), _EUFY_WIFI_SOLAR_TIMEOUT_SECONDS)
+    if clean in _EUFY_JETTY_SOLAR_DEVICE_IDS:
+        return max(float(timeout), _EUFY_JETTY_SOLAR_TIMEOUT_SECONDS)
+    return float(timeout)
+
+
+def _looks_like_eufy_cellular_reminder(payload: bytes) -> bool:
+    """Detect Eufy's cellular-data reminder dialog in bridge screenshots."""
+
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 600 or height < 600:
+                return False
+            dialog = rgb.crop(
+                (
+                    int(width * 0.25),
+                    int(height * 0.41),
+                    int(width * 0.75),
+                    int(height * 0.58),
+                )
+            ).resize((96, 32))
+            pixels = list(dialog.getdata())
+    except Exception:
+        return False
+
+    if not pixels:
+        return False
+    white_pixels = sum(1 for r, g, b in pixels if r > 218 and g > 218 and b > 218)
+    return white_pixels / len(pixels) > 0.55
+
+
+def _looks_like_eufy_loading_frame(payload: bytes) -> bool:
+    """Detect Eufy's dark single-camera loading shell from bridge screenshots."""
+
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 600 or height < 600:
+                return False
+            frame = rgb.resize((96, 96))
+            player = rgb.crop(
+                (
+                    int(width * 0.13),
+                    int(height * 0.26),
+                    int(width * 0.87),
+                    int(height * 0.70),
+                )
+            ).resize((96, 56))
+            frame_pixels = list(frame.getdata())
+            player_pixels = list(player.getdata())
+    except Exception:
+        return False
+
+    if not frame_pixels or not player_pixels:
+        return False
+    frame_dark = sum(1 for pixel in frame_pixels if max(pixel) < 32) / len(frame_pixels)
+    player_dark = sum(1 for pixel in player_pixels if max(pixel) < 18) / len(
+        player_pixels
+    )
+    small_dark_png = len(payload) < 200_000 and frame_dark > 0.74
+    video_shell = frame_dark > 0.86 and player_dark > 0.92
+    return small_dark_png or video_shell
+
+
+def _looks_like_eufy_app_controls(payload: bytes) -> bool:
+    """Detect Eufy bottom controls or modal sheets over the camera image."""
+
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 600 or height < 600:
+                return False
+
+            bottom = rgb.crop((0, int(height * 0.66), width, height)).resize((120, 42))
+            lower_padding = rgb.crop((0, int(height * 0.74), width, height)).resize(
+                (120, 32)
+            )
+            lower_right = rgb.crop(
+                (
+                    int(width * 0.64),
+                    int(height * 0.66),
+                    int(width * 0.98),
+                    int(height * 0.96),
+                )
+            ).resize((64, 44))
+            mid_right = rgb.crop(
+                (
+                    int(width * 0.65),
+                    int(height * 0.45),
+                    int(width * 0.99),
+                    int(height * 0.68),
+                )
+            ).resize((80, 48))
+            bottom_pixels = list(bottom.getdata())
+            lower_padding_pixels = list(lower_padding.getdata())
+            lower_right_pixels = list(lower_right.getdata())
+            mid_right_pixels = list(mid_right.getdata())
+    except Exception:
+        return False
+
+    if not bottom_pixels:
+        return False
+
+    white_sheet = sum(
+        1
+        for r, g, b in bottom_pixels
+        if r > 232 and g > 232 and b > 232 and max(r, g, b) - min(r, g, b) < 22
+    ) / len(bottom_pixels)
+    if white_sheet >= 0.46:
+        return True
+
+    bottom_luma = [(0.299 * r) + (0.587 * g) + (0.114 * b) for r, g, b in bottom_pixels]
+    dark_sheet = sum(1 for luma in bottom_luma if luma < 28) / len(bottom_luma)
+    if dark_sheet >= 0.70:
+        bright_text = sum(1 for luma in bottom_luma if luma > 210) / len(bottom_luma)
+        if bright_text >= 0.003:
+            return True
+
+    if lower_right_pixels:
+        dark_controls = sum(1 for pixel in lower_right_pixels if max(pixel) < 45) / len(
+            lower_right_pixels
+        )
+        bright_marks = sum(
+            1
+            for r, g, b in lower_right_pixels
+            if (0.299 * r) + (0.587 * g) + (0.114 * b) > 220
+        ) / len(lower_right_pixels)
+        if dark_controls >= 0.18 and bright_marks >= 0.005:
+            return True
+
+    if mid_right_pixels:
+        dark_controls = sum(1 for pixel in mid_right_pixels if max(pixel) < 55) / len(
+            mid_right_pixels
+        )
+        bright_marks = sum(
+            1
+            for r, g, b in mid_right_pixels
+            if (0.299 * r) + (0.587 * g) + (0.114 * b) > 180
+        ) / len(mid_right_pixels)
+        lower_padding_dark = (
+            sum(1 for pixel in lower_padding_pixels if max(pixel) < 10)
+            / len(lower_padding_pixels)
+            if lower_padding_pixels
+            else 0.0
+        )
+        aspect_ratio = width / max(float(height), 1.0)
+        if (
+            0.85 <= aspect_ratio <= 1.15
+            and lower_padding_dark >= 0.80
+            and dark_controls >= 0.32
+            and bright_marks >= 0.004
+        ):
+            return True
+
+    return False
+
+
+def _looks_like_eufy_blocked_frame(payload: bytes) -> bool:
+    """Return true for Eufy app UI states that should not be published."""
+
+    return (
+        _looks_like_eufy_cellular_reminder(payload)
+        or _looks_like_eufy_loading_frame(payload)
+        or _looks_like_eufy_app_controls(payload)
+    )
+
+
+def _external_bridge_devices(
+    profile: EufyCloudProfile, *, timeout: float
+) -> list[dict[str, object]]:
+    try:
+        resp = requests.get(
+            _join_url(profile.bridge_url, profile.devices_path),
+            headers=_headers(profile),
+            timeout=min(max(timeout, 1.0), 8.0),
+            verify=profile.verify_tls,
+        )
+    except Exception:
+        return []
+    if resp.status_code >= 400:
+        return []
+    try:
+        return _extract_devices(resp.json())
+    except Exception:
+        return []
+
+
+def _external_bridge_device_order(
+    profile: EufyCloudProfile, *, timeout: float
+) -> list[str]:
+    out: list[str] = []
+    for item in _external_bridge_devices(profile, timeout=timeout):
+        device_id = str(
+            item.get("device_id")
+            or item.get("id")
+            or item.get("serialNumber")
+            or item.get("serial")
+            or ""
+        ).strip()
+        if device_id:
+            out.append(device_id)
+    return out
+
+
+def _external_bridge_grid_device_index(
+    profile: EufyCloudProfile,
+    device_id: str,
+    *,
+    timeout: float,
+) -> int | None:
+    devices = _external_bridge_devices(profile, timeout=timeout)
+    target = str(device_id or "").strip()
+    for index, item in enumerate(devices):
+        current = str(
+            item.get("device_id")
+            or item.get("id")
+            or item.get("serialNumber")
+            or item.get("serial")
+            or ""
+        ).strip()
+        if current != target:
+            continue
+        status = str(item.get("status") or "").strip().lower()
+        try:
+            offline_streak = int(str(item.get("offline_streak") or "0").strip())
+        except Exception:
+            offline_streak = 0
+        if status and status not in {"captured", "ok"}:
+            return None
+        if offline_streak > 0:
+            return None
+        return index
+    return None
+
+
+def _external_bridge_grid_tile_fallback(
+    profile: EufyCloudProfile,
+    device_id: str,
+    *,
+    timeout: float,
+) -> tuple[bytes, str] | None:
+    """Use the bridge's latest grid tile when the single-camera view is blocked.
+
+    The macmini bridge exposes read-only artifacts but no tap/dismiss endpoint.
+    Returning a full-size synthesized frame keeps downstream per-template crop
+    settings working while avoiding a modal-poisoned capture.
+    """
+
+    index = _external_bridge_grid_device_index(
+        profile,
+        device_id,
+        timeout=timeout,
+    )
+    if index is None:
+        return None
+
+    try:
+        resp = requests.get(
+            _join_url(profile.bridge_url, "/artifacts/latest-grid.png"),
+            headers=_headers(profile),
+            timeout=min(max(timeout, 1.0), 8.0),
+            verify=profile.verify_tls,
+        )
+    except Exception:
+        return None
+    if resp.status_code >= 400:
+        return None
+    content_type = str(resp.headers.get("Content-Type") or "").split(";", 1)[0]
+    if not content_type.startswith("image/"):
+        return None
+
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(resp.content)) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            columns = 2
+            column = index % columns
+            row = index // columns
+            tile_width = int(width * 0.341)
+            tile_height = int(height * 0.192)
+            step_x = int(width * 0.351)
+            step_y = int(height * 0.202)
+            left = int(width * 0.154) + column * step_x
+            top = int(height * 0.090) + row * step_y
+            if left < 0 or top < 0:
+                return None
+            if left + tile_width > width or top + tile_height > height:
+                return None
+            tile = rgb.crop((left, top, left + tile_width, top + tile_height))
+            target_width = width
+            target_height = min(height, int(round(width * 9 / 16)))
+            resample = getattr(Image.Resampling, "LANCZOS", Image.LANCZOS)
+            fitted = ImageOps.fit(tile, (target_width, target_height), method=resample)
+            canvas = Image.new("RGB", (width, height), (0, 0, 0))
+            paste_top = min(max(int(height * 0.041), 0), height - target_height)
+            canvas.paste(fitted, (0, paste_top))
+            with io.BytesIO() as buf:
+                canvas.save(buf, "PNG")
+                return buf.getvalue(), "image/png"
+    except Exception:
+        return None
+
+
+def _external_bridge_single_camera_crop_fallback(
+    payload: bytes,
+) -> tuple[bytes, str] | None:
+    """Crop away Eufy app controls when the camera area itself is usable."""
+
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(payload)) as image:
+            rgb = image.convert("RGB")
+            width, height = rgb.size
+            if width < 600 or height < 600:
+                return None
+            aspect = width / max(float(height), 1.0)
+            if not 0.85 <= aspect <= 1.15:
+                return None
+
+            target_width = width
+            target_height = min(height, int(round(width * 9 / 16)))
+            resample = getattr(Image.Resampling, "LANCZOS", Image.LANCZOS)
+            boxes = (
+                (
+                    int(width * 0.06),
+                    int(height * 0.05),
+                    int(width * 0.94),
+                    int(height * 0.60),
+                ),
+                (
+                    int(width * 0.08),
+                    int(height * 0.08),
+                    int(width * 0.92),
+                    int(height * 0.66),
+                ),
+                (0, 0, width, int(height * 0.62)),
+                (0, 0, width, int(height * 0.56)),
+            )
+            for box in boxes:
+                left, top, right, bottom = box
+                if right <= left or bottom <= top:
+                    continue
+                cropped = rgb.crop((left, top, right, bottom))
+                fitted = ImageOps.fit(
+                    cropped, (target_width, target_height), method=resample
+                )
+                if fitted.entropy() < 4.0:
+                    continue
+                with io.BytesIO() as buf:
+                    fitted.save(buf, "PNG")
+                    candidate = buf.getvalue()
+                if not _looks_like_eufy_blocked_frame(candidate):
+                    return candidate, "image/png"
+    except Exception:
+        return None
+    return None
+
+
+def _external_bridge_image_or_grid_fallback(
+    profile: EufyCloudProfile,
+    device_id: str,
+    payload: bytes,
+    content_type: str,
+    *,
+    timeout: float,
+    response_headers: dict[str, str] | None = None,
+    modified: str = "",
+) -> tuple[bytes, str]:
+    # Carry publisher metadata only while returning this response's pixels.
+    # A grid fallback is a different image whose camera exposure time is unknown.
+    if response_headers is not None:
+        response_headers.clear()
+        try:
+            published = parsedate_to_datetime(modified)
+            if published.tzinfo is not None:
+                response_headers["Last-Modified"] = format_datetime(published)
+        except (ValueError, TypeError, OverflowError):
+            pass
+    content_type = content_type or "image/jpeg"
+    if not _looks_like_eufy_blocked_frame(payload):
+        return payload, content_type
+    single_camera_fallback = _external_bridge_single_camera_crop_fallback(payload)
+    if single_camera_fallback is not None:
+        return single_camera_fallback
+    if response_headers is not None:
+        response_headers.clear()
+    fallback = _external_bridge_grid_tile_fallback(
+        profile,
+        device_id,
+        timeout=timeout,
+    )
+    if fallback is not None:
+        fallback_payload, _fallback_content_type = fallback
+        if _looks_like_eufy_blocked_frame(fallback_payload):
+            raise EufyCloudError("Eufy bridge grid fallback is blocked by app overlay")
+        return fallback
+    raise EufyCloudError("Eufy bridge snapshot is blocked by app overlay")
+
+
 def fetch_snapshot(
     profile: str,
     device_id: str,
     *,
     timeout: float = 20.0,
+    response_headers: dict[str, str] | None = None,
 ) -> tuple[bytes, str]:
     """Fetch a snapshot for ``device_id`` from the configured profile."""
 
+    if response_headers is not None:
+        response_headers.clear()
+    timeout = _snapshot_timeout_for_device(device_id, timeout)
     prof = resolve_profile(profile)
     if not prof:
         raise EufyCloudError(f"Eufy cloud profile '{profile}' is not configured")
 
-    if _EUFY_EMULATOR_ONLY and prof.mode != "emulator":
+    if _EUFY_EMULATOR_ONLY and prof.mode not in {"emulator", "external"}:
         raise EufyCloudError(
-            "Eufy web/native cloud modes are disabled. Use VM / Emulator (ADB)."
+            "Eufy web/native cloud modes are disabled. Use the external bridge or VM / Emulator (ADB)."
         )
 
     if prof.mode == "emulator":
@@ -3146,7 +3608,15 @@ def fetch_snapshot(
 
     content_type = str(resp.headers.get("Content-Type") or "").split(";", 1)[0].strip()
     if content_type.startswith("image/"):
-        return resp.content, content_type or "image/jpeg"
+        return _external_bridge_image_or_grid_fallback(
+            prof,
+            device_id,
+            resp.content,
+            content_type or "image/jpeg",
+            timeout=timeout,
+            response_headers=response_headers,
+            modified=resp.headers.get("Last-Modified", ""),
+        )
 
     # Some bridges return JSON indirection (`{"snapshot_url":"..."}` or base64).
     try:
@@ -3167,9 +3637,16 @@ def fetch_snapshot(
     ).strip()
     if b64:
         try:
-            return base64.b64decode(b64), "image/jpeg"
+            decoded = base64.b64decode(b64)
         except Exception as exc:
             raise EufyCloudError("Invalid snapshot base64 payload") from exc
+        return _external_bridge_image_or_grid_fallback(
+            prof,
+            device_id,
+            decoded,
+            "image/jpeg",
+            timeout=timeout,
+        )
 
     redirect_url = str(
         payload.get("snapshot_url")
@@ -3197,7 +3674,15 @@ def fetch_snapshot(
             str(proxied.headers.get("Content-Type") or "").split(";", 1)[0].strip()
         )
         if proxied_type.startswith("image/"):
-            return proxied.content, proxied_type or "image/jpeg"
+            return _external_bridge_image_or_grid_fallback(
+                prof,
+                device_id,
+                proxied.content,
+                proxied_type or "image/jpeg",
+                timeout=timeout,
+                response_headers=response_headers,
+                modified=proxied.headers.get("Last-Modified", ""),
+            )
         raise EufyCloudError("Snapshot redirect did not return an image")
 
     raise EufyCloudError("Bridge snapshot payload did not include image data")

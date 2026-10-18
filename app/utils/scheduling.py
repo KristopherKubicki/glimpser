@@ -18,12 +18,14 @@ import multiprocessing
 import os
 import random
 import re
+import shutil
 import sys
 import threading
 import time
 from collections import OrderedDict
 from functools import reduce
 from math import gcd
+from pathlib import Path
 
 import psutil
 
@@ -53,6 +55,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import ObjectDeletedError
 
+from app.caption_policy import usable_caption
 from app.config import (
     AUTO_UPDATE_BRANCH,
     CLIP_MODEL_NAME,
@@ -72,24 +75,26 @@ from app.config import (
     WATCHDOG_MEMORY_THRESHOLD,
     get_setting,
 )
-from app.config import (
-    DEBUG as CONFIG_DEBUG,
-)
+from app.config import DEBUG as CONFIG_DEBUG
 from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
 from app.utils.db import SessionLocal, ensure_column
 from app.utils.logging_utils import sanitize_url
 
-from . import camera_discovery
+from . import browser_queue, camera_discovery
 from . import system_metrics as _system_metrics
 from .detect import calculate_difference_fast
 from .email_alerts import email_alert
 from .http_callbacks import send_http_callback
-from .image_processing import chatgpt_compare
+from .image_processing import _caption_cache_prompt, chatgpt_compare
 from .image_utils import add_motion_and_caption, find_closest_image
 from .llm import summarize
 from .network import is_system_online, network_state
 from .screenshots import (
+    CAPTURE_STALE_BROWSER_SLOT_BUSY,
+    CAPTURE_STALE_PREVIOUS,
+    _is_valid_png,
+    _postprocess_still_image,
     add_timestamp,
     capture_or_download,
     cas_error,
@@ -97,7 +102,7 @@ from .screenshots import (
     get_cached_status_code,
     is_chrome_debug_port_open,
     is_mostly_blank,
-    remove_background,
+    is_stale_capture_result,
     throttle_cache,
 )
 from .sms_alerts import sms_alert
@@ -113,8 +118,12 @@ from .template_manager import (
     get_templates_sorted_by_last_caption_time,
     get_video_count,
     mark_offline,
+    parse_canonical_screenshot_timestamp,
+    save_caption_metadata,
     save_template,
     set_capture_failed,
+    set_capture_stale,
+    sort_canonical_screenshot_filenames,
     update_last_screenshot_time,
 )
 from .validators import validate_group_name, validate_template_name
@@ -159,7 +168,7 @@ def _load_scene_caption_cache(directory: str) -> "OrderedDict[str, str]":
 
     path = _scene_caption_cache_path(directory)
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
         return OrderedDict()
@@ -202,7 +211,9 @@ def _save_scene_caption_cache(directory: str, cache: "OrderedDict[str, str]") ->
 def _scene_caption_cache_key(scene_signature: str, prompt: str) -> str:
     """Return a stable cache key combining scene signature and prompt."""
 
-    prompt_hash = hashlib.sha1(prompt.encode("utf-8", errors="ignore")).hexdigest()[:12]
+    prompt_hash = hashlib.sha256(
+        _caption_cache_prompt(prompt).encode("utf-8", errors="ignore")
+    ).hexdigest()[:24]
     return f"{scene_signature}:{prompt_hash}"
 
 
@@ -285,6 +296,67 @@ def _scene_change_threshold(template: dict) -> int:
     except Exception:
         threshold = 4
     return max(1, threshold)
+
+
+def _truthy_template_value(value) -> bool:
+    """Return True for common truthy values stored by templates."""
+
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _template_timestamp(value) -> datetime.datetime | None:
+    """Parse a template timestamp as a naive UTC datetime."""
+
+    if not value:
+        return None
+    try:
+        parsed = datetime.datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        try:
+            parsed = parser.parse(str(value))
+        except Exception:
+            return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(datetime.UTC).replace(tzinfo=None)
+    return parsed
+
+
+def _caption_refresh_hours(template: dict) -> float:
+    """Return the maximum age for a stored caption before refreshing it."""
+
+    try:
+        frequency = int(float(template.get("frequency", 30)))
+    except Exception:
+        frequency = 30
+
+    hours = 24.0
+    if frequency <= 30:
+        hours = 8.0
+    if frequency <= 5:
+        hours = 3.0
+
+    if _truthy_template_value(template.get("livecaption")):
+        hours = max(1.0, frequency / 7)
+
+    return hours
+
+
+def _caption_refresh_due(template: dict, now: datetime.datetime | None = None) -> bool:
+    """Return True when the camera needs a fresh LLM caption."""
+
+    if (template.get("last_caption", "") or "") == "":
+        return True
+    last_caption_time = _template_timestamp(template.get("last_caption_time"))
+    if last_caption_time is None:
+        return True
+    now = now or datetime.datetime.utcnow()
+    return now - last_caption_time > datetime.timedelta(
+        hours=_caption_refresh_hours(template)
+    )
 
 
 def _scene_changed(
@@ -477,6 +549,7 @@ def get_scheduler_health(top_n: int = 10) -> dict:
         running_jobs = scheduler._running_jobs  # noqa: SLF001 - internal telemetry only
 
     return {
+        "browser_queue": browser_queue.health(),
         "max_instance_skips_total": total,
         "last_max_instance_at": last_at,
         "running_jobs": running_jobs,
@@ -533,18 +606,130 @@ def register_job_failure(key: str) -> None:
             )
 
 
+_WORKER_CAPTURE_FAILED = 2
+_WORKER_CAPTURE_DEFERRED = 3
+
+
 def _run_target(func, args):
-    """Wrapper to set process title before executing ``func``."""
+    """Run a bounded worker without finalizing inherited scheduler threads."""
     if setproctitle:
         title = getattr(func, "__name__", "job")
         if args and isinstance(args[0], str):
             title += f":{args[0]}"
         setproctitle(f"glimpser {title}")
+    exit_code = 1
     try:
-        func(*args)
+        key = (
+            args[0]
+            if args and isinstance(args[0], str)
+            else getattr(func, "__name__", "job")
+        )
+        failures_before = job_failures.get(key, 0)
+        result = func(*args)
+        # Failure counters live in process memory. A child can record a failed
+        # capture and return normally; the parent must not mistake that for a
+        # successful frame and erase its own backoff history.
+        if job_failures.get(key, 0) > failures_before:
+            exit_code = _WORKER_CAPTURE_FAILED
+        elif isinstance(result, str) and result in {
+            CAPTURE_STALE_BROWSER_SLOT_BUSY,
+            CAPTURE_STALE_PREVIOUS,
+        }:
+            exit_code = _WORKER_CAPTURE_DEFERRED
+        else:
+            exit_code = 0
+    except SystemExit as exc:
+        exit_code = exc.code if isinstance(exc.code, int) else int(exc.code is not None)
+        if exit_code == _WORKER_CAPTURE_DEFERRED:
+            exit_code = 1  # An explicit SystemExit is not our capture deferral.
     except Exception:
         logging.exception("Unhandled exception in %s", getattr(func, "__name__", "job"))
-        sys.exit(1)
+        exit_code = 1
+    finally:
+        if multiprocessing.parent_process() is not None:
+            # A fork from ThreadPoolExecutor inherits its thread-exit registry.
+            # Python's normal child shutdown then tries to join the very thread
+            # executing this worker and exits 1 even after a successful capture.
+            # The job has already unwound its own context managers/finally blocks;
+            # flush its output and exit without running parent thread finalizers.
+            for stream in (sys.stdout, sys.stderr):
+                try:
+                    stream.flush()
+                except Exception:
+                    pass
+            os._exit(exit_code)
+    if exit_code:
+        sys.exit(exit_code)
+
+
+def _defer_camera_for_resources(func, args, timeout):
+    """Keep one short retry per camera without declaring its source offline."""
+    if func is not update_camera or not args or not scheduler.running:
+        return
+    name = args[0]
+    current = get_template(name)
+    if not current or _template_is_archived(current):
+        return
+    job_id = f"resource_retry:{name}"
+    # Preserve an existing ticket's place instead of pushing it back each turn.
+    if scheduler.get_job(job_id):
+        return
+    try:
+        scheduler.add_job(
+            id=job_id,
+            func=schedule_camera_capture,
+            trigger="date",
+            run_date=datetime.datetime.now(datetime.UTC)
+            + datetime.timedelta(seconds=30 + random.randrange(30)),
+            args=[name, {}, timeout],
+            executor=camera_executor(current),
+            max_instances=1,
+            misfire_grace_time=300,
+            coalesce=True,
+            replace_existing=False,
+        )
+    except Exception:
+        logging.exception("Could not defer capture for %s", name)
+
+
+def _terminate_timed_out_worker(process) -> None:
+    """Stop a worker and descendants observed before it can orphan them."""
+    descendants = []
+    pid = getattr(process, "pid", None)
+    if isinstance(pid, int) and pid > 0:
+        try:
+            descendants = psutil.Process(pid).children(recursive=True)
+        except psutil.NoSuchProcess:
+            pass
+        except psutil.Error as exc:
+            logging.warning("Cannot inspect timed-out worker descendants: %s", exc)
+
+    process.terminate()
+    # Keep psutil Process identities captured while ownership was provable.
+    # Their signal methods guard against PID reuse; never match by process name.
+    for child in reversed(descendants):
+        try:
+            child.terminate()
+        except psutil.NoSuchProcess:
+            pass
+        except psutil.Error as exc:
+            logging.warning("Cannot terminate worker descendant: %s", exc)
+    process.join(5)
+    if process.is_alive():
+        if hasattr(process, "kill"):
+            process.kill()
+            process.join(5)
+        logging.warning("Process kill required after timeout")
+    if descendants:
+        _, alive = psutil.wait_procs(descendants, timeout=1)
+        for child in alive:
+            try:
+                child.kill()
+            except psutil.NoSuchProcess:
+                pass
+            except psutil.Error as exc:
+                logging.warning("Cannot kill worker descendant: %s", exc)
+        psutil.wait_procs(alive, timeout=1)
 
 
 def run_with_timeout(func, args=(), timeout=300):
@@ -592,22 +777,28 @@ def run_with_timeout(func, args=(), timeout=300):
             session.close()
         return
 
-    cpu_level = psutil.cpu_percent(interval=0.0)
+    # Nonblocking psutil samples average since this thread's previous call.
+    # A browser worker may have spent that entire interval rendering, causing
+    # the next (oldest) ticket to inherit its load and repeatedly lose admission.
+    # A short fixed window measures current pressure, independent of job length.
+    cpu_level = psutil.cpu_percent(interval=0.1)
     if cpu_level > WATCHDOG_CPU_THRESHOLD:
         logging.info(
-            "High CPU (%.1f%%); skipping job %s",
+            "High CPU (%.1f%%); deferring job %s",
             cpu_level,
             getattr(func, "__name__", "job"),
         )
+        _defer_camera_for_resources(func, args, timeout)
         return
 
     mem_level = psutil.virtual_memory().percent
     if mem_level > WATCHDOG_MEMORY_THRESHOLD:
         logging.info(
-            "High memory (%.1f%%); skipping job %s",
+            "High memory (%.1f%%); deferring job %s",
             mem_level,
             getattr(func, "__name__", "job"),
         )
+        _defer_camera_for_resources(func, args, timeout)
         return
 
     # Determine key for tracking active jobs. For camera updates the first
@@ -675,18 +866,13 @@ def run_with_timeout(func, args=(), timeout=300):
                 pass
         with active_jobs_lock:
             active_jobs.pop(key, None)
-        return
+        return False
 
     process.join(timeout)
     success = True
+    deferred = False
     if process.is_alive():
-        process.terminate()
-        process.join(5)
-        if process.is_alive():
-            if hasattr(process, "kill"):
-                process.kill()
-                process.join(5)
-            logging.warning("Process kill required after timeout")
+        _terminate_timed_out_worker(process)
         logging.warning("Process terminated due to timeout")
         success = False
         if args and isinstance(args[0], str):
@@ -701,12 +887,14 @@ def run_with_timeout(func, args=(), timeout=300):
                         cas_error(url)
             except Exception:
                 pass
+    elif process.exitcode == _WORKER_CAPTURE_DEFERRED:
+        deferred = True
     elif process.exitcode and process.exitcode != 0:
         success = False
 
     with active_jobs_lock:
         active_jobs.pop(key, None)
-        if success:
+        if success and not deferred:
             job_failures.pop(key, None)
             job_backoff_until.pop(key, None)
             job_circuit_open_until.pop(key, None)
@@ -714,6 +902,7 @@ def run_with_timeout(func, args=(), timeout=300):
 
     if not success:
         register_job_failure(key)
+    return None if deferred else success
 
 
 def safe_symlink(src: str, dst: str) -> None:
@@ -729,8 +918,22 @@ def safe_symlink(src: str, dst: str) -> None:
     base = os.path.abspath(SCREENSHOT_DIRECTORY)
     # Reject paths outside the screenshot directory to mitigate
     # symlink attacks on arbitrary locations.
-    if not src_path.startswith(base) or not dst_path.startswith(base):
+    resolved_base = os.path.realpath(base)
+    # Compare path components and resolve parent links; a sibling named
+    # "screenshots-other" or a linked subdirectory is not inside our storage.
+    if (
+        os.path.commonpath([base, src_path]) != base
+        or os.path.commonpath([base, dst_path]) != base
+        or os.path.commonpath([resolved_base, os.path.realpath(src_path)])
+        != resolved_base
+        or os.path.commonpath(
+            [resolved_base, os.path.realpath(os.path.dirname(dst_path))]
+        )
+        != resolved_base
+    ):
         raise ValueError("symlink paths must stay within screenshot directory")
+    if not os.path.exists(src_path):
+        raise FileNotFoundError(src_path)
 
     if os.path.lexists(dst_path):
         try:
@@ -748,6 +951,52 @@ def safe_symlink(src: str, dst: str) -> None:
         except FileNotFoundError:
             pass
         os.symlink(src_path, dst_path)
+
+
+def _existing_managed_sidecar_target(path: str, directory: str) -> str | None:
+    """Return a sidecar target only when it still points at a valid frame.
+
+    ``os.path.exists`` returns ``False`` for dangling symlinks, while
+    ``os.path.lexists`` returns ``True``. Motion sidecars are rotated with
+    ``lexists`` so broken links can otherwise be preserved indefinitely and
+    later trip artifact scans. Drop those stale links before creating the next
+    motion sidecar.
+    """
+
+    if os.path.islink(path):
+        destination = os.readlink(path)
+        if not os.path.isabs(destination):
+            destination = os.path.abspath(os.path.join(directory, destination))
+        else:
+            destination = os.path.abspath(destination)
+
+        base = os.path.abspath(SCREENSHOT_DIRECTORY)
+        if (
+            os.path.commonpath([base, destination]) != base
+            or os.path.commonpath(
+                [os.path.realpath(base), os.path.realpath(destination)]
+            )
+            != os.path.realpath(base)
+            or not os.path.exists(destination)
+        ):
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                logging.debug("Unable to remove stale sidecar %s: %s", path, exc)
+            return None
+        return destination
+
+    if os.path.isfile(path):
+        return path
+
+    if os.path.lexists(path):
+        try:
+            os.remove(path)
+        except OSError as exc:
+            logging.debug("Unable to remove invalid sidecar %s: %s", path, exc)
+    return None
 
 
 def _validate_latest_screenshot(path: str, name: str, url: str | None) -> bool:
@@ -781,37 +1030,140 @@ def _validate_latest_screenshot(path: str, name: str, url: str | None) -> bool:
         return False
 
 
+def _latest_source_template_screenshot(name: str, source_template: str) -> str | None:
+    """Return the newest screenshot from ``source_template`` for a derived view."""
+
+    if source_template == name:
+        logging.warning("[%s] source_template cannot reference itself", name)
+        return None
+
+    screenshots = get_screenshots_for_template(source_template)
+    if not screenshots:
+        logging.warning(
+            "[%s] source_template %s has no screenshots yet",
+            name,
+            source_template,
+        )
+        return None
+
+    latest = os.path.join(SCREENSHOT_DIRECTORY, source_template, screenshots[0])
+    if not os.path.isfile(latest):
+        logging.warning(
+            "[%s] source_template %s latest screenshot missing: %s",
+            name,
+            source_template,
+            latest,
+        )
+        return None
+    return latest
+
+
+def _save_provided_screenshot(name: str, template: dict, image_file: str) -> bool:
+    """Persist a supplied still through the normal capture postprocess path."""
+
+    if not image_file or not os.path.isfile(image_file):
+        logging.warning("[%s] provided screenshot missing: %s", name, image_file)
+        return False
+
+    timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    final_path = os.path.join(SCREENSHOT_DIRECTORY, name, f"{name}_{timestamp}.png")
+    os.makedirs(os.path.dirname(final_path), exist_ok=True)
+    tmp_path = final_path + ".tmp"
+
+    try:
+        with Image.open(image_file) as image:
+            # Keep uploads and source-template renders on the same enhancement
+            # path as native captures so stabilization, burst fusion, and
+            # composite rendering stay consistent across all still inputs.
+            image = _postprocess_still_image(
+                image,
+                final_path,
+                name,
+                dark=bool(template.get("dark", False)),
+                stabilize_mode=template.get("stabilize_mode", "off"),
+            )
+            image.save(tmp_path, "PNG")
+        if os.path.exists(tmp_path) and _is_valid_png(tmp_path):
+            add_timestamp(tmp_path, name, invert=template.get("invert", False))
+            os.replace(tmp_path, final_path)
+            parent = str(template.get("source_template") or "")
+            if str(template.get("url", "")).startswith("ptzview:"):
+                from app.utils.source_freshness import record_source
+
+                record_source(
+                    name,
+                    template["url"],
+                    inherited=datetime.datetime.fromtimestamp(
+                        os.path.getmtime(image_file), datetime.UTC
+                    ).isoformat(),
+                    capture_file=os.path.basename(final_path),
+                )
+            if parent and parent != "hubitat_site_dashboard":
+                from app.utils.source_freshness import record_derived_source
+
+                record_derived_source(name, parent, image_file, final_path)
+            return True
+    except Exception as exc:
+        logging.warning("[%s] provided screenshot save failed: %s", name, exc)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+    return False
+
+
 def update_camera(name, template, image_file=None, motion=False):
     # just ignore the old
     template = get_template(name)
 
+    # These dashboards arrive from Housebot's site capture timer. Polling the
+    # cloud URL would replace successful local captures with cloud failures.
+    if (
+        template.get("source_template") == "hubitat_site_dashboard"
+        and image_file is None
+    ):
+        return None
+
     lsuc = False
+    source_template = validate_template_name(
+        str(template.get("source_template") or "").strip()
+    )
+    source_template_profile_flags = {
+        "ais_map",
+        "hubitat_cloud_dashboard",
+        "hubitat_site_dashboard",
+        "map_dashboard",
+    }
+    if (
+        image_file is None
+        and source_template
+        and source_template not in source_template_profile_flags
+    ):
+        image_file = _latest_source_template_screenshot(name, source_template)
+
     if image_file is None:
-        lsuc = capture_or_download(name, template)
-    else:
-        timestamp = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        # Update the output_path format to include the timestamp
-        output_path = os.path.join(
-            SCREENSHOT_DIRECTORY, f"{name}/{name}_{timestamp}.tmp.png"
+        from app.utils import ptz_views
+
+        lsuc = ptz_views.capture(
+            name,
+            template,
+            lambda: capture_or_download(name, template),
+            lambda path: _save_provided_screenshot(name, template, path),
         )
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        if os.path.exists(output_path):
-            image = Image.open(output_path)
-            # Convert the image to RGBA mode in case it's a format that doesn't support transparency
-            image = image.convert("RGB")
-            image = remove_background(image)
-            image.save(output_path, "PNG")
-            if os.path.exists(output_path):
-                add_timestamp(output_path, name, invert=template.get("invert", False))
-                os.rename(output_path, output_path.replace(".tmp.png", ".png"))
-                lsuc = True
+    else:
+        lsuc = _save_provided_screenshot(name, template, image_file)
 
     url = template.get("url")
 
-    if lsuc is True:
-        update_last_screenshot_time(name)
-        set_capture_failed(name, False)
-    else:
+    if is_stale_capture_result(lsuc):
+        set_capture_stale(name, str(lsuc))
+        if lsuc == CAPTURE_STALE_BROWSER_SLOT_BUSY:
+            browser_queue.enqueue(name, template)
+        return lsuc
+
+    if lsuc is not True:
         entry = throttle_cache.get(url)
         if entry and entry.get("reason") in {"lan_offline", "local_unreachable"}:
             now = time.time()
@@ -846,11 +1198,11 @@ def update_camera(name, template, image_file=None, motion=False):
             and time.time() - entry.get("first", time.time()) > 60 * 60 * 24
         ):
             mark_offline(name)
-        set_capture_failed(name, True)
         clean_url = sanitize_url(url)
         now = time.monotonic()
         last_log = _capture_fail_last_log.get(name, 0.0)
         reason = entry.get("reason") if entry else None
+        set_capture_failed(name, True, reason or "")
         backoff_active = bool(entry and entry.get("timeout", 0) > time.time())
         rate_limit = LOG_RATE_LIMIT_SEC
         if reason == "lan_offline":
@@ -889,15 +1241,42 @@ def update_camera(name, template, image_file=None, motion=False):
         if not png_files:
             return None  # camera is out
 
-        png_files = sorted(
-            png_files, key=lambda x: os.path.getctime(os.path.join(directory, x))
-        )
+        png_files = sort_canonical_screenshot_filenames(name, png_files)
+        if not png_files:
+            return None
 
         # link for other processes to use
         lpath = os.path.join(SCREENSHOT_DIRECTORY, "latest_camera.png")
         latest_image_path = os.path.join(directory, png_files[-1])
         if not _validate_latest_screenshot(latest_image_path, name, url):
+            set_capture_stale(name, "invalid_latest_frame")
             return None
+
+        captured_at = parse_canonical_screenshot_timestamp(name, png_files[-1])
+        # Validation must precede metadata publication. A retried check may have
+        # produced no new file, and processing may finish long after acquisition.
+        # The timestamp transaction also clears failure and offline state.
+        update_last_screenshot_time(name, captured_at=captured_at)
+
+        clean_path = os.path.join(directory, "last_clean.png")
+        # A clean companion belongs to one immutable capture filename. This
+        # prevents an old image request from receiving a newer clean copy.
+        companion = latest_image_path + ".clean.png"
+        try:
+            if not os.path.exists(companion):
+                shutil.copy2(latest_image_path, companion + ".tmp")
+                os.replace(companion + ".tmp", companion)
+            if os.path.lexists(clean_path + ".tmp"):
+                os.unlink(clean_path + ".tmp")
+            os.symlink(os.path.abspath(companion), clean_path + ".tmp")
+            os.replace(clean_path + ".tmp", clean_path)
+            companions = sorted(
+                Path(directory).glob("*.png.clean.png"), key=lambda p: p.name
+            )
+            for obsolete in companions[:-2]:
+                obsolete.unlink(missing_ok=True)
+        except OSError as exc:
+            logging.debug("Unable to update clean screenshot for %s: %s", name, exc)
 
         try:
             if os.path.lexists(lpath + ".tmp"):
@@ -948,11 +1327,13 @@ def update_camera(name, template, image_file=None, motion=False):
         except Exception:
             pass
 
+        caption_refresh_due = _caption_refresh_due(template)
         motion_config = template.get("motion", 1)
         if (
             not motion
             and motion_config in [1, None]
             and (template.get("last_caption", "") or "") != ""
+            and not caption_refresh_due
         ):
             return
 
@@ -1007,7 +1388,7 @@ def update_camera(name, template, image_file=None, motion=False):
         last_caption_time, _last_motion_caption = None, None
         last_caption_trigger, last_motion_trigger = motion, motion
 
-        if (template.get("last_caption", "") or "") == "":
+        if caption_refresh_due:
             allow = True
             last_caption_trigger = True
         if (template.get("last_motion_caption", "") or "") == "":
@@ -1017,6 +1398,9 @@ def update_camera(name, template, image_file=None, motion=False):
         if lsum is True:
             allow = True
             last_motion_trigger = True
+            # Event-buffer cameras need current captions for activity alerts.
+            if str(template.get("event_buffer_enabled", "")).lower() in {"1", "true"}:
+                last_caption_trigger = True
 
         if allow is False:
             try:
@@ -1034,42 +1418,9 @@ def update_camera(name, template, image_file=None, motion=False):
             except Exception:
                 pass
 
-            # at least once a day.
-            #  maybe at least once per every 8 frames
-            #  no more frequent than hourly
-            ldelta = 24
-            if int(template.get("frequency", 30)) <= 30:
-                ldelta = 8
-            if int(template.get("frequency", 30)) <= 5:
-                ldelta = 3
-
-            if (
-                template.get("livecaption", "") or ""
-            ) == "true":  # spending extra money...
-                lfreq = int(template.get("frequency", 30))
-                ldelta = max(1, lfreq / 7)
-
-            try:
-                last_caption_time = datetime.datetime.strptime(
-                    template.get("last_caption_time", "1970-01-01 00:00:00"),
-                    "%Y-%m-%d %H:%M:%S",
-                )
-                if (
-                    last_caption_time
-                    and datetime.datetime.utcnow() - last_caption_time
-                    > datetime.timedelta(hours=ldelta)
-                ):  # one caption per day is fine otherwise...
-                    allow = True
-                    last_caption_trigger = True
-                    # print("allowing from old caption", name)
-            except Exception:
-                # print(" parse exception", e) #n1c
-                pass
-
-        scene_change_gate = (
-            template.get("scene_change_gate", "true") or "true"
-        ).lower() == "true"
-        live_caption_enabled = (template.get("livecaption", "") or "").lower() == "true"
+        scene_change_gate = template.get("scene_change_gate", "true") or "true"
+        scene_change_gate = _truthy_template_value(scene_change_gate)
+        live_caption_enabled = _truthy_template_value(template.get("livecaption"))
         if (
             scene_change_gate
             and not live_caption_enabled
@@ -1077,6 +1428,7 @@ def update_camera(name, template, image_file=None, motion=False):
             and last_caption_trigger
             and (template.get("last_caption", "") or "") != ""
             and not motion
+            and not caption_refresh_due
         ):
             # No meaningful frame change since last scene signature; keep previous caption.
             last_caption_trigger = False
@@ -1208,18 +1560,29 @@ def update_camera(name, template, image_file=None, motion=False):
             #  together so captions reflect meaningful changes.
 
             lret = None
-            if last_motion_trigger:
+            # Reload settings before setting motion metadata; reloading afterwards
+            # discarded the timestamp. Only actual image motion is an event:
+            # periodic caption refreshes and empty captions are not activity.
+            template = get_template(name)
+            if lsum is True:
                 template["last_motion_time"] = lctime
+                # Publish promptly even if caption generation is slow or fails.
+                if not save_caption_metadata(name, {"last_motion_time": lctime}):
+                    logging.error("Motion metadata persistence failed for %s", name)
 
             lret = None
-            # just ignore the old
-            template = get_template(name)
 
             if last_caption_trigger or template.get("last_caption") is None:
                 lprompt = ""
                 if template.get("notes"):
                     lprompt += template["notes"].strip() + "\n---\n"
 
+                # Include changing device evidence in the scene-cache identity too.
+                from app.utils.caption_context import caption_context
+
+                lprompt += "\n[caption-evidence:v4]\n" + caption_context(
+                    name, image_paths
+                )
                 cached_caption = _caption_cache_get(directory, scene_signature, lprompt)
                 if cached_caption:
                     gret = cached_caption
@@ -1227,15 +1590,20 @@ def update_camera(name, template, image_file=None, motion=False):
                 else:
                     #  use Chatgpt_compare with notes separated for clarity
                     gret = chatgpt_compare(lprompt, image_paths, template_name=name)
-                    if gret and not re.findall(r"(?:sorry|cannot|can not)", gret):
+                    if usable_caption(gret):
                         _caption_cache_set(directory, scene_signature, lprompt, gret)
 
-                if gret and re.findall(r"(?:sorry|cannot|can not)", gret):
+                if gret and not usable_caption(gret):
                     template["last_ret"] = gret + "*"
+                    caption_overlay = template.get("last_caption")
                 elif gret:
                     template["last_caption"] = gret
-                template["last_caption_time"] = lctime
-                add_motion_and_caption(lpath, caption=gret, motion=lsum)
+                    template["last_caption_time"] = lctime
+                    caption_overlay = gret
+                else:
+                    template["last_ret"] = f"Caption refresh failed at {lctime}"
+                    caption_overlay = template.get("last_caption")
+                add_motion_and_caption(lpath, caption=caption_overlay, motion=lsum)
             elif lret is not None:
                 add_motion_and_caption(lpath, caption=lret, motion=lsum)
             else:
@@ -1244,7 +1612,9 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
                 add_motion_and_caption(lpath, caption=lcap, motion=lsum)
 
-            save_template(name, template)
+            if not save_caption_metadata(name, template):
+                logging.error("Caption metadata persistence failed for %s", name)
+                return
             if template.get("callback_url"):
                 payload = {
                     "name": name,
@@ -1282,24 +1652,24 @@ def update_camera(name, template, image_file=None, motion=False):
                 )
 
             if os.path.lexists(prev_motion):
-                destination = os.readlink(prev_motion)
-                if not os.path.isabs(destination):
-                    # ``os.readlink`` may return a relative path when the
-                    # symlink was created with one. Convert it to an absolute
-                    # path relative to the camera directory so ``safe_symlink``
-                    # does not reject it as escaping ``SCREENSHOT_DIRECTORY``.
-                    destination = os.path.abspath(os.path.join(directory, destination))
-                if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
-                    os.remove(os.path.join(directory, "prev_motion.png.tmp"))
-                safe_symlink(
-                    destination,
-                    os.path.join(directory, "prev_motion.png.tmp"),
-                )
-                os.rename(
-                    os.path.join(directory, "prev_motion.png.tmp"),
-                    os.path.join(directory, "prev_motion.png"),
-                )
-                image_paths.append(os.path.join(directory, "prev_motion.png"))
+                prev_motion_tmp = os.path.join(directory, "prev_motion.png.tmp")
+                prev_motion_link = os.path.join(directory, "prev_motion.png")
+                if os.path.lexists(prev_motion_tmp):
+                    os.remove(prev_motion_tmp)
+                if os.path.islink(prev_motion):
+                    destination = _existing_managed_sidecar_target(
+                        prev_motion, directory
+                    )
+                    if destination:
+                        safe_symlink(destination, prev_motion_tmp)
+                        os.rename(prev_motion_tmp, prev_motion_link)
+                        image_paths.append(prev_motion_link)
+                elif os.path.isfile(prev_motion):
+                    os.replace(prev_motion, prev_motion_tmp)
+                    os.rename(prev_motion_tmp, prev_motion_link)
+                    image_paths.append(prev_motion_link)
+                else:
+                    _existing_managed_sidecar_target(prev_motion, directory)
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             safe_symlink(
@@ -1321,7 +1691,9 @@ def update_camera(name, template, image_file=None, motion=False):
             add_motion_and_caption(lpath, caption=lcap, motion=lsum)
             lctime = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             template["last_motion_time"] = lctime
-            save_template(name, template)
+            if not save_caption_metadata(name, template):
+                logging.error("Motion metadata persistence failed for %s", name)
+                return
             if template.get("callback_url"):
                 payload = {
                     "name": name,
@@ -1332,20 +1704,25 @@ def update_camera(name, template, image_file=None, motion=False):
                 send_http_callback(template.get("callback_url"), "motion", payload)
 
             if os.path.lexists(prev_motion):
-                destination = os.readlink(prev_motion)
-                if not os.path.isabs(destination):
-                    # Normalize relative symlink targets to absolute paths.
-                    destination = os.path.abspath(os.path.join(directory, destination))
                 if os.path.lexists(os.path.join(directory, "prev_motion.png.tmp")):
                     os.remove(os.path.join(directory, "prev_motion.png.tmp"))
-                safe_symlink(
-                    destination,
-                    os.path.join(directory, "prev_motion.png.tmp"),
-                )
-                os.rename(
-                    os.path.join(directory, "prev_motion.png.tmp"),
-                    os.path.join(directory, "prev_motion.png"),
-                )
+                if os.path.islink(prev_motion):
+                    destination = _existing_managed_sidecar_target(
+                        prev_motion, directory
+                    )
+                    if destination:
+                        safe_symlink(
+                            destination,
+                            os.path.join(directory, "prev_motion.png.tmp"),
+                        )
+                        os.rename(
+                            os.path.join(directory, "prev_motion.png.tmp"),
+                            os.path.join(directory, "prev_motion.png"),
+                        )
+                elif os.path.isfile(prev_motion):
+                    os.replace(prev_motion, os.path.join(directory, "prev_motion.png"))
+                else:
+                    _existing_managed_sidecar_target(prev_motion, directory)
             if os.path.lexists(os.path.join(directory, "last_motion.png.tmp")):
                 os.remove(os.path.join(directory, "last_motion.png.tmp"))
             safe_symlink(
@@ -1374,7 +1751,12 @@ def init_crawl():
 
     random.shuffle(templates)
     for name, template in templates:
-        update_camera(name, template)
+        if _template_is_archived(template):
+            continue
+        if _queued_browser_template(template):
+            browser_queue.enqueue(name, template)
+        else:
+            update_camera(name, template)
 
 
 def update_summary():  # noqa: PLR0912, PLR0915
@@ -1389,7 +1771,10 @@ def update_summary():  # noqa: PLR0912, PLR0915
 
     for id, template in templates:
         name = template.get("name")
-        if "private" in template.get("groups", ""):
+        if (
+            _truthy_template_value(template.get("private_camera"))
+            or "private" in str(template.get("groups") or "").casefold()
+        ):
             continue
         if lstring.count("\n") > SUMMARY_MAX_LINES:
             break
@@ -1401,8 +1786,10 @@ def update_summary():  # noqa: PLR0912, PLR0915
             if (datetime.datetime.utcnow() - caption_time).total_seconds() > 3 * 3600:
                 continue  # Skip templates older than 3 hours
 
-            fnotes = SENTENCE_SPLIT_RE.split(template.get("notes", "").strip())
-            gnotes = SENTENCE_SPLIT_RE.split(template.get("last_caption", "").strip())
+            fnotes = SENTENCE_SPLIT_RE.split(str(template.get("notes") or "").strip())
+            gnotes = SENTENCE_SPLIT_RE.split(
+                str(template.get("last_caption") or "").strip()
+            )
 
             if len(fnotes) > 0:
                 try:
@@ -1525,6 +1912,56 @@ def schedule_summarization():
         logging.error("job schedule error: %s", e)
 
 
+def update_weather_brief() -> None:
+    """Generate the local weather brief artifacts from current templates."""
+
+    try:
+        from app.utils.weather_brief import generate_weather_brief_artifacts
+
+        generate_weather_brief_artifacts()
+    except Exception as exc:
+        logging.warning("Weather brief update failed: %s", exc)
+
+
+def schedule_weather_brief() -> None:
+    """Run the weather brief before normal morning dashboard checks."""
+
+    try:
+        scheduler.add_job(
+            func=update_weather_brief,
+            trigger=CronTrigger(hour="5,7", minute=30),
+            id="weather_brief",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
+def update_seiche_brief() -> None:
+    """Generate the Lake Michigan SeicheClock artifacts from NOAA data."""
+
+    try:
+        from app.utils.seiche_brief import generate_seiche_brief_artifacts
+
+        generate_seiche_brief_artifacts()
+    except Exception as exc:
+        logging.warning("SeicheClock update failed: %s", exc)
+
+
+def schedule_seiche_brief() -> None:
+    """Keep SeicheClock reasonably fresh without hammering NOAA."""
+
+    try:
+        scheduler.add_job(
+            func=update_seiche_brief,
+            trigger=CronTrigger(minute="*/15"),
+            id="seiche_brief",
+            replace_existing=True,
+        )
+    except Exception as e:
+        logging.error("job schedule error: %s", e)
+
+
 def lcm(a: int, b: int) -> int:
     """Return least common multiple of ``a`` and ``b``."""
 
@@ -1538,41 +1975,184 @@ def _lcm_many(values) -> int:
 
 
 def calculate_optimal_offsets(templates: dict, spread_minutes: int) -> dict:
-    """Return startup offsets in seconds for each crawler.
+    """Spread actual recurring starts within the startup window and interval.
 
-    The algorithm spreads initial runs across ``spread_minutes`` by computing a
-    window based on the LCM of crawler frequencies. Each crawler is then placed
-    within that window at the least-loaded slot to minimize overlapping starts.
+    Do not scale phases from a longer simulation window: scaling destroys the
+    collision checks and piles short-interval cameras onto the end of startup.
+    Stable name-derived phases distribute ties, while recurring load checks
+    avoid collisions with more frequent cameras already placed.
     """
-
     if not templates:
         return {}
-
-    frequencies = {
-        name: 60 * int(t.get("frequency", 30)) for name, t in templates.items()
-    }
-    window = max(_lcm_many(frequencies.values()), spread_minutes * 60)
-    window = min(window, 86_400)  # cap at one day to keep arrays manageable
-    step = window // max(len(frequencies), 1)
-    load = [0] * window
+    frequencies = {}
+    for name, template in templates.items():
+        try:
+            frequencies[name] = max(60, 60 * int(template.get("frequency", 30)))
+        except (TypeError, ValueError, OverflowError):
+            frequencies[name] = 1800
+    spread = max(1, min(86_400, int(spread_minutes) * 60))
+    horizon = min(86_400, max(spread, _lcm_many(frequencies.values())))
+    load = [0] * horizon
     offsets = {}
-
-    for name, freq in sorted(frequencies.items(), key=lambda x: x[1], reverse=True):
-        best_offset = 0
+    # Place frequent work first so slower feeds can avoid all of its repeats.
+    for name, frequency in sorted(
+        frequencies.items(), key=lambda item: (item[1], item[0])
+    ):
+        limit = min(spread, frequency)
+        preferred = (
+            int.from_bytes(hashlib.sha256(name.encode()).digest()[:8], "big") % limit
+        )
+        best_offset = preferred
         best_count = float("inf")
-        for offset in range(0, window, step or 1):
-            count = sum(load[t] for t in range(offset, window, freq))
+        for distance in range(limit):
+            offset = (preferred + distance) % limit
+            count = sum(load[t] for t in range(offset, horizon, frequency))
             if count < best_count:
-                best_count = count
-                best_offset = offset
-            if best_count == 0:
+                best_count, best_offset = count, offset
+            if count == 0:
                 break
-        for t in range(best_offset, window, freq):
-            load[t] += 1
-        scaled = int(best_offset / window * spread_minutes * 60)
-        offsets[name] = scaled
-
+        for tick in range(best_offset, horizon, frequency):
+            load[tick] += 1
+        offsets[name] = best_offset
     return offsets
+
+
+def _template_is_archived(template: dict | None) -> bool:
+    """Return True when a template is intentionally kept out of active crawls."""
+
+    groups = str((template or {}).get("groups") or "")
+    return "archive" in {group.strip().lower() for group in groups.split(",")}
+
+
+def camera_executor(template):
+    """Keep camera admission/capture work out of the maintenance executor."""
+
+    groups = {g.strip().lower() for g in str(template.get("groups") or "").split(",")}
+    if "priority" in groups:
+        return "priority_cameras"
+    if str(template.get("browser") or "").lower() in {"1", "true", "on", "yes"}:
+        return "browser_captures"
+    return "camera_captures"
+
+
+def _queued_browser_template(template: dict) -> bool:
+    return str(template.get("browser") or "").lower() in {
+        "1",
+        "true",
+        "on",
+        "yes",
+    } and "/integrations/google/webrtc/preview" not in str(template.get("url") or "")
+
+
+def schedule_camera_capture(name: str, template: dict, timeout: int) -> None:
+    """Enqueue browser work quickly; leave native capture workers independent."""
+    current = get_template(name)
+    if not current or _template_is_archived(current):
+        return
+    if _queued_browser_template(current):
+        if current.get("source_template") == "hubitat_site_dashboard":
+            return  # Site uploads are the sole capture producer for these views.
+        if browser_queue.capture_is_current(current):
+            return
+        if not browser_queue.enqueue(name, current):
+            logging.warning(
+                "Browser queue full; deferring %s to next scheduled turn", name
+            )
+        return
+    run_with_timeout(update_camera, (name, current), timeout)
+
+
+def retry_browser_camera(name: str, token: str) -> str | None:
+    """Capture current configuration and acknowledge only this queue lease."""
+    if not browser_queue.owns_lease(name, token):
+        return
+    retry = True
+    attempted = True
+    try:
+        template = get_template(name)
+        if not template or _template_is_archived(template):
+            retry = False
+            return
+        if browser_queue.satisfied(name, token, template):
+            retry = False
+            return
+        result = update_camera(name, template)
+        retry = result == CAPTURE_STALE_BROWSER_SLOT_BUSY
+        attempted = not retry
+        return result
+    finally:
+        browser_queue.finish(name, token, retry=retry, attempted=attempted)
+
+
+def process_browser_queue() -> None:
+    """Run one leased capture; expired leases recover skipped or killed workers."""
+    if _shutdown_event.is_set():
+        return
+    turn = browser_queue.claim()
+    if not turn:
+        return
+    retry, attempted = True, False
+    try:
+        # Resolve obsolete tickets before opening network probes or forking.
+        template = get_template(turn["name"])
+        if (
+            not template
+            or _template_is_archived(template)
+            or template.get("source_template") == "hubitat_site_dashboard"
+            or browser_queue.satisfied(turn["name"], turn["token"], template)
+        ):
+            retry = False
+            return
+        if not is_system_online():
+            return
+        started = time.monotonic()
+        attempted = True
+        completed = run_with_timeout(
+            retry_browser_camera, (turn["name"], turn["token"]), 120
+        )
+        attempted = completed is not None
+        logging.info(
+            "Browser queue turn camera=%s worker=%s elapsed=%.2fs",
+            turn["name"],
+            "deferred" if completed is None else "ok" if completed else "failed",
+            time.monotonic() - started,
+        )
+    finally:
+        # Lookup/probe/worker errors must not reserve the sole queue slot until
+        # its 150-second lease expires. Child acknowledgments and newer lease
+        # tokens make this a no-op when ownership has already changed.
+        browser_queue.finish(
+            turn["name"], turn["token"], retry=retry, attempted=attempted
+        )
+
+
+def schedule_browser_queue() -> None:
+    """Drain durable browser turns with one dedicated bounded worker."""
+    # Recover already-contended views immediately, oldest saved capture first.
+    # Existing persistent tickets keep their age and lease across restarts.
+    templates = get_templates()
+    for name, template in sorted(
+        templates.items(),
+        key=lambda item: str(item[1].get("last_screenshot_time") or ""),
+    ):
+        if (
+            not _template_is_archived(template)
+            and template.get("last_capture_message") == CAPTURE_STALE_BROWSER_SLOT_BUSY
+        ):
+            browser_queue.enqueue(name, template)
+    scheduler.add_job(
+        id="browser_retry_queue",
+        func=process_browser_queue,
+        trigger="interval",
+        # Short handoffs avoid wasting browser capacity between captures.
+        # One worker, admission checks and per-ticket backoff still apply.
+        seconds=1,
+        executor="browser_retries",
+        max_instances=1,
+        coalesce=True,
+        replace_existing=True,
+        misfire_grace_time=30,
+    )
 
 
 def schedule_crawlers():
@@ -1582,18 +2162,28 @@ def schedule_crawlers():
     minutes to keep CPU usage low when many cameras are configured.
     """
     templates = get_templates()
+    archived_template_names = {
+        name for name, template in templates.items() if _template_is_archived(template)
+    }
 
     # Remove crawler jobs for templates that no longer exist
     existing_jobs = {job.id for job in scheduler.get_jobs()}
     for job_id in existing_jobs:
-        if job_id not in templates:
+        if job_id == "browser_retry_queue":
+            continue
+        if job_id not in templates or job_id in archived_template_names:
             try:
                 scheduler.remove_job(job_id)
             except Exception:
                 pass
 
     # Determine optimized startup offsets for each crawler
-    offsets = calculate_optimal_offsets(templates, CRAWLER_STARTUP_SPREAD)
+    active_templates = {
+        name: template
+        for name, template in templates.items()
+        if name not in archived_template_names
+    }
+    offsets = calculate_optimal_offsets(active_templates, CRAWLER_STARTUP_SPREAD)
 
     # Shuffle templates so the same cameras don't always start first
     shuffled_templates = list(templates.items())
@@ -1602,6 +2192,9 @@ def schedule_crawlers():
     for id, template in shuffled_templates:
         name = template.get("name")
         if name is None or name == "":
+            continue
+        if name in archived_template_names:
+            logging.debug("Skipping archived crawler template: %s", name)
             continue
         output_path = os.path.join(SCREENSHOT_DIRECTORY, name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -1634,6 +2227,11 @@ def schedule_crawlers():
         max_timeout = 60 if LOW_CPU_MODE else 120
         timeout_seconds = max(10, min(max_timeout, max(10, seconds - 5)))
 
+        priority = "priority" in {
+            group.strip().lower()
+            for group in str(template.get("groups") or "").split(",")
+        }
+
         # Look up the pre-calculated startup offset for this crawler
         offset_delay_seconds = offsets.get(name, 0)
 
@@ -1645,21 +2243,25 @@ def schedule_crawlers():
             else 0
         )
         start_delay_seconds = offset_delay_seconds + jitter_seconds
+        if priority:
+            # Entrances should start within one capture interval after a restart.
+            start_delay_seconds %= seconds
 
         try:
             scheduler.add_job(
-                func=run_with_timeout,
+                func=schedule_camera_capture,
                 trigger="interval",
                 seconds=seconds,
                 start_date=datetime.datetime.now()
                 + datetime.timedelta(seconds=start_delay_seconds),
-                args=(update_camera, (name, template), timeout_seconds),
+                args=(name, template, timeout_seconds),
                 id=name,
+                executor=camera_executor(template),
                 replace_existing=True,
                 # Allow a few scheduler invocations while a previous run is
                 # still waiting on a worker process; run_with_timeout() will
                 # no-op when the template is already active.
-                max_instances=3,
+                max_instances=1 if camera_executor(template) != "default" else 3,
                 coalesce=True,
                 misfire_grace_time=max(30, seconds),
             )
@@ -2013,8 +2615,9 @@ def get_top_failures(
         key = (display_name, reason or "unknown", url or "")
         if key in failures:
             failures[key]["count"] = int(failures[key]["count"]) + 1
-            if timestamp > failures[key]["last_seen_dt"]:
-                failures[key]["last_seen_dt"] = timestamp
+            failures[key]["last_seen_dt"] = max(
+                failures[key]["last_seen_dt"], timestamp
+            )
         else:
             log_query = template_name or url or ""
             failures[key] = {
@@ -2308,6 +2911,29 @@ def schedule_clip_refresh() -> None:
         )
     except Exception as e:
         logging.error("job schedule error: %s", e)
+
+
+def schedule_event_buffers() -> None:
+    """Schedule low-rate LAN event-buffer captures."""
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        from app.utils import event_buffer
+
+        scheduler.add_job(
+            func=event_buffer.tick_event_buffers,
+            trigger="interval",
+            seconds=1,
+            id="event_buffers",
+            replace_existing=True,
+            executor="event_buffer",
+            max_instances=2,
+            coalesce=True,
+            misfire_grace_time=5,
+        )
+    except Exception as e:
+        logging.error("event buffer schedule error: %s", e)
 
 
 def update_baselines(count: int = 10) -> None:

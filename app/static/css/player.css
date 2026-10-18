@@ -20,8 +20,8 @@
   0%,
   100% {
     box-shadow:
-      0 0 0 0 rgba(74, 222, 128, 0.0),
-      0 0 0 0 rgba(74, 222, 128, 0.0);
+      0 0 0 0 rgba(74, 222, 128, 0),
+      0 0 0 0 rgba(74, 222, 128, 0);
   }
   50% {
     box-shadow:
@@ -377,4 +377,41 @@ video::-moz-volume-control {
 #fullscreen-toggle:focus {
   outline: 2px solid white;
   outline-offset: 2px;
+}
+
+/* Keep source mode and stream controls readable on room displays. */
+.player-screen #live-quality,
+.player-screen .live-action {
+  min-height: 44px;
+  font-size: 17px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: #102337;
+  border-color: #496278;
+}
+.player-screen .live-quality {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.player-screen .live-stats {
+  font-size: 17px;
+  opacity: 1;
+  color: #c5e9e2;
+}
+.player-screen .live-source-badge {
+  font-size: 18px;
+  padding: 9px 14px;
+  max-width: calc(100% - 40px);
+  box-sizing: border-box;
+}
+.player-screen .live-clock {
+  font-size: 17px;
+  background: rgb(5 15 24 / 88%);
+}
+
+@media (min-width: 1600px) {
+  .player-screen .live-stats,
+  .player-screen .live-source-badge {
+    font-size: 22px;
+  }
 }

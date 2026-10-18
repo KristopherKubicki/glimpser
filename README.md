@@ -68,7 +68,7 @@ assembled from Glimpser's archived NOAA imagery, with source credits and capture
 
 ### Prerequisites
 
-- Python 3.10 to 3.13
+- Python 3.11 to 3.13
 
 ### Steps
 

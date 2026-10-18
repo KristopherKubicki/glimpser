@@ -1,0 +1,76 @@
+/* Preserve the weather palette while giving its dark-mode cards real dark surfaces. */
+body.dark-mode.weather-sheet {
+  color-scheme: dark;
+
+  --weather-panel: #10222a;
+  --weather-ink: #e5f0f4;
+  --weather-muted: #b1c5ca;
+  --weather-line: #35515b;
+  --weather-blue: #80d9e8;
+  --weather-rust: #ffb69a;
+  --weather-gold: #edca78;
+  --weather-green: #9bd4b6;
+}
+body.dark-mode.weather-sheet .weather-brief-card,
+body.dark-mode.weather-sheet .weather-stat-card,
+body.dark-mode.weather-sheet .weather-section {
+  border-color: var(--weather-line);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 20%);
+}
+body.dark-mode.weather-sheet .weather-tile,
+body.dark-mode.weather-sheet .weather-watch-item {
+  background: #0a1921;
+  color: var(--weather-ink);
+  border-color: var(--weather-line);
+}
+body.dark-mode.weather-sheet .weather-tile h3,
+body.dark-mode.weather-sheet .weather-title,
+body.dark-mode.weather-sheet .weather-headline,
+body.dark-mode.weather-sheet .weather-section h2 {
+  color: var(--weather-ink);
+}
+body.dark-mode.weather-sheet .weather-tile p,
+body.dark-mode.weather-sheet .weather-tile-meta {
+  color: var(--weather-muted);
+}
+body.weather-sheet .weather-generated,
+body.weather-sheet .weather-stat-label,
+body.weather-sheet .weather-section-header p,
+body.weather-sheet .weather-tile p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+body.weather-sheet .weather-tile h3 {
+  font-size: 20px;
+}
+body.weather-sheet .weather-status-stale_ok,
+body.weather-sheet .brief-source-age.is-source-older {
+  color: #ffd18c;
+}
+body.weather-sheet .weather-tile .brief-source-age {
+  display: block;
+  margin: 8px 0;
+  font-size: 14px;
+  overflow: visible;
+  line-height: 1.4;
+}
+body.weather-sheet .weather-section-header {
+  display: block;
+  position: static;
+  width: auto;
+  min-height: 120px;
+  box-sizing: border-box;
+  padding: 0 0 14px;
+  background: transparent;
+}
+body.weather-sheet .weather-section-header h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+  line-height: 1.2;
+  text-align: left;
+}
+body.weather-sheet .weather-section-header p {
+  margin: 0;
+  text-align: left;
+  font-size: 15px;
+}

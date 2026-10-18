@@ -64,11 +64,11 @@ SETTINGS_TOOLTIPS = {
         "usage on constrained hosts."
     ),
     "LLM_CAPTION_PROMPT": (
-        "System prompt used for image captions. Supports the $datetime token "
-        "and can span multiple lines."
+        "System prompt used for image captions. Keep it scene-first; supports "
+        "the $datetime token and can span multiple lines."
     ),
     "LLM_SUMMARY_PROMPT": (
-        "System prompt for daily summaries. May be multi-line and also "
+        "System prompt for operator summaries. May be multi-line and also "
         "supports the $datetime token."
     ),
     "MAX_RAW_DATA_SIZE": (
@@ -138,6 +138,11 @@ SETTINGS_TOOLTIPS = {
     "CLOCK_OVERLAY": ("Display a timestamp overlay on captured videos when enabled."),
     "CLOCK_DIGITAL": ("Show the clock as digital text instead of an analog icon."),
     "CLOCK_NAVBAR": ("When enabled, the current time appears in the navigation bar."),
+    "VISUAL_TIMESTAMP_MODE": (
+        "Controls text burned into captured still frames. Clean keeps image pixels "
+        "free of timestamp labels, compact burns one local timestamp, and debug "
+        "adds the older local/UTC diagnostic overlay."
+    ),
     "HEALTH_STATUS_ALWAYS_VISIBLE": (
         "Keep the system performance indicator visible even when metrics look normal."
     ),
@@ -198,6 +203,9 @@ SETTINGS_TOOLTIPS = {
     ),
     "ALLOW_BOTS": (
         "Allow search engines to index the site. Disable for private installations."
+    ),
+    "ALLOW_PRIVATE_CALLBACK_URLS": (
+        "Permit LAN/private HTTP callback URLs for trusted local integrations."
     ),
     "AUTO_UPDATE_BRANCH": (
         "Git branch to pull automatic updates from when auto update is enabled."
@@ -376,6 +384,7 @@ SETTINGS_CHOICES = {
     "LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "FLASK_LOG_LEVEL": ["DEBUG", "INFO", "WARN", "ERROR", "CRITICAL"],
     "LAN_GUEST_MODE": ["full", "read_only", "disabled"],
+    "VISUAL_TIMESTAMP_MODE": ["clean", "compact", "debug"],
     "TZ": sorted(available_timezones()),
 }
 
@@ -407,6 +416,7 @@ SETTINGS_GROUPS = {
         "CLOCK_OVERLAY",
         "CLOCK_DIGITAL",
         "CLOCK_NAVBAR",
+        "VISUAL_TIMESTAMP_MODE",
     ],
     "Admin": [
         "USER_NAME",
@@ -486,6 +496,7 @@ SETTINGS_GROUPS = {
         "CAP_SENDER",
         "NOTIFY_ON_MOTION",
         "NOTIFY_ON_CAPTION",
+        "ALLOW_PRIVATE_CALLBACK_URLS",
     ],
 }
 

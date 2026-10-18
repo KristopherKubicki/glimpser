@@ -1,0 +1,92 @@
+{% extends 'base.html' %} {% block content %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/android_location.css') }}?v={{ COMMIT_HASH or VERSION }}"
+/>
+<main class="android-bridge-page">
+  <section class="android-bridge-hero" aria-labelledby="android-bridge-title">
+    <div>
+      <p class="android-eyebrow">Android Bridge</p>
+      <h2 id="android-bridge-title">Shared Location Map</h2>
+      <p>
+        Track phones, tablets, and vehicle bridges through one normalized
+        location feed. Android publishers and Tesla collectors can post the same
+        JSON shape.
+      </p>
+    </div>
+    <a
+      class="android-primary-action"
+      href="{{ url_for('location.android_location_map') }}"
+    >
+      Open Map
+    </a>
+  </section>
+
+  <section class="android-panel-grid" aria-label="Location bridge status">
+    <article class="android-panel">
+      <h3>Ingest</h3>
+      <dl class="android-facts">
+        <div>
+          <dt>Endpoint</dt>
+          <dd><code>POST /integrations/android/location</code></dd>
+        </div>
+        <div>
+          <dt>Token</dt>
+          <dd>{{ "configured" if token_configured else "missing" }}</dd>
+        </div>
+        <div>
+          <dt>Providers</dt>
+          <dd><code>android</code>, <code>tesla</code>, or any bridge label</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="android-panel">
+      <h3>Example Payload</h3>
+      <pre class="android-code"><code>{
+  "device_id": "phone-k",
+  "label": "K Phone",
+  "provider": "android",
+  "latitude": 42.0048,
+  "longitude": -87.7301,
+  "accuracy": 18,
+  "battery": 72,
+  "timestamp": 1779384000
+}</code></pre>
+    </article>
+  </section>
+
+  <section class="android-panel" aria-labelledby="android-current-title">
+    <div class="android-section-header">
+      <h3 id="android-current-title">Current Subjects</h3>
+      <span>{{ locations|length }} tracked</span>
+    </div>
+    {% if locations %}
+    <div class="android-subject-list">
+      {% for point in locations %}
+      <article class="android-subject-row">
+        <div>
+          <strong>{{ point.label }}</strong>
+          <span
+            >{{ point.provider }} · {{ "%.5f"|format(point.latitude) }}, {{
+            "%.5f"|format(point.longitude) }}</span
+          >
+        </div>
+        <div>
+          <span>{{ point.age_seconds }}s ago</span>
+          <span class="{{ 'is-stale' if point.stale else 'is-fresh' }}">
+            {{ "stale" if point.stale else "fresh" }}
+          </span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="android-empty">
+      No location updates yet. Once an Android publisher posts a valid point, it
+      appears on the shared map automatically.
+    </p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

@@ -13,8 +13,8 @@ def _allow_legacy_eufy_modes_for_tests(monkeypatch) -> None:
 
 
 def test_parse_eufy_url_profile_and_device() -> None:
-    profile, device_id = eufy_cloud.parse_eufy_url("eufy://argyle/abc123")
-    assert profile == "argyle"
+    profile, device_id = eufy_cloud.parse_eufy_url("eufy://example-home/abc123")
+    assert profile == "example-home"
     assert device_id == "abc123"
 
 
@@ -39,7 +39,7 @@ def test_configured_native_profile(monkeypatch) -> None:
         eufy_cloud,
         "_load_profiles",
         lambda: {
-            "argyle": {
+            "example-home": {
                 "mode": "native",
                 "native_email": "guest@example.com",
                 "native_password": "secret",
@@ -47,7 +47,7 @@ def test_configured_native_profile(monkeypatch) -> None:
         },
     )
 
-    assert eufy_cloud.configured("argyle") is True
+    assert eufy_cloud.configured("example-home") is True
 
 
 def test_configured_webportal_profile(monkeypatch) -> None:
@@ -75,6 +75,21 @@ def test_configured_emulator_profile(monkeypatch) -> None:
             "beach": {
                 "mode": "emulator",
                 "emulator_devices_json": '{"devices":[{"device_id":"cam-1","name":"Driveway"}]}',
+            }
+        },
+    )
+
+    assert eufy_cloud.configured("beach") is True
+
+
+def test_configured_external_profile(monkeypatch) -> None:
+    monkeypatch.setattr(
+        eufy_cloud,
+        "_load_profiles",
+        lambda: {
+            "beach": {
+                "mode": "external",
+                "bridge_url": "http://192.0.2.24:8084",
             }
         },
     )
@@ -139,7 +154,7 @@ def test_list_devices_native_mode(monkeypatch) -> None:
         eufy_cloud,
         "_load_profiles",
         lambda: {
-            "argyle": {
+            "example-home": {
                 "mode": "native",
                 "native_email": "guest@example.com",
                 "native_password": "secret",
@@ -148,7 +163,7 @@ def test_list_devices_native_mode(monkeypatch) -> None:
     )
 
     def _fake_native_request(profile, endpoint, *, payload=None, timeout=0, retry=True):
-        assert profile.name == "argyle"
+        assert profile.name == "example-home"
         assert endpoint == "v2/app/get_devs_list"
         assert payload is None
         assert retry is True
@@ -168,7 +183,7 @@ def test_list_devices_native_mode(monkeypatch) -> None:
 
     monkeypatch.setattr(eufy_cloud, "_native_request", _fake_native_request)
 
-    devices = eufy_cloud.list_devices("argyle")
+    devices = eufy_cloud.list_devices("example-home")
     assert devices == [
         {
             "device_id": "dev-1",
@@ -206,9 +221,66 @@ def test_list_devices_emulator_mode(monkeypatch) -> None:
     assert devices[1]["name"] == "Driveway"
 
 
+def test_list_devices_external_mode(monkeypatch) -> None:
+    monkeypatch.setattr(
+        eufy_cloud,
+        "_load_profiles",
+        lambda: {
+            "beach": {
+                "mode": "external",
+                "bridge_url": "http://192.0.2.24:8084",
+                "api_token": "secret-token",
+            }
+        },
+    )
+
+    seen: dict[str, object] = {}
+
+    class _Response:
+        status_code = 200
+
+        def __init__(self) -> None:
+            self.headers = {"Content-Type": "application/json"}
+
+        def json(self) -> dict[str, object]:
+            return {
+                "devices": [
+                    {
+                        "device_id": "cam-2",
+                        "name": "Garage",
+                        "snapshot": True,
+                    },
+                    {
+                        "serialNumber": "cam-1",
+                        "nickname": "Driveway",
+                        "supports_snapshot": True,
+                    },
+                ]
+            }
+
+    def _fake_get(url, *, headers, timeout, verify):
+        seen["url"] = url
+        seen["headers"] = headers
+        seen["timeout"] = timeout
+        seen["verify"] = verify
+        return _Response()
+
+    monkeypatch.setattr(eufy_cloud.requests, "get", _fake_get)
+
+    devices = eufy_cloud.list_devices("beach", timeout=7)
+    assert [item["device_id"] for item in devices] == ["cam-1", "cam-2"]
+    assert devices[0]["name"] == "Driveway"
+    assert seen == {
+        "url": "http://192.0.2.24:8084/api/devices",
+        "headers": {"Authorization": "Bearer secret-token"},
+        "timeout": 7,
+        "verify": True,
+    }
+
+
 def test_fetch_snapshot_native_mode(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -222,7 +294,7 @@ def test_fetch_snapshot_native_mode(monkeypatch) -> None:
     monkeypatch.setattr(eufy_cloud, "resolve_profile", lambda name="default": profile)
 
     def _fake_native_request(profile, endpoint, *, payload=None, timeout=0, retry=True):
-        assert profile.name == "argyle"
+        assert profile.name == "example-home"
         assert endpoint == "v2/app/get_devs_list"
         return {
             "code": 0,
@@ -244,7 +316,7 @@ def test_fetch_snapshot_native_mode(monkeypatch) -> None:
         return b"jpeg-bytes", "image/jpeg"
 
     def _fake_native_session(profile, *, timeout, force_login=False, **_kwargs):
-        assert profile.name == "argyle"
+        assert profile.name == "example-home"
         assert timeout == 9
         assert force_login is False
         return "token", "https://api.example.test", b"k" * 32, {}
@@ -253,11 +325,13 @@ def test_fetch_snapshot_native_mode(monkeypatch) -> None:
     monkeypatch.setattr(eufy_cloud, "_native_request", _fake_native_request)
     monkeypatch.setattr(eufy_cloud, "_native_fetch_image", _fake_native_fetch_image)
 
-    payload, content_type = eufy_cloud.fetch_snapshot("argyle", "dev-2", timeout=9)
+    payload, content_type = eufy_cloud.fetch_snapshot(
+        "example-home", "dev-2", timeout=9
+    )
     assert payload == b"jpeg-bytes"
     assert content_type == "image/jpeg"
     assert seen == {
-        "profile": "argyle",
+        "profile": "example-home",
         "timeout": 9,
         "url": "https://cdn.example.test/front.jpg",
     }
@@ -340,6 +414,76 @@ def test_fetch_snapshot_emulator_mode(monkeypatch) -> None:
         "shell",
     ]
     assert calls[1][-3:] == ["exec-out", "screencap", "-p"]
+
+
+def test_fetch_snapshot_external_mode_direct_image(monkeypatch) -> None:
+    monkeypatch.setattr(
+        eufy_cloud,
+        "_load_profiles",
+        lambda: {
+            "beach": {
+                "mode": "external",
+                "bridge_url": "http://192.0.2.24:8084",
+                "api_token": "bridge-token",
+            }
+        },
+    )
+
+    seen: dict[str, object] = {}
+
+    class _Response:
+        status_code = 200
+        headers = {"Content-Type": "image/png"}
+        content = b"\x89PNG\r\n\x1a\nbridge"
+
+        def json(self) -> object:
+            raise AssertionError("image response should not be parsed as JSON")
+
+    def _fake_get(url, *, headers, timeout, verify):
+        seen["url"] = url
+        seen["headers"] = headers
+        seen["timeout"] = timeout
+        seen["verify"] = verify
+        return _Response()
+
+    monkeypatch.setattr(eufy_cloud.requests, "get", _fake_get)
+
+    payload, content_type = eufy_cloud.fetch_snapshot("beach", "cam-9", timeout=9)
+    assert payload.startswith(b"\x89PNG")
+    assert content_type == "image/png"
+    assert seen == {
+        "url": "http://192.0.2.24:8084/api/cameras/cam-9/snapshot",
+        "headers": {"Authorization": "Bearer bridge-token"},
+        "timeout": 9,
+        "verify": True,
+    }
+
+
+def test_fetch_snapshot_external_mode_json_base64(monkeypatch) -> None:
+    monkeypatch.setattr(
+        eufy_cloud,
+        "_load_profiles",
+        lambda: {
+            "beach": {
+                "mode": "external",
+                "bridge_url": "http://192.0.2.24:8084",
+            }
+        },
+    )
+
+    class _Response:
+        status_code = 200
+        headers = {"Content-Type": "application/json"}
+        content = b""
+
+        def json(self) -> dict[str, str]:
+            return {"image_base64": "aW1hZ2UtYnl0ZXM="}
+
+    monkeypatch.setattr(eufy_cloud.requests, "get", lambda *args, **kwargs: _Response())
+
+    payload, content_type = eufy_cloud.fetch_snapshot("beach", "cam-3", timeout=9)
+    assert payload == b"image-bytes"
+    assert content_type == "image/jpeg"
 
 
 def test_fetch_snapshot_emulator_mode_uses_custom_adb_path(monkeypatch) -> None:
@@ -556,7 +700,7 @@ def test_emulator_try_adb_connect_uses_serial_target(monkeypatch) -> None:
         native_email="",
         native_password="",
         native_country="US",
-        emulator_adb_serial="192.168.2.95:5555",
+        emulator_adb_serial="192.0.2.95:5555",
     )
 
     calls: list[list[str]] = []
@@ -576,7 +720,7 @@ def test_emulator_try_adb_connect_uses_serial_target(monkeypatch) -> None:
     monkeypatch.setattr(eufy_cloud, "_emulator_adb_prefix", lambda _p: ["adb"])
 
     assert eufy_cloud._emulator_try_adb_connect(profile) is True
-    assert calls[0] == ["adb", "connect", "192.168.2.95:5555"]
+    assert calls[0] == ["adb", "connect", "192.0.2.95:5555"]
 
 
 def test_emulator_only_forces_non_emulator_profiles(monkeypatch) -> None:
@@ -598,6 +742,24 @@ def test_emulator_only_forces_non_emulator_profiles(monkeypatch) -> None:
     profile = eufy_cloud.resolve_profile("beach")
     assert profile is not None
     assert profile.mode == "emulator"
+
+
+def test_emulator_only_still_allows_external_bridge_profiles(monkeypatch) -> None:
+    monkeypatch.setattr(eufy_cloud, "_EUFY_EMULATOR_ONLY", True)
+    monkeypatch.setattr(
+        eufy_cloud,
+        "_load_profiles",
+        lambda: {
+            "beach": {
+                "mode": "external",
+                "bridge_url": "http://192.0.2.24:8084",
+            }
+        },
+    )
+
+    profile = eufy_cloud.resolve_profile("beach")
+    assert profile is not None
+    assert profile.mode == "external"
 
 
 def test_fetch_snapshot_native_falls_back_to_webportal(monkeypatch) -> None:
@@ -692,7 +854,7 @@ def test_native_media_candidates_extract_nested_urls() -> None:
 
 def test_fetch_snapshot_native_mode_stream_fallback(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -706,13 +868,13 @@ def test_fetch_snapshot_native_mode_stream_fallback(monkeypatch) -> None:
     monkeypatch.setattr(eufy_cloud, "resolve_profile", lambda name="default": profile)
 
     def _fake_native_session(profile, *, timeout, force_login=False, **_kwargs):
-        assert profile.name == "argyle"
+        assert profile.name == "example-home"
         assert timeout == 7
         assert force_login is False
         return "token", "https://api.example.test", b"k" * 32, {}
 
     def _fake_native_request(profile, endpoint, *, payload=None, timeout=0, retry=True):
-        assert profile.name == "argyle"
+        assert profile.name == "example-home"
         assert endpoint == "v2/app/get_devs_list"
         return {
             "code": 0,
@@ -736,7 +898,9 @@ def test_fetch_snapshot_native_mode_stream_fallback(monkeypatch) -> None:
     monkeypatch.setattr(eufy_cloud, "_native_request", _fake_native_request)
     monkeypatch.setattr(eufy_cloud, "_native_fetch_stream_frame", _fake_stream_frame)
 
-    payload, content_type = eufy_cloud.fetch_snapshot("argyle", "dev-stream", timeout=7)
+    payload, content_type = eufy_cloud.fetch_snapshot(
+        "example-home", "dev-stream", timeout=7
+    )
     assert payload == b"frame-bytes"
     assert content_type == "image/jpeg"
     assert seen == {"stream_url": "rtsp://camera.example.test/live", "timeout": 7}
@@ -744,7 +908,7 @@ def test_fetch_snapshot_native_mode_stream_fallback(monkeypatch) -> None:
 
 def test_native_session_sets_captcha_challenge(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -789,7 +953,7 @@ def test_native_session_sets_captcha_challenge(monkeypatch) -> None:
 
 def test_submit_native_captcha_reuses_pending_challenge(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -803,10 +967,10 @@ def test_submit_native_captcha_reuses_pending_challenge(monkeypatch) -> None:
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
 
-    eufy_cloud._set_native_captcha("argyle", "cid-1", "data:image/png;base64,abc")
+    eufy_cloud._set_native_captcha("example-home", "cid-1", "data:image/png;base64,abc")
     seen: dict[str, object] = {}
 
     def _fake_native_session(
@@ -827,21 +991,21 @@ def test_submit_native_captcha_reuses_pending_challenge(monkeypatch) -> None:
 
     monkeypatch.setattr(eufy_cloud, "_native_session", _fake_native_session)
 
-    eufy_cloud.submit_native_captcha("argyle", "4321", timeout=7)
+    eufy_cloud.submit_native_captcha("example-home", "4321", timeout=7)
 
     assert seen == {
-        "profile": "argyle",
+        "profile": "example-home",
         "timeout": 7,
         "force_login": True,
         "captcha_id": "cid-1",
         "captcha_code": "4321",
     }
-    assert eufy_cloud.get_native_captcha("argyle") is None
+    assert eufy_cloud.get_native_captcha("example-home") is None
 
 
 def test_submit_native_captcha_requires_pending_challenge(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -855,17 +1019,17 @@ def test_submit_native_captcha_requires_pending_challenge(monkeypatch) -> None:
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
-    eufy_cloud.clear_native_captcha("argyle")
+    eufy_cloud.clear_native_captcha("example-home")
 
     with pytest.raises(eufy_cloud.EufyCloudError):
-        eufy_cloud.submit_native_captcha("argyle", "1234")
+        eufy_cloud.submit_native_captcha("example-home", "1234")
 
 
 def test_auto_solve_native_captcha_success(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -879,11 +1043,13 @@ def test_auto_solve_native_captcha_success(monkeypatch) -> None:
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
-    eufy_cloud.clear_native_captcha("argyle")
+    eufy_cloud.clear_native_captcha("example-home")
     eufy_cloud._NATIVE_CAPTCHA_OCR_ATTEMPTS.clear()
-    eufy_cloud._set_native_captcha("argyle", "cid-ocr", "data:image/png;base64,abc")
+    eufy_cloud._set_native_captcha(
+        "example-home", "cid-ocr", "data:image/png;base64,abc"
+    )
     monkeypatch.setattr(
         eufy_cloud,
         "_native_decode_captcha_item",
@@ -903,16 +1069,16 @@ def test_auto_solve_native_captcha_success(monkeypatch) -> None:
 
     monkeypatch.setattr(eufy_cloud, "submit_native_captcha", _fake_submit)
 
-    result = eufy_cloud.auto_solve_native_captcha("argyle", timeout=3, force=True)
+    result = eufy_cloud.auto_solve_native_captcha("example-home", timeout=3, force=True)
     assert result["attempted"] is True
     assert result["solved"] is True
     assert result["code"] == "AB12"
-    assert seen == {"profile": "argyle", "code": "AB12"}
+    assert seen == {"profile": "example-home", "code": "AB12"}
 
 
 def test_auto_solve_native_captcha_skips_repeated_same_challenge(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -926,11 +1092,13 @@ def test_auto_solve_native_captcha_skips_repeated_same_challenge(monkeypatch) ->
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
-    eufy_cloud.clear_native_captcha("argyle")
+    eufy_cloud.clear_native_captcha("example-home")
     eufy_cloud._NATIVE_CAPTCHA_OCR_ATTEMPTS.clear()
-    eufy_cloud._set_native_captcha("argyle", "cid-repeat", "data:image/png;base64,abc")
+    eufy_cloud._set_native_captcha(
+        "example-home", "cid-repeat", "data:image/png;base64,abc"
+    )
     monkeypatch.setattr(
         eufy_cloud,
         "_native_decode_captcha_item",
@@ -944,8 +1112,8 @@ def test_auto_solve_native_captcha_skips_repeated_same_challenge(monkeypatch) ->
 
     monkeypatch.setattr(eufy_cloud, "_native_ollama_codes", _fake_ocr)
 
-    first = eufy_cloud.auto_solve_native_captcha("argyle")
-    second = eufy_cloud.auto_solve_native_captcha("argyle")
+    first = eufy_cloud.auto_solve_native_captcha("example-home")
+    second = eufy_cloud.auto_solve_native_captcha("example-home")
     assert first["attempted"] is True
     assert first["solved"] is False
     assert second["attempted"] is False
@@ -982,7 +1150,7 @@ def test_native_ollama_codes_falls_back_to_tesseract(monkeypatch) -> None:
 
 def test_fetch_snapshot_native_retries_after_auto_solve(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -996,7 +1164,7 @@ def test_fetch_snapshot_native_retries_after_auto_solve(monkeypatch) -> None:
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
     calls = {"fetch": 0}
 
@@ -1004,7 +1172,7 @@ def test_fetch_snapshot_native_retries_after_auto_solve(monkeypatch) -> None:
         calls["fetch"] += 1
         if calls["fetch"] == 1:
             raise eufy_cloud.EufyCaptchaRequired(
-                profile="argyle",
+                profile="example-home",
                 captcha_id="cid-1",
                 captcha_item="data:image/png;base64,abc",
                 message="captcha needed",
@@ -1018,7 +1186,9 @@ def test_fetch_snapshot_native_retries_after_auto_solve(monkeypatch) -> None:
         lambda *a, **k: {"attempted": True, "solved": True},
     )
 
-    payload, content_type = eufy_cloud.fetch_snapshot("argyle", "dev-1", timeout=9)
+    payload, content_type = eufy_cloud.fetch_snapshot(
+        "example-home", "dev-1", timeout=9
+    )
     assert payload == b"jpg"
     assert content_type == "image/jpeg"
     assert calls["fetch"] == 2
@@ -1026,7 +1196,7 @@ def test_fetch_snapshot_native_retries_after_auto_solve(monkeypatch) -> None:
 
 def test_list_devices_native_retries_after_auto_solve(monkeypatch) -> None:
     profile = eufy_cloud.EufyCloudProfile(
-        name="argyle",
+        name="example-home",
         mode="native",
         bridge_url="",
         api_token="",
@@ -1040,7 +1210,7 @@ def test_list_devices_native_retries_after_auto_solve(monkeypatch) -> None:
     monkeypatch.setattr(
         eufy_cloud,
         "resolve_profile",
-        lambda name="default": profile if name == "argyle" else None,
+        lambda name="default": profile if name == "example-home" else None,
     )
     calls = {"list": 0}
 
@@ -1048,7 +1218,7 @@ def test_list_devices_native_retries_after_auto_solve(monkeypatch) -> None:
         calls["list"] += 1
         if calls["list"] == 1:
             raise eufy_cloud.EufyCaptchaRequired(
-                profile="argyle",
+                profile="example-home",
                 captcha_id="cid-2",
                 captcha_item="data:image/png;base64,abc",
                 message="captcha needed",
@@ -1062,6 +1232,21 @@ def test_list_devices_native_retries_after_auto_solve(monkeypatch) -> None:
         lambda *a, **k: {"attempted": True, "solved": True},
     )
 
-    devices = eufy_cloud.list_devices("argyle", timeout=9)
+    devices = eufy_cloud.list_devices("example-home", timeout=9)
     assert devices == [{"device_id": "d1"}]
     assert calls["list"] == 2
+
+
+def test_native_device_identifier_is_stable_and_installation_specific(monkeypatch):
+    monkeypatch.delenv("GLIMPSER_EUFY_OPENUDID", raising=False)
+    monkeypatch.setattr(eufy_cloud.config, "SECRET_KEY", "synthetic-installation-one")
+    first = eufy_cloud._native_device_id()
+    assert len(first) == 16
+    assert eufy_cloud._native_device_id() == first
+    monkeypatch.setattr(eufy_cloud.config, "SECRET_KEY", "synthetic-installation-two")
+    assert eufy_cloud._native_device_id() != first
+    monkeypatch.setenv("GLIMPSER_EUFY_OPENUDID", first.upper())
+    assert eufy_cloud._native_device_id() == first
+    monkeypatch.setenv("GLIMPSER_EUFY_OPENUDID", "invalid-private-value")
+    with pytest.raises(eufy_cloud.EufyCloudError, match="Invalid configured"):
+        eufy_cloud._native_device_id()

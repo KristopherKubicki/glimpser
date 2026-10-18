@@ -106,3 +106,16 @@ test("limits to top 10 rows", () => {
   expect(grouped.length).toBe(10);
   expect(grouped[grouped.length - 1].name).toBe("Other");
 });
+
+test("camera names are rendered as text instead of markup", async () => {
+  const name = '<img src=x onerror="alert(1)">';
+  fetch.mockImplementationOnce(() => Promise.resolve({
+    json: () => Promise.resolve({ [name]: { cost: "$1.00", tokens: 1, calls: 1 } }),
+  }));
+  initCosts();
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const table = document.querySelector("#cost-table tbody");
+  expect(table.textContent).toContain(name);
+  expect(table.querySelector("img")).toBeNull();
+});

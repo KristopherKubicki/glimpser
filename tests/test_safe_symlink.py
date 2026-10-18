@@ -47,6 +47,44 @@ class TestSafeSymlink(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     safe_symlink(src, dst)
 
+    def test_rejects_sibling_prefix_and_linked_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = os.path.join(tmp, "shots")
+            outside = os.path.join(tmp, "shots-other")
+            os.makedirs(base)
+            os.makedirs(outside)
+            source = os.path.join(base, "frame.png")
+            outside_source = os.path.join(outside, "private.png")
+            open(source, "w").close()
+            open(outside_source, "w").close()
+            os.symlink(outside, os.path.join(base, "escape"))
+            cases = (
+                (outside_source, os.path.join(base, "latest.png")),
+                (source, os.path.join(outside, "latest.png")),
+                (source, os.path.join(base, "escape", "latest.png")),
+                (
+                    os.path.join(base, "escape", "private.png"),
+                    os.path.join(base, "latest.png"),
+                ),
+            )
+            with patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", base):
+                for src, dst in cases:
+                    with self.subTest(src=src, dst=dst):
+                        with self.assertRaises(ValueError):
+                            safe_symlink(src, dst)
+                        self.assertFalse(os.path.lexists(dst))
+
+    def test_rejects_missing_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "missing")
+            dst = os.path.join(tmp, "link")
+
+            with patch("app.utils.scheduling.SCREENSHOT_DIRECTORY", tmp):
+                with self.assertRaises(FileNotFoundError):
+                    safe_symlink(src, dst)
+
+            self.assertFalse(os.path.lexists(dst))
+
     def test_recovers_from_race(self):
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, "f")

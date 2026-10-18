@@ -1,19 +1,19 @@
-import re
+import argparse
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 VERSION_FILE = Path("pyproject.toml")
 
 
-def get_version() -> str:
-    """Return the version string from pyproject.toml."""
-
-    content = VERSION_FILE.read_text()
-    match = re.search(r'^version = "(?P<ver>[^"]+)"', content, flags=re.MULTILINE)
-    if not match:
-        raise RuntimeError("Version not found in pyproject.toml")
-    return match.group("ver")
+def get_version(path: Path | None = None) -> str:
+    """Read project.version, independently of formatting and tool versions."""
+    data = tomllib.loads((path or VERSION_FILE).read_text())
+    version = data.get("project", {}).get("version")
+    if not isinstance(version, str) or not version or any(c.isspace() for c in version):
+        raise RuntimeError("Missing or invalid project.version in pyproject.toml")
+    return version
 
 
 def tag_exists(tag):
@@ -36,8 +36,16 @@ def create_tag(tag):
     subprocess.check_call(["git", "push", "origin", tag])
 
 
-def main():
-    version = get_version()
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Tag the project's release version")
+    parser.add_argument("--print-version", action="store_true")
+    parser.add_argument("--version-file", type=Path, default=VERSION_FILE)
+    args = parser.parse_args(argv)
+    version = get_version(args.version_file)
+    if args.print_version:
+        print(version)
+        return
+
     tag = f"v{version}"
     if tag_exists(tag):
         print(f"Tag {tag} already exists")

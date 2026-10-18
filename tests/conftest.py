@@ -25,6 +25,21 @@ pytest_socket.disable_socket()
 
 
 @pytest.fixture(autouse=True)
+def isolated_browser_queue(tmp_path, monkeypatch):
+    """Never share durable browser tickets between tests or with a local install."""
+    monkeypatch.setenv(
+        "GLIMPSER_BROWSER_QUEUE_PATH", str(tmp_path / "browser-queue.db")
+    )
+
+
+@pytest.fixture(autouse=True)
+def isolated_browser_locks(tmp_path, monkeypatch):
+    """Keep parallel tests away from each other's and the host's capture slots."""
+    monkeypatch.setenv("GLIMPSER_BROWSER_CAPTURE_LOCK", str(tmp_path / "browser.lock"))
+    monkeypatch.setenv("GLIMPSER_WEBRTC_CAPTURE_LOCK", str(tmp_path / "webrtc.lock"))
+
+
+@pytest.fixture(autouse=True)
 def reset_scheduler():
     """Provide a fresh scheduler instance for each test."""
     scheduler.shutdown(wait=False)

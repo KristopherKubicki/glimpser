@@ -61,7 +61,6 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("app.utils.scheduling.CLIP_MODEL_PATH", "custom-model"),
                 patch("app.utils.scheduling.capture_or_download", return_value=True),
                 patch("app.utils.scheduling.add_timestamp"),
-                patch("app.utils.scheduling.remove_background"),
                 patch("app.utils.scheduling.add_motion_and_caption"),
                 patch("app.utils.scheduling.save_template"),
                 patch("app.utils.scheduling.send_http_callback"),
@@ -76,9 +75,11 @@ class TestClipModelSetting(unittest.TestCase):
                     types.SimpleNamespace(InferenceSession=DummySession),
                 ),
                 patch("app.utils.scheduling.CLIPProcessor", DummyProcessor),
+                patch(
+                    "app.utils.scheduling._clip_state",
+                    {"session": None, "processor": None},
+                ),
             ):
-                scheduling.clip_session = None
-                scheduling.clip_processor = None
                 scheduling.update_camera("cam1", template)
                 self.assertEqual(DummySession.calls, ["custom-model"])
                 self.assertEqual(DummyProcessor.calls, ["custom-model"])
@@ -116,7 +117,6 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("app.utils.scheduling.CLIP_MODEL_NAME", "custom-model"),
                 patch("app.utils.scheduling.capture_or_download", return_value=True),
                 patch("app.utils.scheduling.add_timestamp"),
-                patch("app.utils.scheduling.remove_background"),
                 patch("app.utils.scheduling.add_motion_and_caption"),
                 patch("app.utils.scheduling.save_template"),
                 patch("app.utils.scheduling.send_http_callback"),
@@ -128,9 +128,11 @@ class TestClipModelSetting(unittest.TestCase):
                 patch("os.unlink"),
                 patch("app.utils.scheduling.ort", None),
                 patch("app.utils.scheduling.CLIPProcessor", DummyProcessor),
+                patch(
+                    "app.utils.scheduling._clip_state",
+                    {"session": None, "processor": None},
+                ),
             ):
-                scheduling.clip_session = None
-                scheduling.clip_processor = None
                 scheduling.update_camera("cam1", template)
                 self.assertFalse(DummyProcessor.called)
 

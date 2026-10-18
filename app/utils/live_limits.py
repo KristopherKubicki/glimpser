@@ -3,7 +3,6 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 
 @dataclass
@@ -19,7 +18,7 @@ class _Token:
 
 
 _lock = threading.Lock()
-_sems: Dict[Tuple[str, str, int], threading.Semaphore] = {}
+_sems: dict[tuple[str, str, int], threading.Semaphore] = {}
 
 
 def try_acquire(

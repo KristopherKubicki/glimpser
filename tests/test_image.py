@@ -14,7 +14,7 @@ class TestFileRetention(unittest.TestCase):
             # Create some dummy files
             file_paths = []
             for i in range(5):
-                file_path = os.path.join(temp_dir, f"file{i}.txt")
+                file_path = os.path.join(temp_dir, f"file{i}.png")
                 with open(file_path, "w") as f:
                     f.write("Some content")
                 os.utime(file_path, (i * 1000, i * 1000))  # Modify file creation time

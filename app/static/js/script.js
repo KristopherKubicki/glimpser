@@ -32,6 +32,11 @@ import { initVideoZoom } from "./zoom.js";
 import { initSearchShortcut } from "./search_shortcut.js";
 import { initUrlTester } from "./url_test.js";
 import { initComfort } from "./comfort.js";
+import { initLanding } from "./landing.js?v=20260930-private-rules";
+
+function isLandingScreen() {
+  return window.location.pathname === "/";
+}
 
 function initGuestGuard() {
   if (!window.IS_LAN_GUEST) return;
@@ -52,40 +57,51 @@ function initGuestGuard() {
   });
 }
 
-initTemplates();
-initVideoControls();
-initVisibilityHandler();
-initSchedulerToggle();
-initDiscoveryToggle();
-initSubnetInput();
-initDiscoveryTable();
-initNav();
-initFormValidation();
-initAddSettingValidation();
-initFooterFade();
-initOffline();
-initNotifications();
-initDangerToggle();
-initIndexTime();
-initWelcome();
-initTooltips();
-initCaptions();
-initSettingsSearch();
-initShortcutPath();
-initTabs();
-initThemeToggle();
-initContrastToggle();
-initNetworkBanner();
-initControlsDropdown();
-initAutocomplete();
-initCosts();
-initAdvanced();
-initKeyVisibility();
-initUnsavedIndicator();
-initCliHelp();
-initVideoZoom();
-initSearchShortcut();
-initHotkeys();
-initUrlTester();
-initComfort();
+if (isLandingScreen()) {
+  // Kiosk landing should stay cheap: no template loading, no status polling,
+  // no discovery/settings tooling, and no extra page-wide timers beyond the
+  // clock and curated scene rotator.
+  initNav({ passive: true });
+  initIndexTime();
+  initLanding();
+} else {
+  initTemplates();
+  initVideoControls();
+  initVisibilityHandler();
+  initSchedulerToggle();
+  initDiscoveryToggle();
+  initSubnetInput();
+  initDiscoveryTable();
+  initNav();
+  initFormValidation();
+  initAddSettingValidation();
+  initFooterFade();
+  initOffline();
+  initNotifications();
+  initDangerToggle();
+  initIndexTime();
+  initWelcome();
+  initTooltips();
+  initCaptions();
+  initSettingsSearch();
+  initShortcutPath();
+  initTabs();
+  initThemeToggle();
+  initContrastToggle();
+  initNetworkBanner();
+  initControlsDropdown();
+  initAutocomplete();
+  initCosts();
+  initAdvanced();
+  initKeyVisibility();
+  initUnsavedIndicator();
+  initCliHelp();
+  initVideoZoom();
+  initSearchShortcut();
+  initHotkeys();
+  initUrlTester();
+  initComfort();
+  initLanding();
+}
+
 initGuestGuard();

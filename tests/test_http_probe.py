@@ -170,6 +170,7 @@ def test_mp4_probe_finds_moov_in_front_and_duration():
         ok=True,
     )
     front.content = ftyp + moov
+    front.headers["Content-Range"] = f"bytes 0-{len(front.content) - 1}/999999"
 
     with patch(
         "app.utils.http_probe.requests.get",
@@ -214,6 +215,7 @@ def test_mp4_probe_hunts_tail_when_moov_not_in_front():
         ok=True,
     )
     front.content = ftyp + mdat_header
+    front.headers["Content-Range"] = f"bytes 0-{len(front.content) - 1}/500000"
 
     mvhd = _mvhd_v0(timescale=48000, duration=96000)
     moov = _box(b"moov", mvhd)
@@ -224,6 +226,7 @@ def test_mp4_probe_hunts_tail_when_moov_not_in_front():
         ok=True,
     )
     tail.content = moov
+    tail.headers["Content-Range"] = f"bytes 368928-{368928 + len(moov) - 1}/500000"
 
     with patch(
         "app.utils.http_probe.requests.get",

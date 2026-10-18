@@ -1,11 +1,13 @@
 <!-- app/templates/template_details.html -->
 
 {% extends 'base.html' %} {% from 'components.html' import confirm_modal,
-template_form %} {% block body_class %}player-screen{% endblock %} {% block content %}
+template_form %} {% block body_class %}player-screen{% endblock %} {% block
+content %}
 <script>
   const cameraMeta = {{ template_details|tojson }};
   window.templateDetails = { "{{ template_name }}": cameraMeta };
   window.currentCamera = '{{ template_name }}';
+  window.ptzState = {{ ptz_state|tojson }};
   {% if template_details.get('groups') %}
   window.currentGroup = "{{ template_details.get('groups').split(',')[0].strip() }}";
   {% endif %}
@@ -170,6 +172,121 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
     const status = document.getElementById("template-action-status");
     if (!status) return;
     status.textContent = message || "";
+  }
+
+  function renderPtzState() {
+    const state = window.ptzState || {};
+    const status = document.getElementById("ptz-status");
+    const profile = document.getElementById("ptz-profile");
+    const controls = document.getElementById("ptz-controls");
+    const presets = document.getElementById("ptz-presets");
+    const lensControls = document.getElementById("ptz-lens-controls");
+    const detect = document.getElementById("ptz-detect-btn");
+    if (
+      !status ||
+      !profile ||
+      !controls ||
+      !presets ||
+      !detect ||
+      !lensControls
+    )
+      return;
+
+    const enabled = Boolean(state.enabled);
+    status.textContent = enabled ? "Ready" : "Not detected";
+    profile.textContent = state.profile_name || "No PTZ profile saved";
+    detect.textContent = enabled ? "Refresh PTZ" : "Detect PTZ";
+    controls.classList.toggle("hidden", !enabled);
+    lensControls.classList.toggle(
+      "hidden",
+      !enabled || !Boolean(state.supports_lens_controls),
+    );
+    presets.innerHTML = "";
+
+    const presetList = Array.isArray(state.presets) ? state.presets : [];
+    if (!enabled || !presetList.length) {
+      presets.classList.toggle("hidden", true);
+      return;
+    }
+
+    presetList.forEach((preset) => {
+      const token = String(preset.token || "").trim();
+      if (!token) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ptz-preset-button";
+      button.textContent = String(preset.name || token);
+      button.addEventListener("click", () =>
+        sendPtzCommand(window.currentCamera, {
+          action: "preset",
+          preset_token: token,
+        }),
+      );
+      presets.appendChild(button);
+    });
+    presets.classList.toggle("hidden", presets.children.length === 0);
+  }
+
+  function refreshPtz(templateName) {
+    setActionStatus("Detecting PTZ...");
+    fetch(`/templates/${encodeURIComponent(templateName)}/ptz/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        window.ptzState = data.ptz || { enabled: false, presets: [] };
+        renderPtzState();
+        setActionStatus(data.ok ? "PTZ ready." : "PTZ not available.");
+      })
+      .catch((error) => {
+        setActionStatus("PTZ detection failed.");
+        console.error("Error detecting PTZ:", error);
+      });
+  }
+
+  function sendPtzCommand(templateName, payload) {
+    if (!window.ptzState || !window.ptzState.enabled) {
+      setActionStatus("Detect PTZ first.");
+      return;
+    }
+    setActionStatus("Sending PTZ command...");
+    fetch(`/templates/${encodeURIComponent(templateName)}/ptz`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (response) => ({
+        ok: response.ok,
+        data: await response.json(),
+      }))
+      .then(({ ok, data }) => {
+        window.ptzState = data.ptz || window.ptzState;
+        renderPtzState();
+        if (ok && data.ok) {
+          setActionStatus("PTZ command sent.");
+        } else {
+          setActionStatus(data.error || "PTZ command failed.");
+        }
+      })
+      .catch((error) => {
+        setActionStatus("PTZ command failed.");
+        console.error("Error running PTZ command:", error);
+      });
+  }
+
+  function nudgePtz(templateName, direction) {
+    const state = window.ptzState || {};
+    sendPtzCommand(templateName, {
+      action: "move",
+      direction,
+      duration_ms: Number(state.duration_ms || 450),
+    });
   }
 
   function clearQuarantine(templateName) {
@@ -484,6 +601,7 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
       }
       updateBrowserRelated();
     });
+    renderPtzState();
     updateBrowserRelated();
   });
 
@@ -502,12 +620,18 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
           live.dataset.resumeOnClose = live.paused ? "false" : "true";
           live.pause();
         }
-        document.querySelectorAll("#videos-modal video[data-src]").forEach((vid) => {
-          if (!vid.getAttribute("src")) {
-            vid.setAttribute("src", vid.getAttribute("data-src"));
-            vid.load();
-          }
-        });
+        document
+          .querySelectorAll("#videos-modal video[data-src]")
+          .forEach((vid) => {
+            if (!vid.getAttribute("src")) {
+              const source = new URL(vid.getAttribute("data-src"), window.location.href);
+              if ((source.protocol === "http:" || source.protocol === "https:") &&
+                  source.origin === window.location.origin) {
+                vid.setAttribute("src", source.href);
+                vid.load();
+              }
+            }
+          });
       }
       document.querySelector(".template-actions")?.classList.remove("fade-out");
     } else {
@@ -560,6 +684,16 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
     data-requires-login="true"
   >
     Record 20s
+  </button>
+  <button
+    onclick="
+      openModal('ptz-modal');
+      renderPtzState();
+    "
+    title="Open PTZ controls"
+    data-requires-login="true"
+  >
+    PTZ
   </button>
   <button
     onclick="window.location.href='/logs?search={{ template_name }}'"
@@ -717,9 +851,129 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
       ></div>
     </div>
     <div class="form-actions">
-      <button id="recovery-apply" type="button" disabled>
-        Apply Selected
+      <button id="recovery-apply" type="button" disabled>Apply Selected</button>
+    </div>
+  </div>
+</div>
+
+<div id="ptz-modal" class="modal">
+  <div class="modal-content ptz-modal-content">
+    <span
+      onclick="closeGenericModal('ptz-modal')"
+      class="close-icon"
+      title="Close dialog"
+      >&times;</span
+    >
+    <div class="ptz-modal-header">
+      <div>
+        <h3>PTZ Controls</h3>
+        <p class="ptz-modal-copy">
+          Use nudges for pan, tilt, zoom, or jump to a saved preset.
+        </p>
+      </div>
+      <button
+        id="ptz-detect-btn"
+        type="button"
+        onclick="refreshPtz('{{ template_name }}')"
+      >
+        Detect PTZ
       </button>
+    </div>
+    <div class="ptz-modal-meta">
+      <div>
+        <strong>Status:</strong> <span id="ptz-status">Not detected</span>
+      </div>
+      <div><strong>Profile:</strong> <span id="ptz-profile">—</span></div>
+    </div>
+    <div id="ptz-controls" class="ptz-controls hidden">
+      <div class="ptz-pad" aria-label="PTZ directional controls">
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'up_left')"
+        >
+          ↖
+        </button>
+        <button type="button" onclick="nudgePtz('{{ template_name }}', 'up')">
+          ↑
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'up_right')"
+        >
+          ↗
+        </button>
+        <button type="button" onclick="nudgePtz('{{ template_name }}', 'left')">
+          ←
+        </button>
+        <button
+          type="button"
+          onclick="sendPtzCommand('{{ template_name }}', { action: 'stop' })"
+        >
+          ■
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'right')"
+        >
+          →
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'down_left')"
+        >
+          ↙
+        </button>
+        <button type="button" onclick="nudgePtz('{{ template_name }}', 'down')">
+          ↓
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'down_right')"
+        >
+          ↘
+        </button>
+      </div>
+      <div class="ptz-zoom-row">
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'zoom_in')"
+        >
+          Zoom In
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'zoom_out')"
+        >
+          Zoom Out
+        </button>
+      </div>
+      <div id="ptz-lens-controls" class="ptz-zoom-row hidden">
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'focus_near')"
+        >
+          Focus Near
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'focus_far')"
+        >
+          Focus Far
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'iris_open')"
+        >
+          Iris +
+        </button>
+        <button
+          type="button"
+          onclick="nudgePtz('{{ template_name }}', 'iris_close')"
+        >
+          Iris -
+        </button>
+      </div>
+      <div id="ptz-presets" class="ptz-presets hidden"></div>
     </div>
   </div>
 </div>
@@ -799,7 +1053,7 @@ template_form %} {% block body_class %}player-screen{% endblock %} {% block cont
     >
     {{ template_form( 'edit-template-form-modal', '/update_template/' ~
     template_name, template=template_details, preview_src='/stream.mjpg?camera='
-    ~ template_name, preview_id='url-preview', include_name=False,
+    ~ template_name, preview_id='url-preview', include_name=True,
     submit_label='Save', object_tokens=object_tokens, clip_model=clip_model,
     clip_gpu=clip_gpu ) }}
   </div>

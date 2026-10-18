@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import datetime
+from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, render_template, request
 from sqlalchemy import text
+
+from app.runtime_health import capture_health
+from app.utils.live_caps import cache_responsive
+from app.utils.live_host_caps import cache_responsive as host_cache_responsive
+from app.viewer_policy import VIEWER_CONFIG
 
 
 def create_blueprint() -> Blueprint:
@@ -15,13 +22,14 @@ def create_blueprint() -> Blueprint:
 
     bp = Blueprint("status", __name__)
 
+    @bp.route("/ready")
     @bp.route("/health")
     @routes.login_required
     @routes.profile_route("/health")
     def health_check():
         """Return a JSON report on system metrics and status."""
         scheduler_status = "failed"
-        free_gb = 0
+        free_gb = None
 
         metrics = routes.scheduling.get_system_metrics()
 
@@ -80,6 +88,44 @@ def create_blueprint() -> Blueprint:
             scheduler_status = "failed"
             error_messages.append("Error checking scheduler status")
 
+        captures = None
+        try:
+            captures = capture_health(routes.config.DATABASE_PATH)
+            if captures["failed"] or captures["stale"]:
+                is_nominal = False
+                error_messages.append("Active sources have failed or stale captures")
+        except Exception:
+            is_nominal = False
+            error_messages.append("Capture telemetry unavailable")
+
+        try:
+            free_gb = round(
+                shutil.disk_usage(
+                    Path(routes.config.DATABASE_PATH).resolve().parent
+                ).free
+                / (1024**3),
+                2,
+            )
+        except OSError:
+            is_nominal = False
+            error_messages.append("Storage telemetry unavailable")
+
+        live_cache_ok = cache_responsive() and host_cache_responsive()
+        if not live_cache_ok:
+            is_nominal = False
+            error_messages.append("Live capability cache is unresponsive")
+        acceleration = routes.config.FFMPEG_ACCELERATION_STATUS
+        if acceleration["status"] == "failed":
+            is_nominal = False
+            error_messages.append("GPU unavailable; software fallback is active")
+
+        # Source outages and software fallback degrade service but must not
+        # trigger endless restarts. Readiness represents core app availability.
+        ready = (
+            db_status == "connected" and scheduler_status == "running" and live_cache_ok
+        )
+        restart_required = db_status != "connected" or not live_cache_ok
+
         return (
             jsonify(
                 {
@@ -89,10 +135,15 @@ def create_blueprint() -> Blueprint:
                     "database": db_status,
                     "scheduler": scheduler_status,
                     "free_disk_space_gb": free_gb,
+                    "captures": captures,
+                    "acceleration": acceleration,
+                    "live_cache": "responsive" if live_cache_ok else "unresponsive",
+                    "ready": ready,
+                    "restart_required": restart_required,
                     "error_messages": error_messages,
                 }
             ),
-            200,
+            503 if request.path == "/ready" and not ready else 200,
         )
 
     @bp.route("/danger_status")
@@ -122,6 +173,79 @@ def create_blueprint() -> Blueprint:
                 "shortcut": str(routes.first_shortcut_path() or ""),
                 "patched": patched,
             }
+        )
+
+    @bp.route("/system_glimpse")
+    @routes.login_required
+    @routes.profile_route("/system_glimpse")
+    def system_glimpse():
+        """Render an operator-focused health summary for screenshot rotation."""
+
+        from app.utils.camera_health import build_camera_health_report
+
+        metrics = routes.scheduling.get_system_metrics()
+        templates = routes.template_manager.get_templates()
+        health_report = build_camera_health_report(
+            templates,
+            screenshot_dir=routes.config.SCREENSHOT_DIRECTORY,
+            video_dir=routes.config.VIDEO_DIRECTORY,
+        )
+        cameras = health_report.get("cameras", [])
+        summary = health_report.get("summary", {})
+        actionable = [
+            row
+            for row in cameras
+            if row.get("status") not in {"archived", "expected_offline"}
+        ]
+
+        groups = VIEWER_CONFIG.get(
+            "status_groups",
+            ("marine", "network", "power", "traffic", "weather", "hubitat"),
+        )
+        group_rows = []
+        for group in groups:
+            matching = [row for row in actionable if group in row.get("groups", [])]
+            failing = [
+                row
+                for row in matching
+                if row.get("status") in {"failing", "stale"}
+                or row.get("capture_failed")
+            ]
+            group_rows.append(
+                {
+                    "name": group,
+                    "total": len(matching),
+                    "failing": len(failing),
+                    "ok": max(0, len(matching) - len(failing)),
+                }
+            )
+
+        problem_cameras = sorted(
+            [
+                row
+                for row in actionable
+                if row.get("status") != "healthy" or row.get("capture_failed")
+            ],
+            key=lambda row: (
+                int(row.get("severity") or 0),
+                row.get("last_screenshot_age_minutes") or 0,
+            ),
+            reverse=True,
+        )[:16]
+
+        generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        return render_template(
+            "system_glimpse.html",
+            generated_at=generated_at,
+            metrics=metrics,
+            summary=summary,
+            group_rows=group_rows,
+            problem_cameras=problem_cameras,
+            expected_offline_cameras=[
+                row for row in cameras if row.get("status") == "expected_offline"
+            ],
+            template_count=len(templates),
+            page_title="Eyebat System Glimpse",
         )
 
     @bp.route("/captions_status")
@@ -183,6 +307,21 @@ def create_blueprint() -> Blueprint:
 
         return jsonify({"caption": caption, "timestamp": timestamp})
 
+    @bp.route("/camera_health")
+    @routes.login_required
+    @routes.profile_route("/camera_health")
+    def camera_health():
+        """Return per-camera capture freshness and artifact health."""
+        from app.utils.camera_health import build_camera_health_report
+
+        return jsonify(
+            build_camera_health_report(
+                routes.template_manager.get_templates(),
+                screenshot_dir=routes.config.SCREENSHOT_DIRECTORY,
+                video_dir=routes.config.VIDEO_DIRECTORY,
+            )
+        )
+
     @bp.route("/discovery_status")
     @routes.login_required
     @routes.profile_route("/discovery_status")
@@ -212,8 +351,8 @@ def create_blueprint() -> Blueprint:
             routes.scheduling.schedule_discovery()
             routes.update_setting("DISCOVERY_AUTOSTART", "True", restart=False)
             return jsonify({"status": "running"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
+        except Exception:
+            return jsonify({"status": "error", "message": "Operation failed"}), 500
 
     @bp.route("/toggle_chyron", methods=["POST"])
     @routes.login_required
@@ -225,7 +364,7 @@ def create_blueprint() -> Blueprint:
             new_speed = "0" if str(current) != "0" else "240"
             routes.update_setting("CHYRON_SPEED", new_speed)
             return jsonify({"speed": int(new_speed)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        except Exception:
+            return jsonify({"error": "Operation failed"}), 500
 
     return bp

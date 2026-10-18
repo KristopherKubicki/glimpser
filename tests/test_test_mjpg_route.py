@@ -29,6 +29,19 @@ class TestTestMjpg(unittest.TestCase):
             )
             next(resp.response)
 
+    def test_invalid_filters_do_not_start_stream(self):
+        with patch("app.routes.generate") as generate:
+            for endpoint in ("/test.mjpg", "/stream.mjpg"):
+                for field in ("camera", "group"):
+                    response = self.client.get(
+                        endpoint, query_string={field: "../outside"}
+                    )
+                    self.assertEqual(response.status_code, 400)
+            generate.assert_not_called()
+
+    def test_all_filters_remain_optional(self):
+        self._check_call("/test.mjpg?camera=all&group=all", None, None)
+
     def test_camera_query(self):
         self._check_call("/test.mjpg?camera=cam1", "cam1", None)
 

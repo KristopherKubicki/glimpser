@@ -11,10 +11,12 @@ import glob
 import json
 import logging
 import os
+import selectors
 import subprocess
 import tempfile
 import time
 from enum import Enum, auto
+from functools import lru_cache
 
 from filelock import FileLock, Timeout
 from PIL import Image
@@ -56,6 +58,22 @@ EXPECTED_RESOLUTION_PARTS = 2
 ARCHIVE_LOCK_TIMEOUT = int(os.getenv("ARCHIVE_LOCK_TIMEOUT", "0"))
 ARCHIVE_LOCK_STALE_SECONDS = int(os.getenv("ARCHIVE_LOCK_STALE_SECONDS", "1800"))
 ARCHIVE_CURSOR_FILENAME = ".archive_screenshots.cursor"
+DEFLICKER_FILTERS = {
+    "light": "deflicker=s=4:mode=pm",
+    "medium": "deflicker=s=8:mode=pm",
+    "strong": "deflicker=s=12:mode=pm",
+}
+BASE_TIMELAPSE_FILTER = (
+    "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,"
+    "pad=1280:720:(ow-iw)/2:(oh-ih)/2"
+)
+TIMELAPSE_SIDECAR_PNGS = {
+    "latest_camera.png",
+    "last_caption.png",
+    "last_motion.png",
+    "last_motion_caption.png",
+    "prev_motion.png",
+}
 
 
 def touch(fname, times=None):
@@ -63,6 +81,167 @@ def touch(fname, times=None):
 
     with open(fname, "a"):
         os.utime(fname, times)
+
+
+def _normalize_deflicker_mode(mode: object) -> str:
+    """Return a supported timelapse deflicker mode or an empty string."""
+
+    normalized = str(mode or "").strip().lower()
+    if normalized in {"", "off"}:
+        return ""
+    if normalized in DEFLICKER_FILTERS:
+        return normalized
+    return ""
+
+
+def _build_timelapse_filter(camera_name: str, templates: dict | None = None) -> str:
+    """Build the FFmpeg filter graph for a camera timelapse encode.
+
+    The deflicker stage is intentionally optional and template-scoped so
+    flicker-prone infrastructure and grow-light cameras can smooth luminance
+    pulses without changing the global video pipeline.
+    """
+
+    if templates is None:
+        templates = get_templates()
+    template = templates.get(camera_name, {})
+    deflicker_mode = _normalize_deflicker_mode(template.get("deflicker_mode"))
+    filters = []
+    if deflicker_mode:
+        filters.append(DEFLICKER_FILTERS[deflicker_mode])
+    filters.append(BASE_TIMELAPSE_FILTER)
+    return ",".join(filters)
+
+
+def _is_canonical_screenshot_frame(camera_name: str, path: str) -> bool:
+    """Return ``True`` for archived screenshot frames that belong in timelapses.
+
+    Timelapse assembly should only ingest the canonical per-capture PNGs named
+    ``<camera>_<YYYYmmddHHMMSS>.png``. Sidecars such as ``latest_camera.png``,
+    motion/caption helpers, and ``.orig.png`` snapshots are not stable video
+    frames and can make videos appear to jump between states.
+    """
+
+    filename = os.path.basename(path)
+    if filename in TIMELAPSE_SIDECAR_PNGS:
+        return False
+    if not filename.endswith(".png") or filename.endswith(".orig.png"):
+        return False
+
+    prefix = f"{camera_name}_"
+    if not filename.startswith(prefix):
+        return False
+
+    timestamp = filename[len(prefix) : -4]
+    return len(timestamp) == 14 and timestamp.isdigit()
+
+
+def _canonical_frame_capture_time(camera_name: str, path: str) -> float | None:
+    """Return the UTC capture timestamp encoded in a canonical frame name.
+
+    Timelapse ordering should be driven by the canonical filename timestamp,
+    not filesystem ``ctime``. New or derived cameras can receive copied or
+    backfilled frames whose ``ctime`` is newer than the existing MP4 even
+    though the capture itself is older, which makes the rendered video jump
+    backwards at segment boundaries.
+    """
+
+    if not _is_canonical_screenshot_frame(camera_name, path):
+        return None
+
+    filename = os.path.basename(path)
+    timestamp = filename[len(camera_name) + 1 : -4]
+    try:
+        captured_at = datetime.datetime.strptime(timestamp, "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+    return captured_at.replace(tzinfo=datetime.UTC).timestamp()
+
+
+def _archive_frame_version(path: str) -> tuple:
+    """Identify a frame version without retaining any decoded image data."""
+    path = os.path.abspath(path)
+    stat = os.stat(path)
+    return (
+        path,
+        stat.st_dev,
+        stat.st_ino,
+        stat.st_size,
+        stat.st_mtime_ns,
+        stat.st_ctime_ns,
+    )
+
+
+@lru_cache(maxsize=32768)
+def _cached_archive_check(version: tuple, check) -> bool:
+    """Reuse a bounded check result only for the same on-disk frame version."""
+    try:
+        result = bool(check(version[0]))
+        return result and _archive_frame_version(version[0]) == version
+    except Exception:
+        return False
+
+
+def _archive_check(path: str, check) -> bool:
+    """Invalidate prior results after replacement, editing, repair or deletion."""
+    try:
+        version = _archive_frame_version(path)
+        # Some filesystems stamp rapid in-place writes with the same time.
+        # Do not cache actively changing frames until their timestamps settle.
+        if time.time_ns() - max(version[-2:]) < 1_000_000_000:
+            return _cached_archive_check.__wrapped__(version, check)
+        return _cached_archive_check(version, check)
+    except OSError:
+        return False
+
+
+def _frame_has_content(path: str) -> bool:
+    """Apply the existing blank-frame guard to a candidate image."""
+    with Image.open(path) as image:
+        return not is_mostly_blank(image)
+
+
+def _collect_new_frame_files(
+    camera_path: str,
+    camera_name: str,
+    video_mod_time: float,
+    limit: int | None = None,
+) -> list[str]:
+    """Return canonical screenshot frames newer than ``video_mod_time``.
+
+    ``video_mod_time`` is the best available lower bound for what the current
+    MP4 already contains, but the per-frame ordering signal must come from the
+    screenshot filename timestamp itself. Filesystem metadata can drift when
+    older frames are copied into a camera directory after the video already
+    exists. ``limit`` retains the newest nonblank candidates, in capture order.
+    """
+
+    if limit is not None and limit <= 0:
+        return []
+    new_files: list[tuple[float, str]] = []
+    for path in glob.glob(os.path.join(camera_path, "*.png")):
+        if os.path.islink(path):
+            continue
+        capture_time = _canonical_frame_capture_time(camera_name, path)
+        if capture_time is None:
+            continue
+        try:
+            if capture_time > video_mod_time:
+                new_files.append((capture_time, path))
+        except FileNotFoundError:
+            continue
+
+    filtered_files: list[tuple[float, str]] = []
+    # Encoding uses only the newest 300 nonblank candidates. Walk backwards
+    # before decoding so older history does not consume CPU merely to be sliced
+    # off later. Blank frames do not count toward the limit.
+    for capture_time, path in sorted(new_files, reverse=True):
+        if _archive_check(path, _frame_has_content):
+            filtered_files.append((capture_time, path))
+            if limit is not None and len(filtered_files) >= limit:
+                break
+
+    return [path for _, path in sorted(filtered_files, key=lambda item: item[0])]
 
 
 def trim_group_name(group_name):
@@ -92,10 +271,99 @@ def run_ffmpeg(command, timeout: int = 30):
     if result.stderr:
         logging.debug("ffmpeg stderr: %s", result.stderr.strip())
     if result.returncode != 0:
+        if _should_retry_without_hwaccel(command, result.stderr):
+            retry_command = _ffmpeg_command_without_hwaccel(command)
+            logging.warning(
+                "ffmpeg hwaccel failed; retrying with software decode: %s",
+                _summarize_ffmpeg_stderr(result.stderr),
+            )
+            retry_result = subprocess.run(
+                retry_command,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            if retry_result.stdout:
+                logging.debug("ffmpeg stdout: %s", retry_result.stdout.strip())
+            if retry_result.stderr:
+                logging.debug("ffmpeg stderr: %s", retry_result.stderr.strip())
+            if retry_result.returncode == 0:
+                return retry_result
+            raise subprocess.CalledProcessError(
+                retry_result.returncode,
+                retry_command,
+                output=retry_result.stdout,
+                stderr=retry_result.stderr,
+            )
         raise subprocess.CalledProcessError(
             result.returncode, command, output=result.stdout, stderr=result.stderr
         )
     return result
+
+
+def _summarize_ffmpeg_stderr(stderr: object) -> str:
+    """Return a short text summary from ffmpeg stderr bytes or text."""
+
+    if isinstance(stderr, bytes):
+        text = stderr.decode(errors="replace")
+    else:
+        text = str(stderr or "")
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return " | ".join(lines[-3:])[:500]
+
+
+def _ffmpeg_error_suggests_hwaccel_failure(stderr: object) -> bool:
+    """Return True when stderr points at GPU setup/decode failure."""
+
+    if isinstance(stderr, bytes):
+        text = stderr.decode(errors="replace")
+    else:
+        text = str(stderr or "")
+    lowered = text.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "cannot load libcuda",
+            "could not dynamically load cuda",
+            "cu->cuinit",
+            "cuda device",
+            "cuda hwaccel",
+            "device creation failed",
+            "device setup failed",
+            "failed setup for format cuda",
+            "failed to create cuda device",
+            "hardware device setup failed",
+            "no device available for decoder",
+            "operation not permitted",
+        )
+    )
+
+
+def _ffmpeg_command_without_hwaccel(command: list[str]) -> list[str]:
+    """Return ``command`` with any ``-hwaccel <value>`` pair removed."""
+
+    cleaned: list[str] = []
+    skip_next = False
+    for value in command:
+        if skip_next:
+            skip_next = False
+            continue
+        if value == "-hwaccel":
+            skip_next = True
+            continue
+        cleaned.append(value)
+    return cleaned
+
+
+def _should_retry_without_hwaccel(command: list[str], stderr: object) -> bool:
+    """Return True when a software retry is likely to recover an ffmpeg job."""
+
+    return (
+        "-hwaccel" in command
+        and bool(FFMPEG_HWACCEL and FFMPEG_HWACCEL.lower() != "false")
+        and _ffmpeg_error_suggests_hwaccel_failure(stderr)
+    )
 
 
 def _has_dts_warnings(stderr: str) -> bool:
@@ -165,30 +433,94 @@ def _log_ffmpeg_failure(prefix: str, exc: Exception) -> None:
         logging.error("%s: %s", prefix, exc)
 
 
-def pipe_ffmpeg_frames(command, frame_files):
-    """Stream image frames to FFmpeg through stdin."""
+def _pipe_ffmpeg_frames_once(command, frame_files):
+    """Feed frames while draining encoder output, retaining bounded diagnostics."""
+
+    def frame_chunks():
+        for frame in frame_files:
+            with open(frame, "rb") as img:
+                while chunk := img.read(65536):
+                    yield chunk
+
     process = subprocess.Popen(
         command,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        bufsize=0,
     )
-    for frame in frame_files:
-        with open(frame, "rb") as img:
-            process.stdin.write(img.read())
-    process.stdin.close()
-    stdout, stderr = process.communicate()
-    if process.stdin:
-        process.stdin.close()
-    if process.stdout:
-        process.stdout.close()
-    if process.stderr:
-        process.stderr.close()
+    chunks = frame_chunks()
+    output = {"stdout": bytearray(), "stderr": bytearray()}
+    pending = b""
+    try:
+        with selectors.DefaultSelector() as selector:
+            os.set_blocking(process.stdin.fileno(), False)
+            selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+            selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+            selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
+            while selector.get_map():
+                for key, _ in selector.select():
+                    if key.data != "stdin":
+                        chunk = os.read(key.fd, 65536)
+                        if not chunk:
+                            selector.unregister(key.fileobj)
+                            continue
+                        tail = output[key.data]
+                        tail.extend(chunk)
+                        del tail[:-65536]
+                        continue
+                    if not pending:
+                        pending = next(chunks, b"")
+                    if not pending:
+                        selector.unregister(process.stdin)
+                        process.stdin.close()
+                        continue
+                    try:
+                        written = os.write(key.fd, pending)
+                        pending = pending[written:]
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        # Early encoder errors must still reach the caller's
+                        # hardware fallback logic after stderr has drained.
+                        selector.unregister(process.stdin)
+                        process.stdin.close()
+            process.wait()
+    finally:
+        chunks.close()
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        for pipe in (process.stdin, process.stdout, process.stderr):
+            pipe.close()
+    stdout, stderr = bytes(output["stdout"]), bytes(output["stderr"])
     if stdout:
-        logging.debug("ffmpeg stdout: %s", stdout.decode().strip())
+        logging.debug("ffmpeg stdout: %s", stdout.decode(errors="replace").strip())
     if stderr:
-        logging.debug("ffmpeg stderr: %s", stderr.decode().strip())
+        logging.debug("ffmpeg stderr: %s", stderr.decode(errors="replace").strip())
+    return process, stdout, stderr
+
+
+def pipe_ffmpeg_frames(command, frame_files):
+    """Stream image frames to FFmpeg through stdin."""
+
+    process, stdout, stderr = _pipe_ffmpeg_frames_once(command, frame_files)
     if process.returncode != 0:
+        if _should_retry_without_hwaccel(command, stderr):
+            retry_command = _ffmpeg_command_without_hwaccel(command)
+            logging.warning(
+                "ffmpeg pipe hwaccel failed; retrying with software decode: %s",
+                _summarize_ffmpeg_stderr(stderr),
+            )
+            process, stdout, stderr = _pipe_ffmpeg_frames_once(
+                retry_command, frame_files
+            )
+            if process.returncode == 0:
+                process.wait(timeout=5)
+                return process
+            raise subprocess.CalledProcessError(
+                process.returncode, retry_command, output=stdout, stderr=stderr
+            )
         raise subprocess.CalledProcessError(
             process.returncode, command, output=stdout, stderr=stderr
         )
@@ -678,6 +1010,9 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
 
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
+    camera_name = os.path.basename(os.path.normpath(camera_path))
+    templates = get_templates()
+    timelapse_filter = _build_timelapse_filter(camera_name, templates=templates)
 
     if not os.path.isdir(video_path):
         return False
@@ -729,30 +1064,9 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
     # Filter the list of image files to include only those that are newer than the video
     # Files may disappear between the glob and metadata lookup so catch
     # FileNotFoundError and skip missing entries.
-    new_files = []
-    for f in glob.glob(os.path.join(camera_path, "*.png")):
-        if os.path.islink(f):
-            continue
-        if f.endswith("_blank.png"):
-            continue
-        try:
-            if os.path.getctime(f) > video_mod_time:
-                new_files.append(f)
-        except FileNotFoundError:
-            # Screenshot was removed concurrently; ignore it
-            continue
-
-    # Drop nearly blank images
-    filtered_files = []
-    for file in new_files:
-        try:
-            with Image.open(file) as img:
-                if not is_mostly_blank(img):
-                    filtered_files.append(file)
-        except Exception:
-            continue
-
-    new_files = sorted(filtered_files)
+    new_files = _collect_new_frame_files(
+        camera_path, camera_name, video_mod_time, limit=300
+    )
 
     if len(new_files) > 0:
         # Create a temporary file with the list of new frames
@@ -763,12 +1077,9 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
                 try:
                     if os.path.getsize(os.path.abspath(file)) < MIN_VALID_PNG_BYTES:
                         continue
-                    if not _is_valid_png(file):
+                    if not _archive_check(file, _is_valid_png):
                         continue
-                    if (
-                        os.path.getsize(os.path.abspath(file)) > MIN_VALID_FRAME_BYTES
-                        and "_2" in file
-                    ):
+                    if os.path.getsize(os.path.abspath(file)) > MIN_VALID_FRAME_BYTES:
                         temp_file.write(f"file '{os.path.abspath(file)}'\n")
                         lcount += 1
                 except FileNotFoundError:
@@ -815,7 +1126,7 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
                 "-pix_fmt",
                 "yuv420p",
                 "-vf",
-                "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+                timelapse_filter,
                 "-movflags",
                 "+faststart",
             ]
@@ -880,6 +1191,9 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
 
     os.makedirs(video_path, exist_ok=True)
     os.makedirs(camera_path, exist_ok=True)
+    camera_name = os.path.basename(os.path.normpath(camera_path))
+    templates = get_templates()
+    timelapse_filter = _build_timelapse_filter(camera_name, templates=templates)
 
     if not os.path.isdir(video_path):
         return False
@@ -936,39 +1250,15 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
     # Filter the list of image files to include only those that are newer than the video
     # Files may disappear between the glob and metadata lookup so catch
     # FileNotFoundError and skip missing entries.
-    new_files = []
-    for f in glob.glob(os.path.join(camera_path, "*.png")):
-        if os.path.islink(f):
-            continue
-        if f.endswith("_blank.png"):
-            continue
-        try:
-            if os.path.getctime(f) > video_mod_time:
-                new_files.append(f)
-        except FileNotFoundError:
-            # Screenshot was removed concurrently; ignore it
-            continue
-
-    # Drop nearly blank images
-    filtered_files = []
-    for file in new_files:
-        try:
-            with Image.open(file) as img:
-                if not is_mostly_blank(img):
-                    filtered_files.append(file)
-        except Exception:
-            continue
-
-    new_files = sorted(filtered_files)
+    new_files = _collect_new_frame_files(camera_path, camera_name, video_mod_time)
 
     # print("compile", time.time(), video_mod_time, len(new_files))
 
     if new_files:
-        # keep the size/“_2” filter you already had
         candidate = []
         for f in new_files[-300:]:
             try:
-                if os.path.getsize(f) > MIN_VALID_FRAME_BYTES and "_2" in f:
+                if os.path.getsize(f) > MIN_VALID_FRAME_BYTES:
                     candidate.append(f)
             except FileNotFoundError:
                 # Screenshot was removed concurrently; ignore it
@@ -1011,7 +1301,7 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
                 "-pix_fmt",
                 "yuv420p",
                 "-vf",
-                "fps=30,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+                timelapse_filter,
                 "-movflags",
                 "+faststart",
             ]
@@ -1089,7 +1379,7 @@ def archive_screenshots():
                 start_index = 0
                 try:
                     if os.path.exists(cursor_path):
-                        with open(cursor_path, "r", encoding="utf-8") as handle:
+                        with open(cursor_path, encoding="utf-8") as handle:
                             payload = json.load(handle)
                         start_index = int(payload.get("index", 0)) % len(cameras)
                 except Exception:

@@ -1,0 +1,389 @@
+{% extends 'base.html' %} {% block body_class %}weather-sheet{% endblock %} {%
+block content %}
+<style>
+  body.weather-sheet {
+    --weather-bg: #07110f;
+    --weather-panel: rgba(240, 237, 223, 0.92);
+    --weather-ink: #13211f;
+    --weather-muted: #52605b;
+    --weather-line: rgba(19, 33, 31, 0.16);
+    --weather-blue: #0b5d72;
+    --weather-rust: #b54d2f;
+    --weather-gold: #d5a232;
+    --weather-green: #315e4c;
+    background:
+      radial-gradient(
+        circle at 14% 8%,
+        rgba(52, 112, 113, 0.42),
+        transparent 30rem
+      ),
+      radial-gradient(
+        circle at 86% 0%,
+        rgba(213, 162, 50, 0.28),
+        transparent 24rem
+      ),
+      linear-gradient(135deg, #06100f 0%, #0c1d1e 48%, #1f2116 100%);
+    color: var(--weather-ink);
+  }
+
+  body.weather-sheet main {
+    width: min(1680px, 100%);
+    margin: 0 auto;
+    min-height: calc(100vh - 4.5rem);
+    padding: clamp(0.75rem, 1.4vw, 1.25rem);
+  }
+
+  .weather-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.82fr);
+    gap: clamp(0.75rem, 1.4vw, 1rem);
+    align-items: stretch;
+    margin-bottom: 0.75rem;
+  }
+
+  .weather-brief-card,
+  .weather-stat-card,
+  .weather-section {
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background: var(--weather-panel);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(16px);
+  }
+
+  .weather-brief-card {
+    min-height: 13.5rem;
+    padding: clamp(1rem, 2vw, 1.35rem);
+    border-radius: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .weather-brief-card::after {
+    content: "";
+    position: absolute;
+    right: -4rem;
+    top: -5rem;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(213, 162, 50, 0.42),
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  .weather-eyebrow {
+    margin: 0 0 0.9rem;
+    color: var(--weather-blue);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .weather-title {
+    max-width: 20ch;
+    margin: 0;
+    color: #091413;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2.2rem, 5vw, 4.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.075em;
+  }
+
+  .weather-headline {
+    max-width: 62rem;
+    margin: 0.85rem 0 0;
+    color: #1d2d29;
+    font-size: clamp(1.05rem, 2vw, 1.55rem);
+    font-weight: 700;
+    line-height: 1.12;
+  }
+
+  .weather-generated {
+    margin: 0.9rem 0 0;
+    color: var(--weather-muted);
+    font-size: 0.95rem;
+  }
+
+  .weather-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .weather-stat-card {
+    min-height: 6.3rem;
+    padding: 0.85rem;
+    border-radius: 1.35rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .weather-stat-value {
+    color: var(--weather-blue);
+    font-size: clamp(1.7rem, 4vw, 3rem);
+    font-weight: 900;
+    line-height: 0.9;
+  }
+
+  .weather-stat-label {
+    color: var(--weather-muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .weather-watch {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .weather-watch-item {
+    border-radius: 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    background: rgba(240, 237, 223, 0.86);
+    padding: 0.75rem;
+  }
+
+  .weather-watch-item strong {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--weather-rust);
+  }
+
+  .weather-section {
+    min-width: 0;
+    margin: 0;
+    padding: clamp(0.75rem, 1.2vw, 1rem);
+    border-radius: 1.35rem;
+  }
+
+  .weather-lane-board {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .weather-section-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.65rem;
+    border-bottom: 1px solid var(--weather-line);
+    padding-bottom: 0.55rem;
+  }
+
+  .weather-section-header h2 {
+    margin: 0;
+    color: #0b1a18;
+    font-size: clamp(1.1rem, 2vw, 1.65rem);
+    letter-spacing: -0.045em;
+  }
+
+  .weather-section-header p {
+    max-width: 18rem;
+    margin: 0;
+    color: var(--weather-muted);
+    font-size: 0.78rem;
+    line-height: 1.3;
+    text-align: right;
+  }
+
+  .weather-tile-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .weather-tile {
+    min-width: 0;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    background: #0a1514;
+    color: #f4f1e6;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  }
+
+  .weather-tile img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 8;
+    object-fit: cover;
+    background: #091312;
+  }
+
+  .weather-tile-body {
+    padding: 0.6rem;
+  }
+
+  .weather-tile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+    color: rgba(244, 241, 230, 0.68);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .weather-tile h3 {
+    margin: 0 0 0.3rem;
+    font-size: 0.92rem;
+    line-height: 1.1;
+  }
+
+  .weather-tile p {
+    margin: 0;
+    color: rgba(244, 241, 230, 0.78);
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .weather-status-failed {
+    color: #ffb199;
+  }
+
+  .weather-status-fresh,
+  .weather-status-stale_ok {
+    color: #bfe8c8;
+  }
+
+  @media (max-width: 900px) {
+    .weather-hero,
+    .weather-watch,
+    .weather-lane-board {
+      grid-template-columns: 1fr;
+    }
+
+    .weather-section-header {
+      display: block;
+    }
+
+    .weather-section-header p {
+      margin-top: 0.45rem;
+      text-align: left;
+    }
+  }
+</style>
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/brief_dark.css') }}"
+/>
+
+<section class="weather-hero" aria-labelledby="weather-title">
+  <div class="weather-brief-card">
+    <div>
+      <p class="weather-eyebrow">Eyebat Local Weather Sheet</p>
+      <h1 id="weather-title" class="weather-title">Weather Brief</h1>
+      <p class="weather-headline">{{ brief.headline }}</p>
+    </div>
+    <p class="weather-generated">
+      Generated {{ brief.generated_at_display }} from {{
+      brief.summary.total_weather_sources }} weather-adjacent sources.
+      <a href="/weather/brief.json">JSON artifact</a>
+    </p>
+  </div>
+
+  <div class="weather-stats" aria-label="Weather evidence status">
+    <div class="weather-stat-card">
+      <span class="weather-stat-value">{{ brief.summary.fresh_sources }}</span>
+      <span class="weather-stat-label">Usable captures</span>
+    </div>
+    <div class="weather-stat-card">
+      <span class="weather-stat-value"
+        >{{ brief.summary.stale_or_failed_sources }}</span
+      >
+      <span class="weather-stat-label">Stale or failed</span>
+    </div>
+    <div class="weather-stat-card">
+      <span class="weather-stat-value">{{ brief.summary.risk_signals }}</span>
+      <span class="weather-stat-label">Risk signals</span>
+    </div>
+    <div class="weather-stat-card">
+      <span class="weather-stat-value">{{ brief.sections|length }}</span>
+      <span class="weather-stat-label">Evidence lanes</span>
+    </div>
+  </div>
+</section>
+
+<section class="weather-watch" aria-label="Current watch items">
+  {% for item in brief.watch_items[:3] %}
+  <article class="weather-watch-item">
+    <strong>{{ item.name }}</strong>
+    <span>{{ item.caption }}</span>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="weather-lane-board">
+  {% for section in brief.sections %}
+  <section class="weather-section" aria-labelledby="weather-{{ section.key }}">
+    <header class="weather-section-header">
+      <h2 id="weather-{{ section.key }}">{{ section.title }}</h2>
+      <p>{{ section.purpose }}</p>
+    </header>
+
+    {% if section.tiles %}
+    <div class="weather-tile-grid">
+      {% for tile in section.tiles[:3] %}
+      <article class="weather-tile">
+        <img
+          src="{{ tile.image_url|replace('/last_screenshot/', '/clean_screenshot/') }}"
+          loading="lazy"
+          alt="{{ tile.name }} latest weather evidence"
+        />
+        <div class="weather-tile-body">
+          <div class="weather-tile-meta">
+            <span class="weather-status-{{ tile.status }}"
+              >{{ {"fresh": "Captured", "stale_ok": "Previous image", "failed":
+              "Capture failed"}.get(tile.status, "Status unknown") }}</span
+            >
+            <span data-brief-captured="{{ tile.last_screenshot_time }}"
+              >Captured {{ tile.age_label }} ago</span
+            >
+          </div>
+          <h3>{{ tile.name }}</h3>
+          <p
+            class="brief-source-age"
+            data-brief-freshness="{{ tile.source_freshness|default({})|tojson }}"
+          >
+            Source time unknown
+          </p>
+          {% if tile.caption %}
+          <p>{{ tile.caption }}</p>
+          {% else %}
+          <p>Latest image available. No current caption text.</p>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p>No sources matched this lane yet.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+<script
+  type="module"
+  src="{{ url_for('static', filename='js/brief_freshness.js') }}"
+></script>
+{% endblock %}
