@@ -15,7 +15,7 @@ from scripts.media_enhancement.illumination import recover_lighting
 from scripts.media_enhancement.night_preview import preview
 from scripts.media_enhancement.queue import MAX_RESULT, MAX_SOURCE, admission
 
-VERSION = "night-adaptive-v2"
+VERSION = "night-adaptive-v3"
 
 
 def produce(root, source, camera, stamp, pool, now=None, *, max_age=900):

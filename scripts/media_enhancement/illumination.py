@@ -3,7 +3,7 @@
 import numpy as np
 from PIL import Image, ImageFilter
 
-METHOD = "multiscale-shadow-detail-v1"
+METHOD = "multiscale-shadow-detail-v2"
 
 
 def recover_lighting(frame):
@@ -24,6 +24,9 @@ def recover_lighting(frame):
     rgb = source.astype(np.float32) / 255
     y = rgb @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
     info = {"method": METHOD, "neural": False, "automatic_rotator_eligible": False}
+    # Near-black noise contains no recoverable scene detail.
+    if float(np.mean(y < 0.025)) >= 0.98:
+        return source.copy(), {**info, "state": "held", "reason": "insufficient_signal"}
     if float(np.mean(y < 0.25)) < 0.2:
         return source.copy(), {**info, "state": "held", "reason": "already_lit"}
     plane = Image.fromarray(np.rint(y * 255).astype(np.uint8))
