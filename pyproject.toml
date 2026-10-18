@@ -42,7 +42,7 @@ dependencies = [
   "python-dateutil>=2.9.0.post0",
   "python-dotenv>=1.1.0",
   "pyvirtualdisplay==3.0",
-  "pywebpush==2.0.3",
+  "pywebpush==2.5.0",
   "selenium==4.50.0",
   "sqlalchemy==2.1.1",
   "undetected-chromedriver==3.5.5",
