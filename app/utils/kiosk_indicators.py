@@ -17,7 +17,9 @@ STATE = Path.home() / ".local/state/glimpser/kiosk-indicators.json"
 _LOCK = threading.RLock()
 _PRIVACY = {"checked": 0.0, "value": "unknown"}
 KINDS = {"door", "person", "package", "sms", "heartbeat"}
-PRIVACY_URL = os.environ.get("GLIMPSER_PRIVACY_GUARD_URL", "").strip()
+PRIVACY_URL = os.environ.get(
+    "GLIMPSER_PRIVACY_GUARD_URL", STATUS_CONFIG.get("privacy_url", "")
+).strip()
 
 
 def authenticated(header: str) -> bool:

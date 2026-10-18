@@ -9,13 +9,18 @@ import sqlite3
 import time
 import xml.etree.ElementTree as ET
 
+from app.status_config import STATUS_CONFIG
 from app.utils.google_events import EventStore, event_database
 
 
 def configured_cameras() -> dict[str, str]:
     """Load an explicit camera/host allowlist; never discover event sources."""
     try:
-        value = json.loads(os.environ.get("GLIMPSER_KNOX_CAMERAS", "{}"))
+        value = (
+            json.loads(os.environ["GLIMPSER_KNOX_CAMERAS"])
+            if "GLIMPSER_KNOX_CAMERAS" in os.environ
+            else STATUS_CONFIG.get("native_event_cameras", {})
+        )
         if not isinstance(value, dict) or any(
             not isinstance(name, str)
             or not name.strip()

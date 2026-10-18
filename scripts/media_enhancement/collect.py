@@ -14,41 +14,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.feed_tv.core import lock, write
+from scripts.media_config import load_media_config
 from scripts.media_enhancement.queue import MAX_LIBRARY_BYTES, ROOT
 from scripts.media_enhancement.worker import MAX_RESULT, MAX_SOURCE, probe
 
 # Interleave locations so the first pass covers the estate before extra angles.
 # Only read existing captures: enrollment never changes camera polling.
-CAMERAS = (
-    "BeachSouthJetty",
-    "BeachShore",
-    "Street",
-    "Argyle100",
-    "Halsted_Google_Showroom_Mid",
-    "BeachDriveway",
-    "Driveway",
-    "ArgyleEntryFisheye",
-    "Halsted_Google_Bookcase",
-    "BeachPathway",
-    "Backyard",
-    "ArgyleShowroomWide",
-    "Halsted_Google_Backroom",
-    "BeachBioswale",
-    "BeachGravel",
-    "BeachMapleTree",
-    "Beach_Google_Backyard",
-    "Beach_Google_Front_Yard",
-    "Halsted",
-    "Halsted019",
-    "FrontDoor",
-    "Argyle300",
-    "Argyle400",
-    "Argyle500",
-    "Beach_Google_Basement",
-    "Beach_Google_Front_Door",
-    "Beach_Google_Foyer",
+CAMERAS = tuple(load_media_config().get("collect_cameras", []))
+DATA = (
+    Path(
+        load_media_config().get(
+            "data_root", str(Path(__file__).resolve().parents[2] / "data")
+        )
+    )
+    / "screenshots"
 )
-DATA = Path("/home/kristopher/code/glimpser/data/screenshots")
 
 
 # Disposable history must not consume the space reserved for review derivatives.

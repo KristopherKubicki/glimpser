@@ -45,6 +45,7 @@ def load_viewer_config() -> dict:
             "private_groups",
             "archived_groups",
             "timelapse_groups",
+            "timelapse_cameras",
             "status_groups",
             "navigation_groups",
             "google_live_cameras",

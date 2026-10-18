@@ -14,58 +14,27 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import textwrap
 import time
 from contextlib import ExitStack
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageSequence, ImageStat
+
+from scripts.media_config import load_media_config, review_command
 
 TZ = ZoneInfo("America/Chicago")
 UTC = dt.timezone.utc
-CAMERAS = {
-    "FrontDoor": "Knox",
-    "Driveway": "Knox",
-    "Street": "Knox",
-    "Garden": "Knox",
-    "Backyard": "Knox",
-    "Garage": "Knox",
-    "Walkway": "Knox",
-    "BeachDriveway": "Beach",
-    "BeachBioswale": "Beach",
-    "BeachShore": "Beach",
-    "BeachSouthJetty": "Beach",
-    "BeachMapleTree": "Beach",
-    "BeachPathway": "Beach",
-    "Beach_Google_Front_Door": "Beach",
-    "ArgyleEntryFisheye": "Argyle",
-    "Front_door_doorbell": "Argyle",
-    "Showroom_Entrance": "Argyle",
-    "Halsted023": "Halsted",
-    "Halsted036": "Halsted",
-    "Argyle400": "Argyle",
-    "Tesla-Front": "Tesla",
-    "Tesla-Rear": "Tesla",
-    "Tesla-Left": "Tesla",
-    "Tesla-Right": "Tesla",
-}
+CAMERAS = load_media_config().get("magazine_cameras", {})
 ROOT = Path.home() / ".local/share/glimpser-magazine"
-DATA = Path("/home/kristopher/code/glimpser/data")
-SSH = [
-    "ssh",
-    "-o",
-    "BatchMode=yes",
-    "-o",
-    "StrictHostKeyChecking=yes",
-    "-o",
-    "ConnectTimeout=8",
-    "-i",
-    str(Path.home() / ".ssh/id_ed25519_netops_codex"),
-    "kristopher@192.168.40.150",
-    "python3",
-    "/home/kristopher/.local/lib/glimpser-magazine/review.py",
-]
+DATA = Path(
+    load_media_config().get(
+        "data_root", str(Path(__file__).resolve().parents[2] / "data")
+    )
+)
 
 
 def write_json(path, value):
@@ -423,7 +392,7 @@ def review(root, limit=24):
         stats["attempted"] += 1
         try:
             process = subprocess.run(
-                SSH,
+                review_command("magazine"),
                 input=json.dumps(request),
                 text=True,
                 capture_output=True,

@@ -235,3 +235,15 @@ def test_dashboard_grouping_and_preferred_area_respect_filtered_inventory(monkey
     )
     assert model["cameras"][0]["group"] == "Approaches"
     assert model["preferred_area"] == "Approaches"
+
+
+def test_area_membership_cannot_override_privacy(monkeypatch):
+    monkeypatch.setattr(viewer, "CONTEXT_VIEWS", {"area": {"Nearby": ["Listed"]}})
+    monkeypatch.setattr(viewer, "VIEWER_CONFIG", {"private_groups": ["homesite"]})
+    assert viewer.dashboard_matches("area", "Listed", {"groups": "regional"})
+    for details in (
+        {"private_camera": True},
+        {"groups": "private"},
+        {"groups": "homesite"},
+    ):
+        assert not viewer.dashboard_matches("area", "Listed", details)

@@ -70,7 +70,8 @@ def eligible(template: dict, name: str = "") -> bool:
     if any(host in url for host in ("weather.gov", "noaa.gov/products", "hubitat")):
         return False
     return bool(
-        template.get("camera_latitude")
+        name in {v.lower() for v in VIEWER_CONFIG.get("timelapse_cameras", [])}
+        or template.get("camera_latitude")
         or template.get("event_buffer_enabled")
         or url.startswith(("rtsp://", "ptzview://"))
         or groups

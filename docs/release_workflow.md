@@ -550,7 +550,7 @@ exclusions; favorites never override these boundaries.
 Installation settings can be supplied with the existing `GLIMPSER_*` configuration
 variables or explicit JSON files under `~/.config/glimpser/`: `capture_policy.json`,
 `household_config.json`, `landing_config.json`, `viewer_config.json`, and
-`status_config.json`. Environment paths take precedence. Missing files retain
+`status_config.json`, and `media_config.json`. Environment paths take precedence. Missing files retain
 generic defaults. Keep these files out of Git and package artifacts.
 
 The status inventory is optional. Its `nodes` entries contain ID, label, group,
@@ -568,3 +568,11 @@ privacy status, and native event allowlists. Schema validation alone does not
 prove this migration is complete. Back up the source, environment configuration,
 and SQLite databases; retain existing runtime queues and media. Verify live
 captures and event/status freshness after the controlled service restart.
+
+Media workers require `scope: personal` and an explicit `personal_review_host`
+in the private media configuration before invoking either fixed review worker.
+Optional `ssh_identity`, `data_root`, `tuner_host`, `collect_cameras`, and
+`magazine_cameras` preserve the installation's existing paths and inventory.
+Missing review targets disable review calls; they never select another account.
+Status configuration also accepts `native_event_cameras` (name-to-host mapping)
+and `privacy_url`; existing explicit environment overrides retain precedence.

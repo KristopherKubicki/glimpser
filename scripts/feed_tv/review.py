@@ -15,21 +15,7 @@ from PIL import Image, ImageDraw, ImageOps
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.feed_tv.core import ROOT, capacity, lock, read, status, write
-
-SSH = [
-    "ssh",
-    "-o",
-    "BatchMode=yes",
-    "-o",
-    "StrictHostKeyChecking=yes",
-    "-o",
-    "ConnectTimeout=8",
-    "-i",
-    str(Path.home() / ".ssh/id_ed25519_netops_codex"),
-    "kristopher@192.168.40.150",
-    "python3",
-    "/home/kristopher/.local/lib/glimpser-feed-tv/review_worker.py",
-]
+from scripts.media_config import review_command
 
 
 def normalized(text):
@@ -206,7 +192,7 @@ def review_one(root=ROOT):
                 }
                 phase = "personal_spark"
                 result = subprocess.run(
-                    SSH,
+                    review_command("feed_tv"),
                     input=json.dumps(request),
                     capture_output=True,
                     text=True,

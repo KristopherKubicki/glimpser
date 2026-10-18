@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from scripts.media_config import load_media_config
+
 ROOT = Path.home() / ".local/share/glimpser-feed-tv"
 CLIP_ID = re.compile(r"tv-\d{13}-\d{1,3}_\d{1,3}\Z")
 ASSETS = {"clip.mp4", "poster.jpg", "captions.vtt"}
@@ -88,7 +90,7 @@ def is_tuner_url(url: str) -> bool:
         parsed = urlparse(str(url or ""))
         return bool(
             parsed.scheme == "http"
-            and parsed.hostname == "192.168.2.194"
+            and parsed.hostname == load_media_config().get("tuner_host")
             and parsed.port == 5004
             and not parsed.username
             and not parsed.password

@@ -72,3 +72,25 @@ def test_invalid_inventory_disables_all_probes(tmp_path, monkeypatch, data):
     path.write_text(json.dumps(data))
     monkeypatch.setenv("GLIMPSER_STATUS_CONFIG", str(path))
     assert load_status_config() == {}
+
+
+def test_private_default_and_explicit_precedence(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("GLIMPSER_STATUS_CONFIG", raising=False)
+    default = tmp_path / ".config/glimpser/status_config.json"
+    default.parent.mkdir(parents=True)
+    default.write_text(
+        json.dumps(
+            {
+                "native_event_cameras": {"Door": "camera.example.test"},
+                "privacy_url": "http://privacy.example.test/privacy-guard",
+            }
+        )
+    )
+    config = load_status_config()
+    assert config["native_event_cameras"] == {"Door": "camera.example.test"}
+    assert config["privacy_url"] == "http://privacy.example.test/privacy-guard"
+    override = tmp_path / "override.json"
+    override.write_text(json.dumps({"native_event_cameras": {"Garage": "garage.test"}}))
+    monkeypatch.setenv("GLIMPSER_STATUS_CONFIG", str(override))
+    assert load_status_config()["native_event_cameras"] == {"Garage": "garage.test"}

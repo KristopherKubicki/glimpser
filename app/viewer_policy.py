@@ -78,6 +78,11 @@ def viewer_template(name: str, template: dict) -> dict:
 def dashboard_matches(dashboard: str, name: str, template: dict) -> bool:
     """Select a saved view without modifying tags, camera settings, or capture jobs."""
     groups = {g.strip().lower() for g in str(template.get("groups") or "").split(",")}
+    if dashboard == "area" and (
+        template.get("private_camera")
+        or groups & ({"private"} | set(VIEWER_CONFIG.get("private_groups", [])))
+    ):
+        return False
     if dashboard in CONTEXT_VIEWS:
         return "archive" not in groups and any(
             name in members for members in CONTEXT_VIEWS[dashboard].values()

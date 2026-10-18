@@ -83,7 +83,16 @@ def load_status_config():
             _url(hub)
             if urlsplit(hub).path not in {"", "/"}:
                 raise ValueError("Expected hub origin")
+        native = data.get("native_event_cameras", {})
+        if not isinstance(native, dict) or len(native) > 64:
+            raise ValueError("Invalid native event inventory")
+        native = {_label(name): _host(host) for name, host in native.items()}
+        privacy = data.get("privacy_url", "")
+        if privacy:
+            _url(privacy)
         return {
+            "native_event_cameras": native,
+            "privacy_url": privacy,
             "extended_kiosk": data.get("extended_kiosk") is True,
             "nodes": clean_nodes,
             "sensors": clean_sensors,
