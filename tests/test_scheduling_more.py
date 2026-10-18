@@ -562,5 +562,23 @@ class TestLowCpuCrawlerScheduling(unittest.TestCase):
         self.assertEqual(camera_call.kwargs["seconds"], 120)
 
 
+class TestSuccessfulCaptureStatus(unittest.TestCase):
+    @patch("app.utils.scheduling.os.listdir", return_value=[])
+    @patch("app.utils.scheduling.set_capture_failed")
+    @patch("app.utils.scheduling.update_last_screenshot_time")
+    @patch("app.utils.scheduling.capture_or_download", return_value=True)
+    @patch(
+        "app.utils.scheduling.get_template",
+        return_value={"url": "http://example.invalid"},
+    )
+    def test_success_uses_one_status_transaction(
+        self, _template, _capture, timestamp, failure, _files
+    ):
+        """A successful capture clears failure state in its timestamp transaction."""
+        scheduling.update_camera("camera", {})
+        timestamp.assert_called_once_with("camera")
+        failure.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

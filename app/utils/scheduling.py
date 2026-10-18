@@ -809,8 +809,8 @@ def update_camera(name, template, image_file=None, motion=False):
     url = template.get("url")
 
     if lsuc is True:
+        # The timestamp transaction also clears failure and offline state.
         update_last_screenshot_time(name)
-        set_capture_failed(name, False)
     else:
         entry = throttle_cache.get(url)
         if entry and entry.get("reason") in {"lan_offline", "local_unreachable"}:
