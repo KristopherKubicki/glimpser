@@ -102,7 +102,7 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
     ):
         return None
     try:
-        cadence = max(60, min(1800, float(template.get("frequency") or 30) * 60))
+        cadence = max(60, min(7200, float(template.get("frequency") or 30) * 60))
     except (TypeError, ValueError):
         cadence = 1800
     folder = Path(config.SCREENSHOT_DIRECTORY) / name
@@ -133,17 +133,24 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
             break
     if len(frames) < 6 or frames[-1][0] - frames[0][0] < 600:
         return None
+    # Outages were checked in the original capture sequence above. Once
+    # sampled, intentional spacing is not evidence of a missing capture.
+    sample_gap_limit = max(1800, cadence * 3)
     if len(frames) > MAX_CANDIDATES:
         frames = [
             frames[round(i * (len(frames) - 1) / (MAX_CANDIDATES - 1))]
             for i in range(MAX_CANDIDATES)
         ]
+        sample_gap_limit = max(
+            sample_gap_limit,
+            max(b[0] - a[0] for a, b in zip(frames, frames[1:])),
+        )
     root = Path(config.DATABASE_PATH).resolve().parent / "timelapse"
     root.mkdir(parents=True, exist_ok=True)
     key = hashlib.sha256(name.encode()).hexdigest()
     output, metadata = root / (key + ".gif"), root / (key + ".json")
     identity = hashlib.sha256(
-        ("v6-change-history|" + "|".join(p.name for _, p in frames)).encode()
+        ("v9-native-aspect-history|" + "|".join(p.name for _, p in frames)).encode()
     ).hexdigest()
     # Include source identity so edited feeds cannot reuse another source's clip.
     identity = hashlib.sha256(
@@ -185,6 +192,19 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
                 times.append(stamp)
             except (OSError, UnidentifiedImageError, Image.DecompressionBombError):
                 continue
+        # Do not replay across a change in camera orientation/aspect. Keep the
+        # recent contiguous segment; new geometry needs enough history first.
+        if images:
+            ratio = images[-1].width / images[-1].height
+            for index in range(len(images) - 2, -1, -1):
+                if abs((images[index].width / images[index].height) / ratio - 1) > 0.02:
+                    images, times, scores = (
+                        images[index + 1 :],
+                        times[index + 1 :],
+                        scores[index + 1 :],
+                    )
+                    scores[0] = 0
+                    break
         if (
             len(images) < 6
             or sum(score >= 1.5 for score in scores) < 3
@@ -193,11 +213,14 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
             return None
         if now - times[-1] > min(5400, max(1800, cadence * 3)):
             return None
-        if any(b - a > max(1800, cadence * 3) for a, b in zip(times, times[1:])):
+        if any(b - a > sample_gap_limit for a, b in zip(times, times[1:])):
             return None
         selected = activity_indices(scores)
+        # Match the latest still's shape: a fixed 16:9 canvas shrinks portrait
+        # and 4:3 cameras twice when the browser fits history to the display.
+        canvas_size = images[-1].size
         images = [
-            ImageOps.fit(images[i], (800, 450)).quantize(
+            ImageOps.pad(images[i], canvas_size, color=(0, 0, 0)).quantize(
                 colors=128, method=Image.Quantize.FASTOCTREE
             )
             for i in selected

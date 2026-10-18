@@ -60,9 +60,7 @@ test("holds a truly blank scene without spinning through the rotation", async ()
       naturalHeight: { value: 1057 },
     });
     const pixels =
-      image.closest("section").id === "blank"
-        ? solid(31, 41, 55)
-        : solid(160, 170, 180);
+      solid(31, 41, 55);
     image._landingProbeContext = {
       drawImage: () => {},
       getImageData: () => ({ data: new Uint8ClampedArray(pixels) }),

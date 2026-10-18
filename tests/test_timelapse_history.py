@@ -32,7 +32,7 @@ def test_day_history_stays_bounded_and_plays_for_twenty_seconds(tmp_path):
     assert 20 <= result["duration"] <= 21
     with Image.open(result["path"]) as image:
         assert image.n_frames == result["frames"]
-        assert image.size == (800, 450)
+        assert image.size == (40, 30)  # Preserve source aspect without upscaling.
 
 
 def test_daylight_contributes_but_local_motion_stays_dominant():

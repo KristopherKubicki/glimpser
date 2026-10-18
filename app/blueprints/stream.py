@@ -736,9 +736,9 @@ def create_blueprint() -> Blueprint:
                 {
                     "name": row["name"],
                     "groups": row["groups"],
-                    "primary_group": (
-                        row["groups"][0] if row["groups"] else "highlights"
-                    ),
+                    "primary_group": row["groups"][0]
+                    if row["groups"]
+                    else "highlights",
                     "notes": row["notes"],
                     "last_caption": row["last_caption"],
                     "last_screenshot_time": row["last_screenshot_time"],
@@ -753,15 +753,13 @@ def create_blueprint() -> Blueprint:
                         template_name=row["name"],
                         _external=True,
                     ),
-                    "group_url": (
-                        routes.url_for(
-                            "views.group_page",
-                            group_name=row["groups"][0] if row["groups"] else "all",
-                            _external=True,
-                        )
-                        if row["groups"]
-                        else routes.url_for("views.index", _external=True)
-                    ),
+                    "group_url": routes.url_for(
+                        "views.group_page",
+                        group_name=row["groups"][0] if row["groups"] else "all",
+                        _external=True,
+                    )
+                    if row["groups"]
+                    else routes.url_for("views.index", _external=True),
                     "live_url": routes.url_for(
                         "ui.live", camera=row["name"], _external=True
                     ),
@@ -1065,6 +1063,13 @@ def create_blueprint() -> Blueprint:
         skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
 
         url_caps = routes.live_caps.get(str(url))
+        # Camera-specific cooldowns apply even when another channel on the
+        # same recorder is healthy. Check before allocating or prewarming.
+        retry_seconds = float(url_caps.avoid_until_ts or 0) - now
+        if retry_seconds > 0:
+            resp = Response(status=503)
+            resp.headers["Retry-After"] = str(max(1, int(retry_seconds) + 1))
+            return resp
         host_caps = routes.live_host_caps.get(host_key) if host_key else None
         recent_ok = bool(
             url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
@@ -1119,7 +1124,12 @@ def create_blueprint() -> Blueprint:
             fps = max(routes.config.LIVE_RTSP_FPS, 10)
             fps = min(fps, 15)
 
-        routes.warm_live(url, width=width, fps=fps)
+        rotation_options = (
+            {"rotation": details["capture_rotate_degrees"]}
+            if details.get("capture_rotate_degrees")
+            else {}
+        )
+        routes.warm_live(url, width=width, fps=fps, **rotation_options)
         return Response(status=204)
 
     @bp.route("/live_video")
@@ -1143,7 +1153,20 @@ def create_blueprint() -> Blueprint:
         if profile not in {"main", "sub", "auto"}:
             profile = "main"
 
-        stream_url = routes.resolve_live_stream_url(details, profile=profile)
+        from app.utils.feed_tv import is_tuner_url
+        from app.utils.youtube_live import resolve as resolve_youtube
+        from app.utils.youtube_live import video_id
+
+        television = is_tuner_url(details.get("url"))
+        youtube = video_id(details.get("url"))
+        if youtube:
+            stream_url = resolve_youtube(details.get("url"))
+            if not stream_url:
+                response = Response(status=503)
+                response.headers["Retry-After"] = "120"
+                return response
+        else:
+            stream_url = routes.resolve_live_stream_url(details, profile=profile)
         url = stream_url or details.get("url")
         if not url:
             routes.abort(404)
@@ -1160,6 +1183,13 @@ def create_blueprint() -> Blueprint:
         skip_ok_s = int(getattr(routes.config, "LIVE_PREFLIGHT_SKIP_OK_SECONDS", 20))
 
         url_caps = routes.live_caps.get(str(url))
+        # Camera-specific cooldowns apply even when another channel on the
+        # same recorder is healthy. Check before allocating or prewarming.
+        retry_seconds = float(url_caps.avoid_until_ts or 0) - now
+        if retry_seconds > 0:
+            resp = Response(status=503)
+            resp.headers["Retry-After"] = str(max(1, int(retry_seconds) + 1))
+            return resp
         host_caps = routes.live_host_caps.get(host_key) if host_key else None
         recent_ok = bool(
             url_caps.last_ok_ts and (now - float(url_caps.last_ok_ts)) <= skip_ok_s
@@ -1188,7 +1218,9 @@ def create_blueprint() -> Blueprint:
 
         # Cheap preflight + circuit breaker to avoid stampeding degraded LAN hosts.
         # Skip when we have a very recent proven-good stream.
-        if not (recent_ok or host_recent_ok):
+        # Tuner HTTP probes allocate a receiver slot. The encoder itself is
+        # the bounded availability check; do not open an extra tuner stream.
+        if not television and not (recent_ok or host_recent_ok):
             if host_key and not routes.live_host_caps.should_attempt(host_key):
                 routes.live_caps.record_failure(str(url), reason="host_avoid")
                 resp = Response(status=503)
@@ -1220,7 +1252,7 @@ def create_blueprint() -> Blueprint:
             fps = min(routes.config.LIVE_RTSP_FPS, 3)
         elif quality == "kiosk":
             width = min(routes.config.LIVE_RTSP_WIDTH, 960)
-            fps = min(routes.config.LIVE_RTSP_FPS, 3)
+            fps = 10 if youtube or television else min(routes.config.LIVE_RTSP_FPS, 3)
         elif quality == "high":
             width = max(routes.config.LIVE_RTSP_WIDTH, 1280)
             width = min(width, 1920)
@@ -1233,8 +1265,15 @@ def create_blueprint() -> Blueprint:
             and url.lower().startswith(("rtsp://", "rtsps://"))
         )
 
+        rotation_options = (
+            {"rotation": details["capture_rotate_degrees"]}
+            if details.get("capture_rotate_degrees")
+            else {}
+        )
         if use_warm:
-            inner = routes.generate_warm_live_stream(url, width=width, fps=fps)
+            inner = routes.generate_warm_live_stream(
+                url, width=width, fps=fps, **rotation_options
+            )
         else:
             inner = routes.generate_live_stream(
                 url,
@@ -1242,19 +1281,54 @@ def create_blueprint() -> Blueprint:
                 fps=fps,
                 max_no_output_seconds=8.0,
                 max_no_output_failures=2,
+                **rotation_options,
             )
 
-        def limited_gen():
+        released = False
+
+        def release_stream():
+            nonlocal released
+            if released:
+                return
+            released = True
             try:
-                yield from inner
+                close = getattr(inner, "close", None)
+                if close:
+                    close()
             finally:
                 if token:
                     token.release()
+
+        # Warm RTSP startup has a bounded wait. Prime it before committing HTTP
+        # success: a camera/encoder failure must not look like an empty MP4.
+        # Other generators can retry indefinitely, so do not prime those here.
+        first_chunk = None
+        if use_warm:
+            try:
+                first_chunk = next(inner, None)
+            except Exception:
+                # Encoder exceptions may contain source credentials.
+                routes.logging.warning("Live encoder startup failed for %s", camera)
+            if not first_chunk:
+                release_stream()
+                routes.live_caps.record_failure(str(url), reason="empty_startup")
+                resp = Response(status=503)
+                resp.headers["Retry-After"] = "30"
+                return resp
+
+        def limited_gen():
+            try:
+                if first_chunk:
+                    yield first_chunk
+                yield from inner
+            finally:
+                release_stream()
 
         resp = Response(
             routes.stream_with_context(limited_gen()),
             mimetype="video/mp4",
         )
+        resp.call_on_close(release_stream)
         resp.headers["X-Live-Source"] = "stream" if stream_url else "fallback"
         resp.headers["X-Live-Profile"] = profile
         resp.headers["X-Live-Quality"] = quality

@@ -883,9 +883,9 @@ def recover_stale_prompt_state() -> None:
             {
                 "pending": False,
                 "state": "idle",
-                "status_message": (
-                    "Ready." if not queue else "Recovering queued prompt…"
-                ),
+                "status_message": "Ready."
+                if not queue
+                else "Recovering queued prompt…",
                 "running_prompt": "",
                 "queued_prompts": queue,
             }
@@ -1130,9 +1130,9 @@ def _prompt_worker(prompt: str, started_at: int, speed: str, detail: int) -> Non
             update_status_meta(
                 pending=False,
                 state="ok" if response else "error",
-                status_message=(
-                    "Web prompt completed." if response else "Web prompt failed."
-                ),
+                status_message="Web prompt completed."
+                if response
+                else "Web prompt failed.",
                 running_prompt="",
                 running_speed=normalized_speed,
                 running_detail=normalized_detail,

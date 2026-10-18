@@ -10,7 +10,7 @@ from app.runtime_health import probe_acceleration
 
 def test_verified_cuda_uses_only_a_bounded_synthetic_frame():
     with patch(
-        "app.runtime_health.subprocess.run", return_value=Mock(returncode=0)
+        "app.runtime_health.run_encoder_command", return_value=Mock(returncode=0)
     ) as run:
         result = probe_acceleration("ffmpeg", "cuda")
     assert result["effective"] == "cuda"
@@ -26,7 +26,7 @@ def test_verified_cuda_uses_only_a_bounded_synthetic_frame():
 )
 def test_failed_cuda_initialization_falls_back_to_software(failure):
     with patch(
-        "app.runtime_health.subprocess.run",
+        "app.runtime_health.run_encoder_command",
         return_value=Mock(returncode=1),
         side_effect=failure,
     ):
@@ -36,6 +36,6 @@ def test_failed_cuda_initialization_falls_back_to_software(failure):
 
 
 def test_disabled_acceleration_never_launches_ffmpeg():
-    with patch("app.runtime_health.subprocess.run") as run:
+    with patch("app.runtime_health.run_encoder_command") as run:
         assert probe_acceleration("ffmpeg", "false")["status"] == "disabled"
     run.assert_not_called()

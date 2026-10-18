@@ -140,6 +140,10 @@ class Template(db.Base):
     lens_correction_spec = Column(String, default="")
     horizon_level_mode = Column(String, default="")
     horizon_level_roi = Column(String, default="")
+    enhancement_enabled = Column(Boolean, default=False)
+    enhancement_display = Column(Boolean, default=False)
+    enhancement_pool = Column(String, default="")
+    enhancement_recipe = Column(String, default="neural-native")
     night_enhance_mode = Column(String, default="")
     deflicker_mode = Column(String, default="")
     source_template = Column(String, default="")
@@ -273,6 +277,10 @@ class TemplateManager:
                 ("lens_correction_spec", "VARCHAR(255)", "''"),
                 ("horizon_level_mode", "VARCHAR(32)", "''"),
                 ("horizon_level_roi", "VARCHAR(255)", "''"),
+                ("enhancement_enabled", "BOOLEAN", "0"),
+                ("enhancement_display", "BOOLEAN", "0"),
+                ("enhancement_pool", "VARCHAR(48)", "''"),
+                ("enhancement_recipe", "VARCHAR(32)", "'neural-native'"),
                 ("night_enhance_mode", "VARCHAR(32)", "''"),
                 ("deflicker_mode", "VARCHAR(32)", "''"),
                 ("source_template", "VARCHAR(32)", "''"),
@@ -618,6 +626,8 @@ class TemplateManager:
                             "private_camera",
                             "camera_location_private",
                             "capture_failed",
+                            "enhancement_enabled",
+                            "enhancement_display",
                         }:
                             if isinstance(value, str):
                                 if is_bool_string(value):

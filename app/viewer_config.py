@@ -22,6 +22,10 @@ def load_viewer_config() -> dict:
     """Return validated settings or generic defaults without logging private values."""
     path = os.getenv("GLIMPSER_VIEWER_CONFIG", "").strip()
     if not path:
+        default_path = Path.home() / ".config/glimpser/viewer_config.json"
+        if default_path.is_file():
+            path = str(default_path)
+    if not path:
         return {}
     try:
         with Path(path).expanduser().open(encoding="utf-8") as stream:
@@ -56,7 +60,17 @@ def load_viewer_config() -> dict:
                 )
         contexts = {}
         for key, sections in data.get("context_views", {}).items():
-            if key not in {"arrivals", "property", "beach-conditions"}:
+            if key not in {
+                "arrivals",
+                "property",
+                "beach-conditions",
+                "energy",
+                "transportation",
+                "water",
+                "conditions",
+                "area",
+                "stores",
+            }:
                 raise ValueError("Unknown context dashboard")
             contexts[key] = {
                 _text(label): _names(names) for label, names in sections.items()

@@ -2,6 +2,12 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
+    <style>
+      /* Keep the first paint dark even when the external stylesheet stalls. */
+      html { background: #101010; color-scheme: dark; }
+      body { background: #101010; color: #f3f4f6; }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
       {% if page_title %}Glimpser - {{ page_title }}{% else %}Glimpser{% endif
@@ -31,6 +37,10 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/viewer.css') }}?v={{ ASSET_VERSION }}"
     />
+    {% if request.path == '/' %}
+    <link rel="stylesheet" data-room-comfort
+      href="{{ url_for('static', filename='css/room_comfort.css') }}?v={{ landing_asset_revision|default(ASSET_VERSION) }}" />
+    {% endif %}
     <link
       rel="icon"
       type="image/x-icon"

@@ -44,6 +44,10 @@ def load_capture_policy() -> dict:
     """Read bounded private JSON once at startup; invalid settings add no exceptions."""
     path = os.getenv("GLIMPSER_CAPTURE_POLICY", "").strip()
     if not path:
+        default_path = Path.home() / ".config/glimpser/capture_policy.json"
+        if default_path.is_file():
+            path = str(default_path)
+    if not path:
         return {}
     try:
         with Path(path).expanduser().open(encoding="utf-8") as stream:

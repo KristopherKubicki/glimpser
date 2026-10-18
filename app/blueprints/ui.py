@@ -866,6 +866,7 @@ def create_blueprint() -> Blueprint:
     # Per-process heartbeat state is deliberately reset on server restart.
     # The kiosk-side monitor grants a startup grace period when age is unknown.
     kiosk_heartbeats = {}
+    kiosk_playback = {}
 
     @bp.route("/kiosk_health", methods=["GET", "POST"])
     @routes.login_required
@@ -882,12 +883,73 @@ def create_blueprint() -> Blueprint:
         for old_key, stamp in list(kiosk_heartbeats.items()):
             if now - stamp > 3600:
                 kiosk_heartbeats.pop(old_key, None)
+                kiosk_playback.pop(old_key, None)
         if request.method == "POST":
             if len(kiosk_heartbeats) < 256 or key in kiosk_heartbeats:
                 kiosk_heartbeats[key] = now
+                # Small, allowlisted browser observations only: never retain
+                # camera URLs, captions, images, or an unbounded client payload.
+                if 0 < (request.content_length or 0) <= 2048:
+                    payload = request.get_json(silent=True)
+                    if isinstance(payload, dict):
+                        states = {
+                            "still",
+                            "history_loaded",
+                            "missing",
+                            "live_advancing",
+                            "live_waiting",
+                            "video_advancing",
+                            "video_waiting",
+                        }
+                        cameras = payload.get("cameras")
+                        if isinstance(cameras, list):
+                            clean = []
+                            for camera in cameras[:4]:
+                                if not isinstance(camera, dict):
+                                    continue
+                                name, state = camera.get("name"), camera.get("state")
+                                if (
+                                    isinstance(name, str)
+                                    and 0 < len(name) <= 80
+                                    and all(c.isalnum() or c in "_- " for c in name)
+                                    and isinstance(state, str)
+                                    and state in states
+                                ):
+                                    clean.append({"name": name, "state": state})
+                            revision = payload.get("revision", "")
+                            sample = {
+                                "at": now,
+                                "cameras": clean,
+                                "layout": "overview"
+                                if payload.get("layout") == "overview"
+                                else "single",
+                                "revision": revision
+                                if isinstance(revision, str)
+                                and len(revision) <= 32
+                                and all(c in "0123456789abcdef" for c in revision)
+                                else "",
+                            }
+                            history = kiosk_playback.setdefault(key, [])
+                            history.append(sample)
+                            kiosk_playback[key] = [
+                                row for row in history[-240:] if now - row["at"] <= 3600
+                            ]
             return ("", 204)
         stamp = kiosk_heartbeats.get(key)
-        response = jsonify({"age_seconds": round(now - stamp, 1) if stamp else None})
+        history = kiosk_playback.get(key, [])
+        response = jsonify(
+            {
+                "age_seconds": round(now - stamp, 1) if stamp else None,
+                "playback_samples": [
+                    {
+                        **{k: v for k, v in row.items() if k != "at"},
+                        "age_seconds": round(now - row["at"], 1),
+                    }
+                    for row in history
+                    if now - row["at"] <= 3600
+                ],
+            }
+        )
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -2875,7 +2937,7 @@ def create_blueprint() -> Blueprint:
             logging.warning(
                 "google_webrtc_start failed profile=%s device=%s: %s",
                 profile,
-                device_id,
+                device_id[:12] + "…" if len(device_id) > 12 else device_id,
                 exc,
             )
             return jsonify({"ok": False, "error": "upstream_camera_error"}), 502
@@ -2884,11 +2946,9 @@ def create_blueprint() -> Blueprint:
             "google_webrtc_start ok profile=%s device=%s media_session=%s answer_len=%s",
             profile,
             device_id[:12] + "…" if len(device_id) > 12 else device_id,
-            (
-                stream.media_session_id[:12] + "…"
-                if len(stream.media_session_id) > 12
-                else stream.media_session_id
-            ),
+            stream.media_session_id[:12] + "…"
+            if len(stream.media_session_id) > 12
+            else stream.media_session_id,
             len(stream.answer_sdp or ""),
         )
         return jsonify(
@@ -2896,9 +2956,9 @@ def create_blueprint() -> Blueprint:
                 "ok": True,
                 "answer_sdp": stream.answer_sdp,
                 "media_session_id": stream.media_session_id,
-                "expires_at": (
-                    stream.expires_at.isoformat() if stream.expires_at else None
-                ),
+                "expires_at": stream.expires_at.isoformat()
+                if stream.expires_at
+                else None,
             }
         )
 
@@ -3050,7 +3110,7 @@ def create_blueprint() -> Blueprint:
 
         profile = (request.args.get("profile") or "").strip() or "default"
         list_error = ""
-        # Default new imports into the selected household profile group
+        # Default new imports into the house profile group (argyle/beach/halsted)
         # when possible, so they appear in the expected video wall immediately.
         default_group = validate_group_name(profile) or "google_home"
 
@@ -3582,11 +3642,9 @@ def create_blueprint() -> Blueprint:
                     variants,
                     key=lambda item: (
                         # Prefer templates that already captured at least once.
-                        (
-                            1
-                            if str(item[1].get("last_screenshot_time") or "").strip()
-                            else 0
-                        ),
+                        1
+                        if str(item[1].get("last_screenshot_time") or "").strip()
+                        else 0,
                         # Prefer human-readable names over "-2/-3" suffixes.
                         1 if not re.search(r"-\d+$", item[0]) else 0,
                         # Prefer currently healthy templates over failed ones.

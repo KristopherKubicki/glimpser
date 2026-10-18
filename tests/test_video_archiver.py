@@ -88,7 +88,7 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertIn(os.path.join(VIDEO_DIRECTORY, "group2_in_process.mp4"), outputs)
         self.assertIn(os.path.join(VIDEO_DIRECTORY, "group3_in_process.mp4"), outputs)
 
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_compile_videos(self, mock_subprocess_run):
         mock_subprocess_run.return_value.returncode = 0
         with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
@@ -102,7 +102,7 @@ class TestVideoArchiver(unittest.TestCase):
                 result = compile_videos(temp_file.name, "output.mp4")
         self.assertTrue(result)
 
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_compile_videos_missing_input(self, mock_subprocess_run):
         result = compile_videos("missing.txt", "out.mp4")
         self.assertFalse(result)
@@ -133,7 +133,7 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertEqual(duration, 10.5)
 
     @patch("app.utils.video_archiver.get_video_duration")
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_concatenate_videos(self, mock_subprocess_run, mock_get_video_duration):
         mock_get_video_duration.return_value = 10
         mock_subprocess_run.return_value.returncode = 0
@@ -151,7 +151,7 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertTrue(result)
 
     @patch("app.utils.video_archiver.get_video_duration")
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_concatenate_videos_retry(
         self, mock_subprocess_run, mock_get_video_duration
     ):
@@ -177,7 +177,7 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.logging.warning")
     @patch("app.utils.video_archiver.get_video_duration")
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_concatenate_videos_stale_timestamp(
         self, mock_subprocess_run, mock_get_video_duration, mock_warning
     ):
@@ -527,7 +527,7 @@ class TestVideoArchiver(unittest.TestCase):
             archive_screenshots()
         mock_log.assert_called_once()
 
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_run_ffmpeg_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="ffmpeg", timeout=1)
         with self.assertRaises(subprocess.TimeoutExpired):
@@ -546,7 +546,7 @@ class TestVideoArchiver(unittest.TestCase):
         )
         self.assertFalse(_ffmpeg_error_suggests_hwaccel_failure("Invalid data found"))
 
-    @patch("subprocess.run")
+    @patch("app.utils.video_archiver.run_encoder_command")
     def test_run_ffmpeg_retries_without_hwaccel_on_cuda_failure(self, mock_run):
         failed = MagicMock(
             returncode=1,

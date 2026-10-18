@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from app import config
+from app.runtime_health import BEACH_EUFY_MAX_AGE_SECONDS
 
 
 def timestamp(value):
@@ -81,17 +82,13 @@ def record_source(
         "digest": digest,
         "first_seen": prior.get("first_seen", observed) if same else observed,
         "checked_at": observed,
-        "published_at": (
-            published.isoformat()
-            if published
-            else (prior.get("published_at", "") if same else "")
-        ),
+        "published_at": published.isoformat()
+        if published
+        else (prior.get("published_at", "") if same else ""),
         "inherited_at": inherited,
-        "frame_condition": (
-            frame_condition
-            if frame_condition is not None
-            else (prior.get("frame_condition", "") if same else "")
-        ),
+        "frame_condition": frame_condition
+        if frame_condition is not None
+        else (prior.get("frame_condition", "") if same else ""),
         "observations": min(observations + 1, 1000000) if same else 1,
     }
     path = _path(name)
@@ -142,6 +139,24 @@ def record_derived_source(name, parent, source_file, output_file):
     )
 
 
+def source_age_threshold(details, capture_threshold):
+    """Allow a bounded forecast publication window without extending capture health."""
+    parsed = urlparse(str(details.get("url") or ""))
+    if (
+        parsed.scheme == "https"
+        and parsed.hostname == "www.weather.gov"
+        and not parsed.username
+        and not parsed.password
+        and re.fullmatch(
+            r"/images/[a-z]{3}/wxstory/Tab[1-9]FileL\.(?:png|jpg)", parsed.path
+        )
+    ):
+        # Weather-story graphics are authored products, not camera frames.
+        # This is a recency budget, never a claim that a warning remains valid.
+        return max(capture_threshold, 12 * 3600)
+    return capture_threshold
+
+
 def source_freshness(name, details, now=None):
     """Project only safe age evidence for the current camera configuration."""
     now = now or datetime.now(UTC)
@@ -155,6 +170,11 @@ def source_freshness(name, details, now=None):
         )
     except (TypeError, ValueError, OverflowError):
         threshold = 5400
+    groups = {
+        group.strip().lower() for group in str(details.get("groups") or "").split(",")
+    }
+    if {"beachhouse", "eufy"}.issubset(groups):
+        threshold = max(threshold, BEACH_EUFY_MAX_AGE_SECONDS)
     # Never attach a newer observation to an older displayed image (or vice
     # versa). Capture filenames are the binding, not the record write time.
     filename = str(evidence.get("capture_file") or "")
@@ -178,7 +198,8 @@ def source_freshness(name, details, now=None):
     inherited = timestamp(evidence.get("inherited_at"))
     first = timestamp(evidence.get("first_seen"))
     known = published or inherited
-    source_older = bool(known and (now - known).total_seconds() > threshold)
+    source_threshold = source_age_threshold(details, threshold)
+    source_older = bool(known and (now - known).total_seconds() > source_threshold)
     try:
         observations = int(evidence.get("observations", 0))
     except (TypeError, ValueError, OverflowError):
@@ -191,7 +212,7 @@ def source_freshness(name, details, now=None):
         and checked
         and checked <= now
         and observations > 1
-        and observed_seconds > threshold
+        and observed_seconds > source_threshold
     )
     capture_overdue = bool(captured and (now - captured).total_seconds() > threshold)
     reason = str(details.get("last_capture_message") or "")
@@ -201,12 +222,10 @@ def source_freshness(name, details, now=None):
         "waiting_for_browser": reason == "stale_previous_frame_browser_slot_busy",
         "source_unchanged": reason == "source_checked_unchanged",
         "checked_at": str(evidence.get("checked_at") or ""),
-        "kind": (
-            "video_thumbnail"
-            if (urlparse(str(details.get("url") or "")).hostname or "").lower()
-            in {"i.ytimg.com", "img.youtube.com"}
-            else ""
-        ),
+        "kind": "video_thumbnail"
+        if (urlparse(str(details.get("url") or "")).hostname or "").lower()
+        in {"i.ytimg.com", "img.youtube.com"}
+        else "",
         "published_at": published.isoformat() if published else "",
         "inherited_at": inherited.isoformat() if inherited else "",
         "unchanged_since": first.isoformat() if unchanged else "",
@@ -216,4 +235,5 @@ def source_freshness(name, details, now=None):
         "older": source_older,
         "clock_ahead": bool(known and (known - now).total_seconds() > 300),
         "threshold_seconds": threshold,
+        "source_threshold_seconds": source_threshold,
     }

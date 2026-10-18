@@ -6,6 +6,7 @@
   color: #f6faff;
   display: flex;
   flex-direction: column;
+  animation: overview-enter var(--room-crossfade, 1800ms) ease-in-out both;
 }
 .rotation-overview > header {
   position: static;
@@ -45,11 +46,22 @@
   margin: 0;
   border: 0;
 }
+.rotation-overview-media {
+  position: absolute;
+  inset: 0;
+}
+.rotation-overview .kiosk-live-label,
+.rotation-overview .kiosk-live-note {
+  display: none;
+}
+.rotation-overview-tile .rotation-overview-label {
+  z-index: 5;
+}
 .rotation-overview-tile img {
   position: absolute;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .rotation-overview-label {
   position: absolute;
@@ -115,6 +127,72 @@
     font-size: 18px;
   }
   .rotation-overview.is-two .rotation-overview-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rotation-overview.is-three .rotation-overview-tile:first-child {
+  grid-column: 1 / -1;
+}
+
+@keyframes overview-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotation-overview {
+    animation: none;
+  }
+}
+
+/* Keep the outgoing board over the next scene until its dissolve completes. */
+.rotation-overview.is-leaving {
+  animation: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--room-crossfade, 1800ms) ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotation-overview.is-leaving {
+    transition: opacity 600ms linear;
+  }
+}
+
+.rotation-overview.is-tv .rotation-overview-tile {
+  flex: 1;
+}
+
+/* Give a portrait its full height instead of a wide, mostly empty tile.
+   Keep mobile stacking and contain fitting; no source pixels are cropped. */
+@media (min-width: 701px) {
+  .rotation-overview.is-two.geometry-portrait-left .rotation-overview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  }
+  .rotation-overview.is-two.geometry-portrait-right .rotation-overview-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  }
+  .rotation-overview.is-three.geometry-portrait-tall
+    .rotation-overview-tile:first-child {
+    grid-column: auto;
+  }
+  .rotation-overview.is-three.geometry-portrait-tall
+    .rotation-overview-tile.is-portrait-primary {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* Wide feeds use full-width rows when containing them there preserves more
+   picture area. The decision is fixed before live playback starts. */
+@media (min-width: 701px) {
+  .rotation-overview.is-two.geometry-landscape-stacked .rotation-overview-grid {
     grid-template-columns: 1fr;
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }

@@ -554,9 +554,9 @@ class TestScreenshotsExtras(unittest.TestCase):
 
         self.assertTrue(applied)
         script = driver.execute_script.call_args.args[0]
-        self.assertIn("glimpser-force-dark-visual-filter", script)
+        self.assertIn("glimpser-force-dark-theme", script)
         self.assertIn("color-scheme", script)
-        self.assertIn("invert(1) hue-rotate(180deg)", script)
+        self.assertNotIn("invert(1)", script)
 
     def test_apply_force_dark_visual_filter_can_preserve_visual_media(self):
         driver = MagicMock()
@@ -568,10 +568,9 @@ class TestScreenshotsExtras(unittest.TestCase):
 
         self.assertTrue(applied)
         script = driver.execute_script.call_args.args[0]
-        self.assertIn("glimpser-preserve-visual-media", script)
-        self.assertIn("preserveVisualMedia", script)
+        self.assertIn("!el.closest(media)", script)
+        self.assertIn("backgroundImage", script)
         self.assertIn("img,", script)
-        self.assertTrue(driver.execute_script.call_args.args[1])
 
     def test_apply_force_dark_visual_filter_can_use_theme_mode(self):
         driver = MagicMock()
@@ -584,8 +583,7 @@ class TestScreenshotsExtras(unittest.TestCase):
         self.assertTrue(applied)
         script = driver.execute_script.call_args.args[0]
         self.assertIn("glimpser-force-dark-theme", script)
-        self.assertIn("background-color: #0b1118", script)
-        self.assertEqual(driver.execute_script.call_args.args[2], "theme")
+        self.assertIn("neutralSurface", script)
 
     def test_strip_fixed_overlays_guards_scene_elements(self):
         driver = MagicMock()
@@ -1832,7 +1830,7 @@ class TestScreenshotsExtras(unittest.TestCase):
                 return_value=ydl_context,
             ),
             patch(
-                "app.utils.screenshots.subprocess.run", side_effect=fake_ffmpeg_run
+                "app.utils.screenshots.run_capture_command", side_effect=fake_ffmpeg_run
             ) as mock_run,
             patch(
                 "app.utils.screenshots._postprocess_still_image",

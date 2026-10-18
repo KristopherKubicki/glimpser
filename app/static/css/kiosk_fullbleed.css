@@ -156,30 +156,9 @@ body:is(.landing-profile-living, .landing-profile-office)
   display: flex;
 }
 
-/* Slow the visual handoff, not the rotation timer; omit the old zoom effect. */
+/* Room comfort owns the fade; omit the old zoom and competing reveal animation. */
 body:is(.landing-profile-office, .landing-profile-living) .landing-scene {
   transform: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  body:is(.landing-profile-office, .landing-profile-living)
-    .landing-scene.is-visible {
-    animation: kiosk-scene-reveal 600ms ease-out;
-  }
-  body:is(.landing-profile-office, .landing-profile-living)
-    .has-priority-event
-    .landing-scene.is-visible {
-    animation: none;
-  }
-}
-
-@keyframes kiosk-scene-reveal {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @media (max-width: 700px) {

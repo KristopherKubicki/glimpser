@@ -421,6 +421,9 @@ def validate_update_data(data: dict) -> dict:
     stabilize_mode = str(data.get("stabilize_mode") or "").strip().lower()
     if stabilize_mode not in {"", "off", "previous", "rolling_5m", "rolling_30m"}:
         raise ValueError("stabilize_mode is invalid")
+    from app.utils.enhancement_pipeline import validate_settings
+
+    sanitized.update(validate_settings(data))
     sanitized["stabilize_mode"] = (
         "" if stabilize_mode in {"", "off"} else stabilize_mode
     )

@@ -380,6 +380,83 @@ object_tokens=None, clip_model=None, clip_gpu=False, default_url=None) -%}
           </option>
         </select>
       </div>
+      <fieldset>
+        <legend>AI enhancement layer</legend>
+        <p>
+          Process saved captures in the background. Live video remains
+          uninterrupted.
+        </p>
+        {% set enhancement_checked = 'checked' if template and
+        template.enhancement_enabled else '' %}
+        <label for="enhancement_enabled">
+          <input
+            type="checkbox"
+            id="enhancement_enabled"
+            name="enhancement_enabled"
+            value="true"
+            {{
+            enhancement_checked
+            }}
+          />
+          Enable enhancement for this camera
+        </label>
+        <div class="form-row">
+          <label for="enhancement_pool">Worker pool</label>
+          <select
+            id="enhancement_pool"
+            name="enhancement_pool"
+            class="sm-select"
+          >
+            <option value="">Choose a configured private pool</option>
+            {% if enhancement_pool_choices is defined %} {% for pool in
+            enhancement_pool_choices() %} {% set pool_selected = 'selected' if
+            template and template.enhancement_pool == pool.id else '' %}
+            <option value="{{ pool.id }}" {{ pool_selected }}>
+              {{ pool.label }}
+            </option>
+            {% endfor %} {% endif %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="enhancement_recipe">Enhancement recipe</label>
+          <select
+            id="enhancement_recipe"
+            name="enhancement_recipe"
+            class="sm-select"
+          >
+            {% for value, label in [('neural-native', 'Neural restoration ·
+            native size'), ('neural-lowlight', 'Neural restoration + shadow
+            recovery'), ('neural-2x', 'Neural restoration + 2× enlargement'),
+            ('gentle', 'Gentle denoising · no neural model'), ('night-adaptive',
+            'Night shadows · multiframe when aligned (not neural)')] %} {% set
+            recipe_selected = 'selected' if template and
+            template.enhancement_recipe == value else '' %}
+            <option value="{{ value }}" {{ recipe_selected }}>
+              {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% set display_checked = 'checked' if template and
+        template.enhancement_display else '' %}
+        <label for="enhancement_display">
+          <input
+            type="checkbox"
+            id="enhancement_display"
+            name="enhancement_display"
+            value="true"
+            {{
+            display_checked
+            }}
+          />
+          Use labeled enhanced captures in dashboard snapshots
+        </label>
+        <p>
+          Off by default. Missing or outdated results use the original. AI may
+          invent detail; originals are retained.
+          <a href="/enhancements">Compare results</a>.
+        </p>
+      </fieldset>
       <div class="form-row">
         <label
           for="night_enhance_mode"

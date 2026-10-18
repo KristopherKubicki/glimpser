@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, render_template, request
 from sqlalchemy import text
 
 from app.runtime_health import capture_health
+from app.utils.gpu_guard import acceleration_status
 from app.utils.live_caps import cache_responsive
 from app.utils.live_host_caps import cache_responsive as host_cache_responsive
 from app.viewer_policy import VIEWER_CONFIG
@@ -114,7 +115,7 @@ def create_blueprint() -> Blueprint:
         if not live_cache_ok:
             is_nominal = False
             error_messages.append("Live capability cache is unresponsive")
-        acceleration = routes.config.FFMPEG_ACCELERATION_STATUS
+        acceleration = acceleration_status(routes.config.FFMPEG_ACCELERATION_STATUS)
         if acceleration["status"] == "failed":
             is_nominal = False
             error_messages.append("GPU unavailable; software fallback is active")

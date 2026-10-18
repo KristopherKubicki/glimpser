@@ -326,6 +326,7 @@ def schedule_presence(scheduler) -> None:
         return
     scheduler.add_job(
         id="household_presence",
+        executor="presence",
         func=poll_presence,
         trigger="interval",
         seconds=30,

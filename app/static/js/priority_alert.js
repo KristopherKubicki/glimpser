@@ -1,6 +1,11 @@
-import { mountMotionPreview } from "./motion_preview.js";
+import { mountMotionPreview } from "./motion_preview.js?v=20261017-media-lifecycle";
 
-export function createPriorityAlert(event, duration, onFinish) {
+export function createPriorityAlert(
+  event,
+  duration,
+  onFinish,
+  resumeLabel = "Resume rotation",
+) {
   const activityLabels = {
     doorbell: "DOORBELL RANG",
     person: "PERSON DETECTED",
@@ -31,7 +36,7 @@ export function createPriorityAlert(event, duration, onFinish) {
   remaining.setAttribute("aria-hidden", "true");
   const resume = document.createElement("button");
   resume.type = "button";
-  resume.textContent = "Resume rotation";
+  resume.textContent = resumeLabel;
   let deadline = Date.now() + duration;
   let finished = false;
   let timer;

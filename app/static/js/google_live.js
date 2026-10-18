@@ -31,6 +31,11 @@ export function connectGoogleLive(video, camera, onError) {
     session = "",
     iceTimer = null,
     finishIce = null;
+  const configController =
+    typeof AbortController === "function" ? new AbortController() : null;
+  const setupTimer = setTimeout(() => {
+    fail(new Error("Google live setup timed out"));
+  }, 25000);
   const post = async (action, body, keepalive = false) => {
     const response = await fetch(
       `/integrations/google/webrtc/${action}?token=${encodeURIComponent(config.token)}`,
@@ -53,21 +58,46 @@ export function connectGoogleLive(video, camera, onError) {
     void post("stop", { media_session_id: id }, true).catch(() => {});
   };
   const dispose = () => {
+    if (disposed) return;
     disposed = true;
+    clearTimeout(setupTimer);
+    window.removeEventListener("pagehide", dispose);
+    configController?.abort();
     finishIce?.();
     clearTimeout(iceTimer);
-    peer?.close();
+    if (peer) {
+      peer.ontrack = null;
+      peer.onconnectionstatechange = null;
+      try {
+        peer.close();
+      } catch {
+        /* Continue releasing the remote session. */
+      }
+    }
     peer = null;
-    video.srcObject?.getTracks().forEach((track) => track.stop());
+    video.srcObject?.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        /* One detached track must not strand others. */
+      }
+    });
     video.srcObject = null;
     stopRemote();
+  };
+  const fail = (error) => {
+    if (disposed) return;
+    // Release locally and remotely before notifying a caller that may navigate
+    // away, reenter disposal, or only display the failure.
+    dispose();
+    onError(error);
   };
   const start = async () => {
     if (typeof RTCPeerConnection !== "function")
       throw new Error("WebRTC unavailable");
     const response = await fetch(
       `/kiosk_live_config?camera=${encodeURIComponent(camera)}`,
-      { cache: "no-store" },
+      { cache: "no-store", signal: configController?.signal },
     );
     if (!response.ok) throw new Error("Google live unavailable");
     config = await response.json();
@@ -83,9 +113,13 @@ export function connectGoogleLive(video, camera, onError) {
       if (disposed) return;
       if (event.streams?.[0] && video.srcObject !== event.streams[0]) {
         video.srcObject = event.streams[0];
-        Promise.resolve(video.play()).catch((error) => {
-          if (!disposed && error.name !== "AbortError") onError(error);
-        });
+        try {
+          Promise.resolve(video.play()).catch((error) => {
+            if (error?.name !== "AbortError") fail(error);
+          });
+        } catch (error) {
+          if (error?.name !== "AbortError") fail(error);
+        }
       }
     };
     peer.onconnectionstatechange = () => {
@@ -93,9 +127,11 @@ export function connectGoogleLive(video, camera, onError) {
         !disposed &&
         ["failed", "closed"].includes(activePeer.connectionState)
       )
-        onError();
+        fail();
     };
-    await peer.setLocalDescription(await peer.createOffer());
+    const offer = await activePeer.createOffer();
+    if (disposed) return;
+    await activePeer.setLocalDescription(offer);
     if (disposed) return;
     await new Promise((resolve) => {
       if (activePeer.iceGatheringState === "complete") return resolve();
@@ -125,10 +161,9 @@ export function connectGoogleLive(video, camera, onError) {
       type: "answer",
       sdp: normalizeGoogleAnswer(result.answer_sdp),
     });
+    clearTimeout(setupTimer);
   };
-  void start().catch((error) => {
-    if (!disposed) onError(error);
-    dispose();
-  });
+  window.addEventListener("pagehide", dispose, { once: true });
+  void start().catch(fail);
   return { dispose };
 }

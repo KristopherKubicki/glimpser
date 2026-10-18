@@ -1,0 +1,176 @@
+.youtube-follow-page {
+  color-scheme: dark;
+  margin: 0;
+  background: #080f19;
+  color: #e6edf5;
+  font:
+    1rem/1.5 system-ui,
+    sans-serif;
+}
+
+.youtube-follow-page main {
+  max-width: 1600px;
+  margin: auto;
+  padding: 1.5rem;
+}
+.youtube-follow-heading,
+.youtube-follow-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+.youtube-follow-heading > div {
+  margin-right: auto;
+}
+.youtube-follow-heading h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+.youtube-follow-eyebrow {
+  margin: 0;
+  color: #9db0c2;
+}
+.youtube-follow-page a,
+.youtube-follow-panel a {
+  color: #9cddce;
+}
+.youtube-follow-page button,
+.youtube-follow-panel button {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  border: 1px solid #465769;
+  border-radius: 0.6rem;
+  background: #142333;
+  color: #e6edf5;
+  cursor: pointer;
+  font: inherit;
+}
+.youtube-follow-page button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.youtube-follow-page :focus-visible,
+.youtube-follow-panel :focus-visible {
+  outline: 2px solid #9cddce;
+  outline-offset: 3px;
+}
+.youtube-follow-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #050a10;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+.youtube-follow-screen video,
+.youtube-follow-panel video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* Nonzero keeps Chromium presenting frames for the readiness check. */
+  opacity: 0.001;
+}
+.has-picture .youtube-follow-screen video,
+.youtube-follow-panel.has-picture video {
+  opacity: 1;
+}
+.youtube-follow-status {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 1rem;
+  right: 1rem;
+  color: #c1cddb;
+  background: #080f19d9;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.4rem;
+}
+.youtube-follow-setup {
+  max-width: 52rem;
+  margin-top: 2rem;
+  color: #b8c8d8;
+}
+.youtube-follow-setup h2 {
+  color: #e6edf5;
+  font-size: 1.2rem;
+}
+.youtube-follow-screen:fullscreen {
+  aspect-ratio: auto;
+  border-radius: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.youtube-follow-panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(42vw, 720px);
+  z-index: 19;
+  background: #080f19;
+  border: 1px solid #465769;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  color: #e6edf5;
+}
+.youtube-follow-panel[hidden] {
+  display: none;
+}
+.youtube-follow-panel header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.7rem;
+}
+.youtube-follow-panel header a {
+  margin-right: auto;
+}
+.youtube-follow-panel .youtube-follow-picture {
+  aspect-ratio: 16 / 9;
+}
+.youtube-follow-panel p {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  font:
+    0.9rem/1.4 system-ui,
+    sans-serif;
+}
+
+@media (width <= 700px) {
+  .youtube-follow-page main {
+    padding: 0.8rem;
+  }
+  .youtube-follow-panel {
+    width: min(90vw, 480px);
+    right: 0.5rem;
+    bottom: 0.5rem;
+  }
+}
+.youtube-follow-panel:not(.has-picture) .youtube-follow-picture {
+  /* Keep decoding while the compact status panel waits for real frames. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+body.landing-screen.has-youtube-follow .landing-stage-shell {
+  margin-right: 44vw;
+}
+body.has-youtube-follow .youtube-follow-panel {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+@media (width <= 700px) {
+  body.landing-screen.has-youtube-follow .landing-stage-shell {
+    margin-right: 0;
+  }
+  body.has-youtube-follow .youtube-follow-panel {
+    top: auto;
+    bottom: 0.5rem;
+    transform: none;
+    width: min(65vw, 360px);
+  }
+}

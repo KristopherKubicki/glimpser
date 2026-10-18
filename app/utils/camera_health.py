@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+from app.runtime_health import BEACH_EUFY_MAX_AGE_SECONDS
 from app.viewer_policy import ARCHIVE_GROUPS
 
 SIDECAR_NAMES = {
@@ -29,13 +30,13 @@ def _parse_template_time(value: object) -> dt.datetime | None:
     text = str(value or "").strip()
     if not text:
         return None
-    for candidate in (text, text.replace("T", " ").replace("Z", "")):
-        try:
-            parsed = dt.datetime.strptime(candidate[:19], TIMESTAMP_FORMAT)
-            return parsed.replace(tzinfo=dt.UTC)
-        except ValueError:
-            continue
-    return None
+    try:
+        parsed = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.UTC)
+        return parsed.astimezone(dt.UTC)
+    except ValueError:
+        return None
 
 
 def _age_minutes(value: dt.datetime | None, now: dt.datetime) -> float | None:
@@ -167,12 +168,15 @@ def assess_camera_health(
     db_time = _parse_template_time(details.get("last_screenshot_time"))
     frequency = _frequency_minutes(details)
     stale_after = max(60.0, frequency * 3.0)
+    if {"beachhouse", "eufy"}.issubset({group.lower() for group in _groups(details)}):
+        stale_after = max(stale_after, BEACH_EUFY_MAX_AGE_SECONDS / 60)
     frame_age = _age_minutes(frame_time, now)
     db_age = _age_minutes(db_time, now)
     video_age = _latest_video_age_minutes(name, camera_video_dir, now)
     groups = _groups(details)
-    archived = bool(ARCHIVE_GROUPS.intersection(groups))
-    expected_offline = "expected-offline" in groups
+    normalized_groups = {group.lower() for group in groups}
+    archived = bool(ARCHIVE_GROUPS.intersection(normalized_groups))
+    expected_offline = "expected-offline" in normalized_groups
     last_capture_status = str(details.get("last_capture_status") or "").strip()
     last_capture_message = str(details.get("last_capture_message") or "").strip()
 
@@ -299,11 +303,9 @@ def build_camera_health_report(
     cameras.sort(
         key=lambda row: (
             -int(row["severity"]),
-            (
-                row["last_screenshot_age_minutes"]
-                if row["last_screenshot_age_minutes"] is not None
-                else float("inf")
-            ),
+            row["last_screenshot_age_minutes"]
+            if row["last_screenshot_age_minutes"] is not None
+            else float("inf"),
             row["name"],
         ),
         reverse=False,

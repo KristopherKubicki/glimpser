@@ -1,0 +1,29 @@
+/* Review controls stay legible without brightening the ambient display. */
+body.landing-screen .landing-recent-strip {
+  max-height: min(65vh, 32rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body.landing-screen .landing-recent-strip button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+}
+body.landing-screen .landing-recent-strip button img {
+  width: 96px;
+  height: 60px;
+  flex: none;
+  object-fit: contain;
+  background: #03080d;
+  border-radius: 6px;
+}
+body.landing-screen .landing-recent-strip button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+body.landing-screen .landing-review-button,
+body.landing-screen .landing-review-select,
+body.landing-screen .landing-review-link {
+  min-height: 44px;
+}

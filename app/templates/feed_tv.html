@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Glimpser · Local highlights</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/magazine.css') }}"
+    />
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/">Glimpser</a>
+        <p class="eyebrow">LOCAL HIGHLIGHTS</p>
+        <h1>Worth a closer look</h1>
+        <p>
+          Selected local television excerpts, with their original station and
+          recording time.
+        </p>
+      </header>
+      {% for clip in model.clips %}
+      <article>
+        <h2>{{ clip.title }}</h2>
+        <p>
+          {{ clip.station }} ·
+          <time datetime="{{ clip.recorded_label }}"
+            >{{ clip.recorded_label }}</time
+          >
+        </p>
+        <video
+          controls
+          preload="none"
+          playsinline
+          poster="{{ clip.poster }}"
+          aria-label="{{ clip.title }}"
+        >
+          <source src="{{ clip.video }}" type="video/mp4" />
+          <track
+            kind="captions"
+            srclang="en"
+            default
+            src="/feed-tv/{{ clip.id }}/captions.vtt"
+          />
+        </video>
+        <p>{{ clip.observation }}</p>
+        <p>{{ clip.label }}</p>
+      </article>
+      {% else %}
+      <article>
+        <h2>Watching for worthwhile moments</h2>
+        <p>
+          Excerpts appear after source captions and images pass review. No
+          highlights have been published yet.
+        </p>
+      </article>
+      {% endfor %}
+      <details>
+        <summary>Collection status</summary>
+        {% for name, worker in model.workers.items() %}
+        <p>{{ name }} · {{ worker.get('state', 'not started') }}</p>
+        {% endfor %} {% for source in model.sources %}
+        <p>{{ source.name }} · {{ source.state }}</p>
+        {% endfor %}
+      </details>
+    </main>
+  </body>
+</html>

@@ -151,7 +151,7 @@ class TestScreenshotCapture(unittest.TestCase):
 
         self.assertTrue(result)
         mock_driver.execute_cdp_cmd.assert_called_with(
-            "Emulation.setAutoDarkModeOverride", {"enabled": True}
+            "Emulation.setAutoDarkModeOverride", {"enabled": False}
         )
         mock_finalize.assert_called_once()
 

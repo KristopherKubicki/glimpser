@@ -24,6 +24,12 @@ VIEWER_FIELDS = frozenset(
     }
 )
 DASHBOARDS = {
+    "energy": "Energy",
+    "transportation": "Transportation",
+    "water": "Water",
+    "conditions": "Conditions",
+    "area": "Area",
+    "stores": "Stores",
     "arrivals": "Arrivals & Departures",
     "property": "Water & Property Health",
     "beach-conditions": "Beach Conditions",
@@ -37,7 +43,17 @@ DASHBOARDS = {
 # Explicit membership keeps private property cameras separate from regional views.
 CONTEXT_VIEWS = {
     key: VIEWER_CONFIG.get("context_views", {}).get(key, {})
-    for key in ("arrivals", "property", "beach-conditions")
+    for key in (
+        "arrivals",
+        "property",
+        "beach-conditions",
+        "energy",
+        "transportation",
+        "water",
+        "conditions",
+        "area",
+        "stores",
+    )
 }
 CONTEXT_DESCRIPTIONS = {
     "arrivals": "Door, driveway and approach views alongside household presence. Presence and camera observations have separate timestamps; a parked car alone does not establish who is home.",

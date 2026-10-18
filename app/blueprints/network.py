@@ -1,10 +1,12 @@
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, make_response, render_template
 
 from app.utils.network import is_system_online, network_state
 
 
 def create_blueprint() -> Blueprint:
     """Create and return the network status blueprint."""
+
+    from app import routes
 
     bp = Blueprint("network", __name__)
 
@@ -39,5 +41,17 @@ def create_blueprint() -> Blueprint:
                 "asset_version": str(current_app.config.get("ASSET_VERSION", "")),
             }
         )
+
+    @bp.route("/house-systems")
+    @routes.login_required
+    def house_systems():
+        """Show logical service placement and explicitly scoped reachability."""
+        from app.utils.house_system_map import GROUPS, snapshot
+
+        response = make_response(
+            render_template("house_systems.html", system_map=snapshot(), groups=GROUPS)
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     return bp

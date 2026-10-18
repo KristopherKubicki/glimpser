@@ -76,6 +76,7 @@ from app.utils.google_sdm import (
     stable_key_for_resolved_rtsp,
     stable_sdm_key_for_url,
 )
+from app.utils.gpu_guard import run_capture_command
 from app.utils.logging_utils import sanitize_url
 from app.utils.validators import url_matches_host, validate_proxy, validate_url
 
@@ -98,6 +99,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # handle files gracefully.
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 _PIL_RESAMPLING = getattr(Image, "Resampling", Image)
+_SQUARE_PIXEL_FILTER = "scale=max(1\\,round(iw*sar)):ih,setsar=1"
 
 _ORPHAN_BROWSER_CLEANUP_LAST = 0.0
 _ORPHAN_BROWSER_CLEANUP_INTERVAL_SECONDS = int(
@@ -452,8 +454,7 @@ def _select_best_stream_frame(
                     reject_reason = "decode_smear"
                 if (
                     reject_reason is None
-                    and name
-                    in capture_policy.CAPTURE_POLICY.get("slow_rtsp_cameras", [])
+                    and name in {"Halsted020", "Halsted021", "Halsted022", "Halsted023"}
                     and _has_vertical_stream_smear(image)
                 ):
                     reject_reason = "vertical_decode_smear"
@@ -706,23 +707,20 @@ def _estimate_translation(
 def _apply_translation_crop(
     image: Image.Image, shift_x: int, shift_y: int
 ) -> Image.Image:
-    """Apply a translational stabilization crop and resize back to full size."""
+    """Translate on a fixed canvas without stretching either pixel axis."""
 
     width, height = image.size
-    crop_left = max(0, -shift_x)
-    crop_top = max(0, -shift_y)
-    crop_right = max(0, shift_x)
-    crop_bottom = max(0, shift_y)
-
-    if crop_left + crop_right >= width // 4 or crop_top + crop_bottom >= height // 4:
+    if abs(shift_x) >= width // 4 or abs(shift_y) >= height // 4:
         return image
-
-    crop_box = (crop_left, crop_top, width - crop_right, height - crop_bottom)
-    if crop_box[2] <= crop_box[0] or crop_box[3] <= crop_box[1]:
-        return image
-
-    cropped = image.crop(crop_box)
-    return cropped.resize((width, height), _PIL_RESAMPLING.LANCZOS)
+    # A crop resized back to the original dimensions scales X and Y by
+    # different amounts. Preserve pixel geometry; uncovered borders stay black.
+    return image.transform(
+        image.size,
+        Image.Transform.AFFINE,
+        (1, 0, -shift_x, 0, 1, -shift_y),
+        resample=_PIL_RESAMPLING.BICUBIC,
+        fillcolor=0,
+    )
 
 
 def _fit_box_to_bounds(
@@ -1128,8 +1126,16 @@ def _crop_leveled_horizon(image: Image.Image, angle: float) -> Image.Image:
         return image
     if width - (margin_x * 2) < 16 or height - (margin_y * 2) < 16:
         return image
-    cropped = image.crop((margin_x, margin_y, width - margin_x, height - margin_y))
-    return cropped.resize((width, height), resample=_PIL_RESAMPLING.LANCZOS)
+    # Use one scale for both axes. Independent crop margins followed by resize
+    # distorted square pixels, especially on portrait frames and wide fisheyes.
+    scale = min((width - 2 * margin_x) / width, (height - 2 * margin_y) / height)
+    inset_x = width * (1 - scale) / 2
+    inset_y = height * (1 - scale) / 2
+    return image.resize(
+        (width, height),
+        resample=_PIL_RESAMPLING.LANCZOS,
+        box=(inset_x, inset_y, width - inset_x, height - inset_y),
+    )
 
 
 def _smooth_horizon_level_angle(angle: float, final_path: str, name: str) -> float:
@@ -1492,28 +1498,45 @@ def _fuse_burst_frames(
     if len(frame_arrays) == 1:
         return frame_arrays[0], "single"
 
+    current = np.asarray(frame_arrays[0], dtype=np.float32)
+    if current.ndim != 3 or current.shape[2] != 3 or not np.isfinite(current).all():
+        raise ValueError("finite RGB frames required")
+    # Never warp old geometry or mix day/night exposure regimes into a capture.
+    accepted = [current]
+    for frame in frame_arrays[1:]:
+        reference = np.asarray(frame, dtype=np.float32)
+        if reference.shape != current.shape or not np.isfinite(reference).all():
+            continue
+        if abs(float(np.median(reference)) - float(np.median(current))) > 12:
+            continue
+        accepted.append(reference)
+    if len(accepted) < 3:
+        return current, "current_insufficient_history"
+
     profile = _normalize_burst_enhance_profile(profile)
-    sharpness_scores = [
-        (_grayscale_laplacian_score(frame_arr), idx)
-        for idx, frame_arr in enumerate(frame_arrays)
-    ]
-    sharpness_scores.sort(reverse=True)
-    median_arr = np.median(np.stack(frame_arrays, axis=0), axis=0)
-
+    median_arr = np.median(np.stack(accepted, axis=0), axis=0)
+    # Compare against the current observation, not just historical consensus:
+    # otherwise a newly arrived subject can vanish under a historical majority.
+    changed = np.max(np.abs(current - median_arr), axis=2) > 18
+    clipped = np.max(current, axis=2) >= 250
+    protected = Image.fromarray(((changed | clipped) * 255).astype(np.uint8))
+    protected = np.asarray(protected.filter(ImageFilter.MaxFilter(5))) > 0
     if profile == "clean":
-        return np.clip(median_arr, 0, 255), "median"
-
-    if profile == "crisp":
-        lucky_count = min(4, len(frame_arrays))
-        lucky = np.mean(
-            [frame_arrays[idx] for _, idx in sharpness_scores[:lucky_count]], axis=0
-        )
-        return np.clip(lucky, 0, 255), "lucky"
-
-    sharpest = frame_arrays[sharpness_scores[0][1]]
-    detail = sharpest - _blur3_rgb(sharpest)
-    hybrid = median_arr + 0.35 * detail
-    return np.clip(hybrid, 0, 255), "hybrid"
+        fused, label = median_arr, "median"
+    elif profile == "crisp":
+        # Only references locally consistent with the current frame contribute.
+        stack = np.stack(accepted, axis=0)
+        weights = np.max(np.abs(stack - current), axis=3) <= 18
+        fused = (stack * weights[..., None]).sum(axis=0) / weights.sum(axis=0)[
+            ..., None
+        ]
+        label = "consistent_mean"
+    else:
+        # Detail comes from the current capture, never a historically sharp car.
+        fused = median_arr + 0.35 * (current - _blur3_rgb(current))
+        label = "hybrid"
+    fused[protected] = current[protected]
+    return np.clip(fused, 0, 255), label + "_current_guarded"
 
 
 def _enhance_captured_image(
@@ -1559,9 +1582,8 @@ def _enhance_captured_image(
                 reference_image = reference_image.convert("RGB")
                 reference_work = _crop_for_burst_enhance(reference_image, mode, roi_box)
                 if reference_work.size != working_current.size:
-                    reference_work = reference_work.resize(
-                        working_current.size, _PIL_RESAMPLING.LANCZOS
-                    )
+                    # A resolution/orientation change invalidates this reference.
+                    continue
                 reference_work = _neutralize_reference_overlay(
                     reference_work,
                     working_current,
@@ -2750,7 +2772,7 @@ def _ffmpeg_null_probe(
         )
 
         try:
-            result = subprocess.run(
+            result = run_capture_command(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -5477,7 +5499,7 @@ def _capture_or_download_inner(
         )
         _record_tier_failure(url, TIER_HUMAN, "danger_unavailable")
         return False
-    if not (username or password) and _get_auth_hint(url):
+    if get_preferred_auth(url, username, password) is None and _get_auth_hint(url):
         _record_tier_failure(url, TIER_HTTP, "auth_required")
         return False
 
@@ -5755,7 +5777,12 @@ def _capture_or_download_inner(
             _record_tier_failure(url, TIER_HTTP, "redirect_loop")
             return False
     cached_http_error = _get_http_error(url)
-    if _cached_http_failure_blocks_capture(
+    authenticated_snapshot_retry = bool(
+        cached_http_error == 401
+        and _is_direct_camera_snapshot_url(url)
+        and get_preferred_auth(url, username, password)
+    )
+    if not authenticated_snapshot_retry and _cached_http_failure_blocks_capture(
         cached_http_error, force_browser=force_browser, url=url
     ):
         _record_tier_failure(url, TIER_HTTP, f"http_{cached_http_error}")
@@ -5763,20 +5790,44 @@ def _capture_or_download_inner(
     if _content_anomaly_active(url) or _has_content_mismatch(url):
         _record_tier_failure(url, TIER_HTTP, "content_mismatch")
         return False
-    if _has_cookie_wall(url) and not (username or password):
+    if _has_cookie_wall(url) and get_preferred_auth(url, username, password) is None:
         _record_tier_failure(url, TIER_HTTP, "cookie_wall")
         return False
-    if _has_content_mismatch(url):
-        _record_tier_failure(url, TIER_HTTP, "content_mismatch")
+    if throttle_cache.get(url) and throttle_cache[url].get("timeout", 0) > time.time():
         return False
-    if _has_cookie_wall(url) and not (username or password):
-        _record_tier_failure(url, TIER_HTTP, "cookie_wall")
+    if _is_direct_camera_snapshot_url(url) and not force_browser:
+        # The snapshot itself is the content probe. A second, five-second
+        # ranged GET can time out on slow cameras before the real download
+        # gets its configured read budget.
+        lsuc = download_image(
+            url,
+            output_path,
+            min(timeout, 10),
+            name,
+            invert,
+            dark,
+            stealth,
+            template.get("proxy"),
+            username,
+            password,
+            stabilize_mode=stabilize_mode,
+            read_timeout=min(max(timeout, 12), 25),
+            source_identity=template.get("source_template")
+            or template.get("url")
+            or url,
+        )
+        if lsuc is True:
+            _record_tier_success(url, TIER_HTTP, "camera_snapshot_downloaded")
+            _set_method_preference(url, "snapshot")
+            _clear_danger_fallback(url)
+            return True
+        if is_stale_capture_result(lsuc):
+            return lsuc
+        _record_tier_failure(url, TIER_HTTP, "camera_snapshot_download_failed")
         return False
     content_type, is_modified, preflight_ok, preflight_reason = get_content_type(
         url, danger, stealth=stealth, username=username, password=password
     )
-    if throttle_cache.get(url) and throttle_cache[url].get("timeout", 0) > time.time():
-        return False
 
     if not preflight_ok:
         _record_tier_failure(url, TIER_HTTP, preflight_reason)
@@ -8731,6 +8782,8 @@ def capture_frame_with_ytdlp(
             "-an",
             "-movflags",
             "+faststart",
+            "-vf",
+            _SQUARE_PIXEL_FILTER,
             "-pix_fmt",
             "rgb24",
             "-frames:v",
@@ -8744,7 +8797,7 @@ def capture_frame_with_ytdlp(
             "-y",
             output_path,
         ]
-        subprocess.run(
+        run_capture_command(
             ffmpeg_command,
             check=True,
             stdout=subprocess.PIPE,
@@ -8919,48 +8972,6 @@ def _cap_probe_value(value: str, ceiling: int) -> str:
         return str(value)
     amount = float(match[1]) * {"": 1, "k": 1e3, "m": 1e6, "g": 1e9}[match[2].lower()]
     return str(ceiling) if amount > ceiling or amount == 0 else str(value)
-
-
-def _publish_stream_frame(
-    frame_path: str,
-    output_path: str,
-    name: str,
-    *,
-    invert: bool,
-    stabilize_mode: str,
-) -> None:
-    """Finish a frame privately, then atomically replace the published image."""
-    # Keep the stage on the destination filesystem so replace stays atomic even
-    # when the burst directory is on a separate /tmp mount. Reference-dependent
-    # processing still uses the real destination to find stabilization history.
-    with tempfile.NamedTemporaryFile(
-        prefix=".glimpser-stream-",
-        suffix=".png",
-        dir=os.path.dirname(os.path.abspath(output_path)),
-        delete=False,
-    ) as stage:
-        stage_path = stage.name
-    try:
-        with Image.open(frame_path) as source:
-            image = _postprocess_still_image(
-                source, output_path, name, stabilize_mode=stabilize_mode
-            )
-            try:
-                image.save(
-                    stage_path, "PNG", compress_level=CAPTURE_PNG_COMPRESSION_LEVEL
-                )
-            finally:
-                if image is not source:
-                    image.close()
-        add_timestamp(stage_path, name=name, invert=invert)
-        if not _is_valid_png(stage_path):
-            raise ValueError("Processed stream frame is not a readable PNG")
-        os.replace(stage_path, output_path)
-    finally:
-        try:
-            os.unlink(stage_path)
-        except FileNotFoundError:
-            pass
 
 
 def capture_frame_from_stream(
@@ -9224,7 +9235,7 @@ def capture_frame_from_stream(
 
             attempt_deadline = time.monotonic() + per_attempt_timeout
             try:
-                subprocess.run(
+                run_capture_command(
                     command,
                     check=True,
                     stdout=subprocess.PIPE,
@@ -9281,7 +9292,7 @@ def capture_frame_from_stream(
                             clean_url,
                             stderr_text[:200],
                         )
-                        subprocess.run(
+                        run_capture_command(
                             retry_command,
                             check=True,
                             stdout=subprocess.PIPE,
@@ -9483,11 +9494,9 @@ def capture_screenshot_and_har_light(
                 )
                 record_preflight_backoff(
                     url,
-                    (
-                        "lightweight_blank"
-                        if reject_reason == "blank"
-                        else f"{reject_reason}_capture"
-                    ),
+                    "lightweight_blank"
+                    if reject_reason == "blank"
+                    else f"{reject_reason}_capture",
                     PREFLIGHT_BACKOFF_BROWSER_FAIL,
                 )
                 os.unlink(tmp_path)
@@ -10386,9 +10395,11 @@ def _browser_capture_profile(
                 "//iframe[contains(@title,'consent') or contains(@src,'consent')]",
                 "//*[contains(normalize-space(.),'Welcome to Zoom Earth')]",
             ),
-            "post_load_delay": (
-                14.0 if is_zoom_earth else 10.0 if is_arcgis_dashboard else 8.0
-            ),
+            "post_load_delay": 14.0
+            if is_zoom_earth
+            else 10.0
+            if is_arcgis_dashboard
+            else 8.0,
             "prefer_rich_graphics": True,
             "timeout_floor": 60 if is_zoom_earth else 50 if is_arcgis_dashboard else 45,
             "viewport": (1920, 1080),
@@ -11039,7 +11050,7 @@ def _apply_map_dark_background(driver, url: str, name: str) -> bool:
 
 
 def _apply_browser_dark_preference(driver, dark: bool, invert: bool = False) -> None:
-    """Request native dark CSS and emulate unsupported pages before navigation."""
+    """Request native dark CSS without automatic image or canvas recoloring."""
 
     if not dark or invert:
         return
@@ -11050,7 +11061,7 @@ def _apply_browser_dark_preference(driver, dark: bool, invert: bool = False) -> 
             "Emulation.setEmulatedMedia",
             {"features": [{"name": "prefers-color-scheme", "value": "dark"}]},
         ),
-        ("Emulation.setAutoDarkModeOverride", {"enabled": True}),
+        ("Emulation.setAutoDarkModeOverride", {"enabled": False}),
     ):
         try:
             driver.execute_cdp_cmd(command, params)
@@ -11062,105 +11073,74 @@ def _apply_force_dark_visual_filter(
     driver,
     name: str,
     preserve_visual_media: bool = False,
-    mode: str = "invert",
+    mode: str = "theme",
 ) -> bool:
-    """Apply a scoped visual dark fallback for sites that ignore dark emulation."""
+    """Recolor light neutral page surfaces without filtering visual media.
+
+    Keep the legacy arguments for existing site profiles. Even legacy ``invert``
+    profiles now use semantic colors: maps, photos and status colors keep their
+    original meaning. Native dark pages need no fallback.
+    """
 
     try:
         return bool(
             driver.execute_script(
-                """
-                const preserveVisualMedia = Boolean(arguments[0]);
-                const mode = String(arguments[1] || 'invert').toLowerCase();
-                const styleId = 'glimpser-force-dark-visual-filter';
+                r"""
                 const root = document.documentElement;
-                root.classList.remove('glimpser-force-dark-visual-filter');
-                root.classList.remove('glimpser-force-dark-theme');
-                root.classList.add('glimpser-force-dark-visual-filter');
-                if (mode === 'theme') {
-                  root.classList.add('glimpser-force-dark-theme');
+                const body = document.body;
+                if (!body) return false;
+                const rgb = value => {
+                  const parts = value.match(/[\d.]+/g)?.map(Number);
+                  return parts && parts.length >= 3 ? parts : null;
+                };
+                const opaque = c => c && (c.length < 4 || c[3] >= .9);
+                const neutral = c => c && Math.max(...c.slice(0, 3)) -
+                  Math.min(...c.slice(0, 3)) <= 32;
+                const luma = c => .2126*c[0] + .7152*c[1] + .0722*c[2];
+                const background = element => rgb(getComputedStyle(element).backgroundColor);
+                const base = [background(body), background(root)].find(opaque);
+                // Respect native dark themes, including colored dashboard surfaces.
+                if (base && luma(base) < 100) return true;
+                const media = 'img,picture,video,canvas,iframe,svg,object,embed';
+                const nodes = [root, body, ...body.querySelectorAll('*')].slice(0, 6000);
+                // Read first: inherited computed colors must not change during traversal.
+                const colors = nodes.filter(el => !el.closest(media)).map(el => {
+                  const css = getComputedStyle(el);
+                  return {el, bg: rgb(css.backgroundColor), fg: rgb(css.color),
+                    border: rgb(css.borderTopColor), image: css.backgroundImage};
+                });
+                const originals = new Map(colors.map(row => [row.el, row]));
+                const neutralSurface = element => {
+                  for (let node = element; node; node = node.parentElement) {
+                    const row = originals.get(node);
+                    if (row?.image && row.image !== 'none') return false;
+                    if (opaque(row?.bg)) return neutral(row.bg) && luma(row.bg) > 155;
+                  }
+                  return true;
+                };
+                for (const {el, bg, fg, border, image} of colors) {
+                  // Background images/gradients may carry meaning; leave their ink alone.
+                  if (image !== 'none') continue;
+                  if (opaque(bg) && neutral(bg) && luma(bg) > 155)
+                    el.style.setProperty('background-color', '#101820', 'important');
+                  // Keep contrast on colored alerts and image-backed controls.
+                  if (neutral(fg) && luma(fg) < 130 && neutralSurface(el))
+                    el.style.setProperty('color', '#e2e8f0', 'important');
+                  if (neutral(border) && luma(border) > 155)
+                    el.style.setProperty('border-color', '#475569', 'important');
                 }
-                if (preserveVisualMedia) {
-                  root.classList.add('glimpser-preserve-visual-media');
-                } else {
-                  root.classList.remove('glimpser-preserve-visual-media');
-                }
-
-                let meta = document.querySelector('meta[name="color-scheme"]');
-                if (!meta) {
-                  meta = document.createElement('meta');
-                  meta.setAttribute('name', 'color-scheme');
-                  document.head.appendChild(meta);
-                }
-                meta.setAttribute('content', 'dark');
-
-                if (!document.getElementById(styleId)) {
-                  const style = document.createElement('style');
-                  style.id = styleId;
-                  style.textContent = `
-                    html.glimpser-force-dark-visual-filter,
-                    html.glimpser-force-dark-visual-filter body {
-                      background: #f8fafc !important;
-                      color: #111827 !important;
-                    }
-                    html.glimpser-force-dark-visual-filter:not(.glimpser-force-dark-theme) {
-                      filter: invert(1) hue-rotate(180deg) brightness(.65) contrast(1.08);
-                    }
-                    html.glimpser-force-dark-visual-filter iframe {
-                      background: #05070a !important;
-                    }
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media img,
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media picture,
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media video,
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media canvas,
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media iframe,
-                    html.glimpser-force-dark-visual-filter.glimpser-preserve-visual-media svg {
-                      filter: invert(1) hue-rotate(180deg) brightness(1.35) contrast(.93);
-                    }
-                    html.glimpser-force-dark-theme,
-                    html.glimpser-force-dark-theme body {
-                      background: #05070a !important;
-                      color: #e7edf4 !important;
-                      filter: none !important;
-                    }
-                    html.glimpser-force-dark-theme body,
-                    html.glimpser-force-dark-theme main,
-                    html.glimpser-force-dark-theme section,
-                    html.glimpser-force-dark-theme article,
-                    html.glimpser-force-dark-theme nav,
-                    html.glimpser-force-dark-theme div,
-                    html.glimpser-force-dark-theme table,
-                    html.glimpser-force-dark-theme thead,
-                    html.glimpser-force-dark-theme tbody,
-                    html.glimpser-force-dark-theme tr,
-                    html.glimpser-force-dark-theme td,
-                    html.glimpser-force-dark-theme th {
-                      background-color: #0b1118 !important;
-                      color: #e7edf4 !important;
-                      border-color: #334155 !important;
-                    }
-                    html.glimpser-force-dark-theme a {
-                      color: #7dd3fc !important;
-                    }
-                    html.glimpser-force-dark-theme button,
-                    html.glimpser-force-dark-theme input,
-                    html.glimpser-force-dark-theme select,
-                    html.glimpser-force-dark-theme textarea {
-                      background: #111827 !important;
-                      color: #f8fafc !important;
-                      border-color: #475569 !important;
-                    }
-                  `;
-                  document.head.appendChild(style);
-                }
+                root.style.setProperty('color-scheme', 'dark');
+                root.style.setProperty('background-color', '#101820', 'important');
+                body.style.setProperty('background-color', '#101820', 'important');
+                root.classList.add('glimpser-force-dark-theme');
                 return true;
                 """,
                 bool(preserve_visual_media),
-                str(mode or "invert"),
+                str(mode or "theme"),
             )
         )
     except Exception as exc:
-        logging.debug("[%s] force dark visual filter failed: %s", name, exc)
+        logging.debug("[%s] semantic dark theme failed: %s", name, exc)
         return False
 
 
@@ -12043,7 +12023,8 @@ def _hubitat_cloud_dashboard_error_reason(
         return ""
 
     try:
-        raw = driver.execute_script("""
+        raw = driver.execute_script(
+            """
             const text = String(
               (document.body && (document.body.innerText || document.body.textContent)) || ''
             ).replace(/\\s+/g, ' ').trim().toLowerCase();
@@ -12066,7 +12047,8 @@ def _hubitat_cloud_dashboard_error_reason(
                 '#eyebat-hubitat-visual-stage > div',
               ].join(',')).length,
             };
-            """)
+            """
+        )
     except Exception as exc:
         logging.debug("[%s] Hubitat error-page text check failed: %s", name, exc)
         return ""
@@ -12524,7 +12506,8 @@ def _reject_browser_error_page(driver, url: str, name: str) -> bool:
     """Reject Chrome's own error UI before it can become a camera image."""
     # Use Chrome's structural markers, not page titles or arbitrary body text:
     # legitimate pages can discuss certificate errors and network failures.
-    reason = driver.execute_script("""
+    reason = driver.execute_script(
+        """
         const body = document.body;
         const internal = location.protocol === 'chrome-error:';
         const neterror = body && body.classList.contains('neterror') &&
@@ -12533,7 +12516,8 @@ def _reject_browser_error_page(driver, url: str, name: str) -> bool:
             document.querySelector('.interstitial-wrapper') &&
             document.querySelector('#error-code, .error-code');
         return internal || neterror || interstitial ? 'browser_error_page' : '';
-        """)
+        """
+    )
     if reason != "browser_error_page":
         return False
     logging.warning("[%s] Rejecting browser error page: %s", name, sanitize_url(url))
@@ -12902,7 +12886,7 @@ def capture_screenshot_and_har(
                 driver,
                 name,
                 bool(browser_profile.get("preserve_visual_media_on_dark_filter")),
-                str(browser_profile.get("dark_visual_filter_mode") or "invert"),
+                str(browser_profile.get("dark_visual_filter_mode") or "theme"),
             ):
                 time.sleep(float(browser_profile.get("post_dark_filter_delay") or 0.5))
 
@@ -12956,10 +12940,14 @@ def capture_screenshot_and_har(
                                 preview_state.get("status") or ""
                             ).strip()
                             if preview_error:
-                                raise TimeoutException(
-                                    "SDM preview error: "
-                                    f"{preview_error} (status={preview_status})"
+                                # The page has already declared a terminal
+                                # failure. Waiting out the selector budget
+                                # only occupies a browser slot; never log the
+                                # upstream response embedded in page state.
+                                last_exc = TimeoutException(
+                                    "SDM preview reported an error"
                                 )
+                                break
                             if preview_ready != "1":
                                 logging.debug(
                                     "[%s] waiting on SDM preview state=%s status=%s",
@@ -13292,11 +13280,9 @@ def _finalize_screenshot(
                 if url:
                     record_preflight_backoff(
                         url,
-                        (
-                            "blank_capture"
-                            if reject_reason == "blank"
-                            else f"{reject_reason}_capture"
-                        ),
+                        "blank_capture"
+                        if reject_reason == "blank"
+                        else f"{reject_reason}_capture",
                         PREFLIGHT_BACKOFF_BROWSER_FAIL,
                     )
                 orig_path = final_path + ".orig.png"
@@ -13483,7 +13469,8 @@ def _strip_fixed_overlays(driver, name: str) -> int:
     """
 
     try:
-        removed = driver.execute_script("""
+        removed = driver.execute_script(
+            """
             const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
             const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
             const varea = Math.max(1, vw * vh);
@@ -13553,7 +13540,8 @@ def _strip_fixed_overlays(driver, name: str) -> int:
               }
             }
             return removed;
-            """)
+            """
+        )
         return int(removed or 0)
     except Exception as exc:
         logging.debug("[%s] overlay strip failed: %s", name, exc)
@@ -13749,3 +13737,45 @@ def create_blank_frame(name: str, size=(1280, 720)) -> str:
     add_timestamp(image_path, name=name)
 
     return image_path
+
+
+def _publish_stream_frame(
+    frame_path: str,
+    output_path: str,
+    name: str,
+    *,
+    invert: bool,
+    stabilize_mode: str,
+) -> None:
+    """Finish a frame privately, then atomically replace the published image."""
+    # Keep the stage on the destination filesystem so replace stays atomic even
+    # when the burst directory is on a separate /tmp mount. Reference-dependent
+    # processing still uses the real destination to find stabilization history.
+    with tempfile.NamedTemporaryFile(
+        prefix=".glimpser-stream-",
+        suffix=".png",
+        dir=os.path.dirname(os.path.abspath(output_path)),
+        delete=False,
+    ) as stage:
+        stage_path = stage.name
+    try:
+        with Image.open(frame_path) as source:
+            image = _postprocess_still_image(
+                source, output_path, name, stabilize_mode=stabilize_mode
+            )
+            try:
+                image.save(
+                    stage_path, "PNG", compress_level=CAPTURE_PNG_COMPRESSION_LEVEL
+                )
+            finally:
+                if image is not source:
+                    image.close()
+        add_timestamp(stage_path, name=name, invert=invert)
+        if not _is_valid_png(stage_path):
+            raise ValueError("Processed stream frame is not a readable PNG")
+        os.replace(stage_path, output_path)
+    finally:
+        try:
+            os.unlink(stage_path)
+        except FileNotFoundError:
+            pass

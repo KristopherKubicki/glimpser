@@ -1,0 +1,56 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #08121c;
+  color: #dae5ed;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 40px 24px;
+}
+header {
+  padding: 32px 0;
+}
+h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(48px, 8vw, 88px);
+  font-weight: 400;
+  margin: 12px 0;
+}
+h2 {
+  font-weight: 500;
+}
+p {
+  line-height: 1.6;
+  color: #adbfcd;
+}
+a {
+  color: #a1d9cc;
+  text-underline-offset: 4px;
+}
+.eyebrow {
+  letter-spacing: 0.18em;
+  font-size: 12px;
+  margin-top: 32px;
+}
+article {
+  padding: 24px 0 40px;
+  border-top: 1px solid #304250;
+}
+video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 8px;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 20px;
+}
