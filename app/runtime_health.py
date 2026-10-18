@@ -2,7 +2,7 @@
 
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.viewer_policy import ARCHIVE_GROUPS
@@ -52,7 +52,7 @@ def capture_health(database_path: str, now: datetime | None = None) -> dict:
     This deliberately reports database telemetry, not playable-frame integrity.
     Freshness matches the detailed camera report: three intervals or one hour.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     summary = dict(
         total=0, active=0, archived=0, expected_offline=0, failed=0, stale=0, fresh=0
     )
@@ -80,7 +80,7 @@ def capture_health(database_path: str, now: datetime | None = None) -> dict:
         try:
             stamp = datetime.fromisoformat(last_capture.replace("Z", "+00:00"))
             if stamp.tzinfo is None:
-                stamp = stamp.replace(tzinfo=timezone.utc)
+                stamp = stamp.replace(tzinfo=UTC)
             stale = (now - stamp).total_seconds() > max(
                 60, float(frequency or 30) * 3
             ) * 60

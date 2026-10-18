@@ -1,14 +1,14 @@
 """Conservative presentation checks; these never disable capture or retry jobs."""
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 def _timestamp(value):
     try:
         parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
         if parsed.tzinfo:
-            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            parsed = parsed.astimezone(UTC).replace(tzinfo=None)
         return parsed
     except (ValueError, TypeError):
         return None

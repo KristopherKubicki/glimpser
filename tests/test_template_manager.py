@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 from app.utils.template_manager import (
@@ -720,7 +721,7 @@ class TestOfflineHandling(unittest.TestCase):
     def test_update_last_screenshot_time_clears_offline(self, mock_session):
         mock_sess = MagicMock()
         mock_session.return_value = mock_sess
-        template = Template(name="cam1", offline_since="yesterday")
+        template = Template(name="cam1", offline_since="yesterday", capture_failed=True)
         mock_sess.query.return_value.filter_by.return_value.first.return_value = (
             template
         )
@@ -729,6 +730,7 @@ class TestOfflineHandling(unittest.TestCase):
 
         self.assertEqual(template.offline_since, "")
         self.assertNotEqual(template.last_screenshot_time, "")
+        self.assertFalse(template.capture_failed)
         mock_sess.commit.assert_called_once()
 
     @patch("app.utils.template_manager.SessionLocal")
@@ -848,7 +850,7 @@ class TestSchedulerUpdates(unittest.TestCase):
         mock_sched.add_job.assert_called_once()
 
     def test_rescheduled_capture_runs_after_brief_executor_delay(self):
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         from apscheduler.events import EVENT_JOB_EXECUTED
         from apscheduler.executors.base import run_job
@@ -856,7 +858,7 @@ class TestSchedulerUpdates(unittest.TestCase):
 
         from app.utils.template_manager import _update_scheduler_job
 
-        scheduler = BackgroundScheduler(timezone=timezone.utc)
+        scheduler = BackgroundScheduler(timezone=UTC)
         scheduler.start(paused=True)
         try:
             with (
@@ -866,7 +868,7 @@ class TestSchedulerUpdates(unittest.TestCase):
             ):
                 _update_scheduler_job("delayed_camera", 30)
                 job = scheduler.get_job("delayed_camera")
-                delayed_time = datetime.now(timezone.utc) - timedelta(seconds=5)
+                delayed_time = datetime.now(UTC) - timedelta(seconds=5)
                 events = run_job(job, "default", [delayed_time], "test.scheduler")
                 capture.assert_called_once()
                 self.assertEqual([event.code for event in events], [EVENT_JOB_EXECUTED])

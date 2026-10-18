@@ -2,7 +2,7 @@
 
 import json
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -151,7 +151,7 @@ def test_disabled_subjects_do_not_reappear_in_persisted_events(tmp_path, monkeyp
 def test_configured_caption_projects_only_fresh_allowed_telemetry(monkeypatch):
     monkeypatch.setattr(captions, "VEHICLE", example_config()["vehicle_caption"])
     monkeypatch.setattr(captions, "HUB_URL", "https://hub.example")
-    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
     stamp = now.isoformat()
     response = Mock()
     response.__enter__ = Mock(return_value=response)

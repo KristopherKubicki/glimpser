@@ -14,6 +14,7 @@ def test_application_import_without_curses():
             "import app; from app.utils import file_locks; "
             "assert 'app.utils.console_dashboard' not in sys.modules",
         ],
+        check=False,
         env={**os.environ, "GLIMPSER_SKIP_DB_INIT": "1"},
         capture_output=True,
         text=True,

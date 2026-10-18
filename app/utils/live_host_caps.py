@@ -45,7 +45,7 @@ def _load() -> None:
         return
     _loaded = True
     try:
-        with open(HOST_CAPS_PATH, "r", encoding="utf-8") as f:
+        with open(HOST_CAPS_PATH, encoding="utf-8") as f:
             data = json.load(f)
             if isinstance(data, dict):
                 _caps.update(data)

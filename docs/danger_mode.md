@@ -38,6 +38,20 @@ The diagram below illustrates the typical flow:
 
 Be cautious with this feature, as it can interact with your browser while you are away. Ensure you trust the pages being captured.
 
+## Danger Fallback
+
+Glimpser can automatically request Danger mode after repeated browser renderer
+failures. By default it arms after 3 failures within 10 minutes and keeps the
+fallback active for 10 minutes. If Danger mode is disabled or the debugging
+port is closed, Glimpser logs a warning and backs off before retrying. You can
+adjust this behavior with the following environment variables:
+
+- `DANGER_FALLBACK_THRESHOLD`
+- `DANGER_FALLBACK_WINDOW_SECONDS`
+- `DANGER_FALLBACK_FORCE_SECONDS`
+- `DANGER_FALLBACK_BACKOFF_SECONDS`
+- `DANGER_FALLBACK_LOG_THROTTLE`
+
 ## Enabling or Disabling Danger Mode
 
 Visit `/danger` to toggle the feature on or off. When disabled, captures marked as "Danger" are skipped even if Chrome's debugging port is open.

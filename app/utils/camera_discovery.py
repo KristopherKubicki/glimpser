@@ -1335,7 +1335,7 @@ def _probe_onvif(timeout=2):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
-            except socket.timeout:
+            except TimeoutError:
                 break
             ip = addr[0]
             info = {}

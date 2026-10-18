@@ -1,6 +1,6 @@
 """Keep external uploads and recent accepted captures out of scarce browser slots."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -12,9 +12,7 @@ from app.utils import scheduling
 def fresh(age=30, **updates):
     return {
         "last_capture_status": "fresh",
-        "last_screenshot_time": datetime.fromtimestamp(
-            1000 - age, timezone.utc
-        ).isoformat(),
+        "last_screenshot_time": datetime.fromtimestamp(1000 - age, UTC).isoformat(),
         "frequency": 5,
         "browser": True,
         **updates,

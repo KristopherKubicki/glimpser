@@ -2,7 +2,7 @@
 
 import base64
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -18,7 +18,7 @@ def payload(age=0, event_id="one", kind="CameraPerson.Person", thread="visit"):
     return {
         "eventId": event_id,
         "eventThreadId": thread,
-        "timestamp": datetime.fromtimestamp(NOW - age, timezone.utc).isoformat(),
+        "timestamp": datetime.fromtimestamp(NOW - age, UTC).isoformat(),
         "resourceUpdate": {
             "name": RESOURCE,
             "events": {"sdm.devices.events." + kind: {}},
@@ -156,7 +156,7 @@ def test_review_holds_leave_healthy_rotation_views(monkeypatch):
     holds = {"ExampleUnavailable", "ExampleDuplicate"}
     monkeypatch.setattr(views, "QUARANTINED_PRESENTATION", frozenset(holds))
     monkeypatch.setattr(views, "_satellite_landing_scene", lambda *args: None)
-    captured = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    captured = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     templates = {
         name: {
             "groups": "chicago,skyline",

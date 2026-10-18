@@ -347,9 +347,7 @@ class TestVideoArchiver(unittest.TestCase):
         for path in (late_old, newer_one, newer_two):
             Image.new("RGB", (128, 128), (24, 48, 72)).save(path, format="PNG")
 
-        cutoff = datetime.datetime(
-            2026, 4, 22, 15, 20, tzinfo=datetime.timezone.utc
-        ).timestamp()
+        cutoff = datetime.datetime(2026, 4, 22, 15, 20, tzinfo=datetime.UTC).timestamp()
 
         with patch(
             "app.utils.video_archiver.os.path.getctime",

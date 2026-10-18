@@ -155,7 +155,7 @@ def _canonical_frame_capture_time(camera_name: str, path: str) -> float | None:
         captured_at = datetime.datetime.strptime(timestamp, "%Y%m%d%H%M%S")
     except ValueError:
         return None
-    return captured_at.replace(tzinfo=datetime.timezone.utc).timestamp()
+    return captured_at.replace(tzinfo=datetime.UTC).timestamp()
 
 
 def _archive_frame_version(path: str) -> tuple:
@@ -1379,7 +1379,7 @@ def archive_screenshots():
                 start_index = 0
                 try:
                     if os.path.exists(cursor_path):
-                        with open(cursor_path, "r", encoding="utf-8") as handle:
+                        with open(cursor_path, encoding="utf-8") as handle:
                             payload = json.load(handle)
                         start_index = int(payload.get("index", 0)) % len(cameras)
                 except Exception:

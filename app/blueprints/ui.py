@@ -20,7 +20,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     send_from_directory,
     session,
     url_for,
@@ -3560,9 +3559,9 @@ def create_blueprint() -> Blueprint:
 
             # Keep one template per (profile, device_id). Re-imports can happen
             # after captcha/session hiccups; this avoids accumulating duplicates.
-            eufy_templates_by_device: dict[str, list[tuple[str, dict[str, object]]]] = (
-                {}
-            )
+            eufy_templates_by_device: dict[
+                str, list[tuple[str, dict[str, object]]]
+            ] = {}
             for template_name, tmpl in templates.items():
                 tmpl_url = str(tmpl.get("url") or "")
                 if not tmpl_url.startswith("eufy://"):

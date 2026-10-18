@@ -7,7 +7,7 @@ import sqlite3
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 EVENT_KINDS = {
@@ -165,9 +165,9 @@ class EventStore:
                     "priority": True,
                     "interrupt_ms": 30000,
                     "replay_available": False,
-                    "occurred_at": datetime.fromtimestamp(
-                        occurred, timezone.utc
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    "occurred_at": datetime.fromtimestamp(occurred, UTC).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
                     "level": "significant" if score >= 450 else "alert",
                     "motion_score": score,
                     "prefer_video": False,

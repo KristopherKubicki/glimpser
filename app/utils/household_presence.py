@@ -5,7 +5,7 @@ import logging
 import sqlite3
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -37,7 +37,7 @@ def _database():
 
 
 def _iso(epoch):
-    return datetime.fromtimestamp(epoch, timezone.utc).isoformat() if epoch else None
+    return datetime.fromtimestamp(epoch, UTC).isoformat() if epoch else None
 
 
 def read_source(spec: dict) -> dict:
@@ -64,10 +64,7 @@ def read_source(spec: dict) -> dict:
         # This network sensor publishes a heartbeat; never trust an old one.
         if spec.get("heartbeat_required"):
             stamp = hub._timestamp((states.get("lastUpdated") or {}).get("date"))
-            if (
-                not stamp
-                or not 0 <= (datetime.now(timezone.utc) - stamp).total_seconds() <= 300
-            ):
+            if not stamp or not 0 <= (datetime.now(UTC) - stamp).total_seconds() <= 300:
                 result.update(presence="unknown", available=False)
     except (OSError, ValueError, TypeError, AttributeError):
         pass
@@ -82,7 +79,7 @@ def reconcile(observations: list[dict], now: float | None = None) -> None:
     """
     if not hub.HUB_URL or not SUBJECTS:
         return
-    now = now if now is not None else datetime.now(timezone.utc).timestamp()
+    now = now if now is not None else datetime.now(UTC).timestamp()
     db = _database()
     try:
         db.execute("BEGIN IMMEDIATE")
@@ -109,7 +106,9 @@ def reconcile(observations: list[dict], now: float | None = None) -> None:
             candidate = (
                 "present"
                 if values == {"present"}
-                else "not present" if complete and values == {"not present"} else None
+                else "not present"
+                if complete and values == {"not present"}
+                else None
             )
             gap = (
                 not state.get("checked")
@@ -184,7 +183,7 @@ def poll_presence() -> None:
 
 def presence_context(now: float | None = None) -> dict:
     """Return cached state and an auditable event history without network calls."""
-    now = now if now is not None else datetime.now(timezone.utc).timestamp()
+    now = now if now is not None else datetime.now(UTC).timestamp()
     if not hub.HUB_URL or not SUBJECTS:
         return {"subjects": [], "presence_events": []}
     states, events = {}, []
@@ -270,7 +269,7 @@ def presence_context(now: float | None = None) -> dict:
 
 def arrival_events(scenes: list[dict], now: float | None = None) -> list[dict]:
     """Expose recent confirmed arrivals only when a recent entrance capture exists."""
-    now = now if now is not None else datetime.now(timezone.utc).timestamp()
+    now = now if now is not None else datetime.now(UTC).timestamp()
     cameras = []
     for name in ARRIVAL_CAMERAS:
         scene = next((s for s in scenes if s.get("hero", {}).get("name") == name), None)

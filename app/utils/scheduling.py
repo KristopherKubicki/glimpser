@@ -62,9 +62,6 @@ from app.config import (
     CLIP_MODEL_PATH,
     CLIP_REFRESH_MAX_CAMERAS,
     CRAWLER_STARTUP_SPREAD,
-)
-from app.config import DEBUG as CONFIG_DEBUG
-from app.config import (
     LAN_OFFLINE_BACKOFF_SECONDS,
     LAN_OFFLINE_DISABLE_ERRORS,
     LAN_OFFLINE_DISABLE_WINDOW_MINUTES,
@@ -78,6 +75,7 @@ from app.config import (
     WATCHDOG_MEMORY_THRESHOLD,
     get_setting,
 )
+from app.config import DEBUG as CONFIG_DEBUG
 from app.models import LogSummary, OfflineJob, Summary
 from app.utils.auto_update import check_for_update
 from app.utils.db import SessionLocal, ensure_column
@@ -170,7 +168,7 @@ def _load_scene_caption_cache(directory: str) -> "OrderedDict[str, str]":
 
     path = _scene_caption_cache_path(directory)
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except Exception:
         return OrderedDict()
@@ -323,7 +321,7 @@ def _template_timestamp(value) -> datetime.datetime | None:
         except Exception:
             return None
     if parsed.tzinfo is not None:
-        parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        parsed = parsed.astimezone(datetime.UTC).replace(tzinfo=None)
     return parsed
 
 
@@ -681,7 +679,7 @@ def _defer_camera_for_resources(func, args, timeout):
             id=job_id,
             func=schedule_camera_capture,
             trigger="date",
-            run_date=datetime.datetime.now(datetime.timezone.utc)
+            run_date=datetime.datetime.now(datetime.UTC)
             + datetime.timedelta(seconds=30 + random.randrange(30)),
             args=[name, {}, timeout],
             executor=camera_executor(current),
@@ -1096,7 +1094,7 @@ def _save_provided_screenshot(name: str, template: dict, image_file: str) -> boo
                     name,
                     template["url"],
                     inherited=datetime.datetime.fromtimestamp(
-                        os.path.getmtime(image_file), datetime.timezone.utc
+                        os.path.getmtime(image_file), datetime.UTC
                     ).isoformat(),
                     capture_file=os.path.basename(final_path),
                 )
@@ -1257,8 +1255,8 @@ def update_camera(name, template, image_file=None, motion=False):
         captured_at = parse_canonical_screenshot_timestamp(name, png_files[-1])
         # Validation must precede metadata publication. A retried check may have
         # produced no new file, and processing may finish long after acquisition.
+        # The timestamp transaction also clears failure and offline state.
         update_last_screenshot_time(name, captured_at=captured_at)
-        set_capture_failed(name, False)
 
         clean_path = os.path.join(directory, "last_clean.png")
         # A clean companion belongs to one immutable capture filename. This
@@ -2617,8 +2615,9 @@ def get_top_failures(
         key = (display_name, reason or "unknown", url or "")
         if key in failures:
             failures[key]["count"] = int(failures[key]["count"]) + 1
-            if timestamp > failures[key]["last_seen_dt"]:
-                failures[key]["last_seen_dt"] = timestamp
+            failures[key]["last_seen_dt"] = max(
+                failures[key]["last_seen_dt"], timestamp
+            )
         else:
             log_query = template_name or url or ""
             failures[key] = {

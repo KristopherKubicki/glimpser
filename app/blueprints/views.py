@@ -353,8 +353,7 @@ def _landing_recency_boost(
         return 0
 
     age = reference_time - parsed
-    if age < timedelta(0):
-        age = timedelta(0)
+    age = max(age, timedelta(0))
 
     for max_age, boost in windows:
         if age <= max_age:

@@ -1,6 +1,6 @@
 """Shortly delayed polls run; stale polls are discarded without catch-up."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_MISSED
@@ -28,7 +28,7 @@ def test_presence_runs_after_brief_jitter_but_discards_stale_poll(monkeypatch):
         events = run_job(
             job,
             "default",
-            [datetime.now(timezone.utc) - timedelta(seconds=3)],
+            [datetime.now(UTC) - timedelta(seconds=3)],
             "test.presence",
         )
         assert events[0].code == EVENT_JOB_EXECUTED
@@ -36,7 +36,7 @@ def test_presence_runs_after_brief_jitter_but_discards_stale_poll(monkeypatch):
         events = run_job(
             job,
             "default",
-            [datetime.now(timezone.utc) - timedelta(seconds=31)],
+            [datetime.now(UTC) - timedelta(seconds=31)],
             "test.presence",
         )
         assert events[0].code == EVENT_JOB_MISSED

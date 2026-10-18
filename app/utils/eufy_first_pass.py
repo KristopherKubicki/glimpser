@@ -5,7 +5,8 @@ from __future__ import annotations
 import datetime
 import io
 import os
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from PIL import Image
 

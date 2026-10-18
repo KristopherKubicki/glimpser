@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-import app.blueprints.views as views
+from app.blueprints import views
 from app.blueprints.views import (
     LANDING_CONTENT_PROFILES,
     LANDING_MODE_PROFILES,

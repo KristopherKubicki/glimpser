@@ -14,8 +14,15 @@ class TestTimeline(unittest.TestCase):
         init_routes(self.app)
         self.client = self.app.test_client()
         clear_template_cache()
+        # Keep route tests independent of LAN settings and database users.
+        for target, value in (
+            ("app.routes.config.SKIP_LOGIN_SUBNETS", []),
+            ("app.routes.API_KEY", "timeline-test-key"),  # pragma: allowlist secret
+        ):
+            patcher = patch(target, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-    @patch("app.routes.API_KEY", "timeline-test-key")
     def test_timeline_redirect(self):
         response = self.client.get(
             "/timeline", headers={"X-API-Key": "timeline-test-key"}
@@ -26,11 +33,10 @@ class TestTimeline(unittest.TestCase):
             response.headers.get("Location", ""),
         )
 
-    @patch("app.routes.config.SKIP_LOGIN_SUBNETS", [])
     def test_timeline_requires_authentication(self):
         response = self.client.get("/timeline")
         self.assertEqual(response.status_code, 302)
-        self.assertIn("/login?", response.headers["Location"])
+        self.assertTrue(response.headers["Location"].startswith("/login?next="))
 
 
 if __name__ == "__main__":

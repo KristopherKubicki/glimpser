@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from PIL import Image
@@ -7,11 +7,11 @@ from app.utils import timelapse
 
 
 def test_day_history_stays_bounded_and_plays_for_twenty_seconds(tmp_path):
-    now = datetime(2026, 9, 29, 18, tzinfo=timezone.utc).timestamp()
+    now = datetime(2026, 9, 29, 18, tzinfo=UTC).timestamp()
     folder = tmp_path / "DayCamera"
     folder.mkdir()
     for hour in range(25):
-        stamp = datetime.fromtimestamp(now - hour * 3600, timezone.utc)
+        stamp = datetime.fromtimestamp(now - hour * 3600, UTC)
         Image.new("RGB", (40, 30), (hour * 10, 50, 100)).save(
             folder / f"DayCamera_{stamp:%Y%m%d%H%M%S}.png"
         )
@@ -49,11 +49,11 @@ def test_daylight_contributes_but_local_motion_stays_dominant():
 
 
 def test_single_exposure_flash_does_not_make_static_history_eligible(tmp_path):
-    now = datetime(2026, 9, 29, 18, tzinfo=timezone.utc).timestamp()
+    now = datetime(2026, 9, 29, 18, tzinfo=UTC).timestamp()
     folder = tmp_path / "FlashCamera"
     folder.mkdir()
     for index in range(10):
-        stamp = datetime.fromtimestamp(now - index * 600, timezone.utc)
+        stamp = datetime.fromtimestamp(now - index * 600, UTC)
         Image.new("RGB", (40, 30), "white" if index == 4 else "gray").save(
             folder / f"FlashCamera_{stamp:%Y%m%d%H%M%S}.png"
         )

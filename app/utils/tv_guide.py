@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html import unescape
 from typing import Any
 from urllib.parse import urljoin
@@ -125,7 +125,7 @@ def fetch_tv_guide_payload(fetcher=None) -> dict[str, Any]:
             cards = []
     return {
         "ok": bool(cards),
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "source_url": source_url,
         "source_name": source_name,
         "timezone": "America/Chicago",

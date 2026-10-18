@@ -3,7 +3,7 @@
 
 import argparse
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def needs_refresh(device, template, now):
@@ -24,7 +24,7 @@ def needs_refresh(device, template, now):
             else None
         )
         if previous and previous.tzinfo is None:
-            previous = previous.replace(tzinfo=timezone.utc)
+            previous = previous.replace(tzinfo=UTC)
         return previous is None or source_time > previous.timestamp()
     except (TypeError, ValueError):
         return False

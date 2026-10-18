@@ -128,8 +128,7 @@ def _template_ints(template: dict) -> dict[str, int]:
     )
     if pre_seconds >= seconds:
         pre_seconds = max(seconds - 1, 0)
-    if post_seconds > seconds:
-        post_seconds = seconds
+    post_seconds = min(post_seconds, seconds)
     return {
         "fps": fps,
         "seconds": seconds,

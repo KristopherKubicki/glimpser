@@ -10,6 +10,7 @@ This document provides an overview of how the capture process works in the Glimp
 4. [Content-Specific Capture Methods](#content-specific-capture-methods)
 5. [Browser-Based Capture](#browser-based-capture)
 6. [Post-Processing](#post-processing)
+7. [Preflight Tiers](#preflight-tiers)
 
 ## Overview
 
@@ -43,6 +44,97 @@ The waterfall diagram below shows how captured data moves from the initial
 source through processing and finally to visualization.
 
 ![Collection Waterfall Diagram](images/collection_waterfall.svg)
+
+## Preflight Tiers
+
+Glimpser follows a tiered preflight approach to minimize expensive capture
+work. Each tier adds more cost and capability, and outcomes should feed back
+into earlier tiers so we avoid repeated escalation for sources that are failing.
+
+![Preflight Tiers Diagram](images/download.svg)
+
+High-level mapping of tiers to current behavior:
+
+- **Tier 0: Offline prep**: URL normalization, scheme allowlist, cached errors,
+  and recent failure backoff before any network calls.
+- **Tier 1: DNS/TCP reachability**: Host reachability checks and port
+  validation. HTTPS targets perform a lightweight DNS + TLS handshake probe
+  (cached) to fail fast on certificate or handshake issues, capturing ALPN
+  outcomes when available.
+- **Tier 2: HTTP surface probes**: HEAD/GET probes for content type, ETag, and
+  cached status codes (including 429 rate limit backoffs). Conditional requests
+  use `If-None-Match` / `If-Modified-Since`, and GET probes use byte ranges to
+  reduce payload size. Redirect targets and auth-required responses are cached
+  so the capture pipeline can avoid expensive retries. Redirect loops are
+  detected and temporarily blocked, with redirect chains capped to keep probes
+  fast. Cache-Control, Age, and Expires headers are used to tune how long
+  content-type results stay valid. Content-Length is tracked and oversized
+  payloads can be skipped before download. Alt-Svc headers are cached to
+  capture protocol hints (HTTP/2/3). Persistent 401/403/404/410 responses are
+  cached so the pipeline can skip repeated attempts, along with the preferred
+  auth scheme and realm when advertised. Domain-level cooldowns throttle
+  repeated auth/not-found failures across related URLs.
+- **Tier 3: Ultra-light renderers**: `wkhtmltoimage` and PhantomJS for simple
+  pages where full browser capture is not warranted.
+- **Tier 4+: Heavy browser capture**: Selenium/Chromium or danger mode when
+  explicitly requested. Danger mode checks the Chrome debug port during
+  preflight and backs off if it is unavailable.
+
+Future improvements should keep the tier ordering intact, add new probes ahead
+of expensive renders, and use preflight results to avoid retrying high-cost
+steps that already failed for a source.
+
+The capture pipeline tracks tier outcomes per domain and temporarily limits
+escalation after failures in higher tiers. A successful lower-tier capture
+clears the lock so the system can retry heavier approaches only after new
+signal.
+
+Within a tier, method-specific exponential backoff is applied to lightweight
+and headless renderers plus stream/ytdlp captures after repeated failures. This
+avoids retrying expensive tools on the same source every cycle. Stream probes
+record codec/fps fingerprints from ffprobe when available, and cached
+unsupported codecs are skipped before retrying stream captures.
+
+RTSP sources use a quick OPTIONS preflight to verify the server is responsive.
+If a snapshot endpoint is detected for an RTSP host, Glimpser prefers that
+lightweight JPEG capture before attempting a full stream decode.
+
+Snapshot discovery includes common vendor endpoints (Hikvision, Axis, generic
+CGI, and MJPEG paths) to avoid unnecessary RTSP decoding when a still image is
+available.
+
+MJPEG sources perform a short boundary probe before invoking a full decoder to
+avoid passing non-multipart content to ffmpeg. Successful browser captures are
+remembered per domain to bias future attempts toward the last good renderer.
+
+RTSP streams also issue a lightweight DESCRIBE probe to extract SDP codec hints.
+Codec results are cached and used to skip streams that are known to be
+unsupported by the capture pipeline.
+
+RTSP preflight now attempts authenticated OPTIONS/DESCRIBE requests when
+credentials are present, and caches auth-required outcomes to avoid repeated
+handshakes without credentials.
+
+RTSP preflight also tries common substream/profile variants (for example,
+channel `101` -> `102` or `subtype=0` -> `subtype=1`) when the primary stream
+fails to respond, caching the best-known profile URL for future runs.
+
+RTSP keepalive support is probed with `GET_PARAMETER` once per host and cached
+to avoid repeated liveness probes. The stream transport preference (TCP/UDP) is
+also cached from successful ffprobe/ffmpeg runs and reused on subsequent
+captures, with a fallback to the alternate transport when the preferred one
+fails.
+
+Redirect chains are capped and cached to avoid repeated multi-hop retries.
+Cookie-wall redirects and content-type mismatches are cached to avoid retrying
+image/PDF downloads that return HTML login pages. Preflight latency is tracked
+and can suppress heavy browser fallbacks when a host is consistently slow.
+
+Preflight caches for DNS/TLS, redirects, auth hints, and method backoff are
+persisted to disk so cold starts do not repeat expensive probes.
+
+Per-domain concurrency is capped during capture so a single host cannot
+consume all workers.
 
 ## Content-Specific Capture Methods
 

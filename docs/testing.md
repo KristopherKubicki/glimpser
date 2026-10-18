@@ -9,11 +9,10 @@ python -m coverage html
 
 The HTML report will be generated in `htmlcov/index.html`.
 
-Before submitting a patch, lint the code with `ruff` and `flake8`:
+Before submitting a patch, lint the code with `ruff`:
 
 ```sh
 ruff check --exit-zero .
-flake8
 ```
 
 Refer to [developer_guide.md](developer_guide.md) for setting up your environment.

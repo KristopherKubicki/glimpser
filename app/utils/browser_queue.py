@@ -6,7 +6,7 @@ import sqlite3
 import time
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 MAX_PENDING = 512
@@ -143,7 +143,7 @@ def capture_is_current(template: dict, now: float | None = None) -> bool:
             str(template.get("last_screenshot_time") or "").replace("Z", "+00:00")
         )
         if stamp.tzinfo is None:
-            stamp = stamp.replace(tzinfo=timezone.utc)
+            stamp = stamp.replace(tzinfo=UTC)
         age = (time.time() if now is None else now) - stamp.timestamp()
         interval = max(1, int(template.get("frequency") or 30)) * 60
         return 0 <= age < interval
@@ -160,7 +160,7 @@ def satisfied(name: str, token: str, template: dict) -> bool:
             str(template.get("last_screenshot_time") or "").replace("Z", "+00:00")
         )
         if stamp.tzinfo is None:
-            stamp = stamp.replace(tzinfo=timezone.utc)
+            stamp = stamp.replace(tzinfo=UTC)
         captured = stamp.timestamp()
     except (ValueError, TypeError, OverflowError):
         return False

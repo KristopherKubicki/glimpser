@@ -1,6 +1,8 @@
 # Edit Template Preview
 
-The edit template dialog now shows a mini live view of the camera in the top-right corner. This MJPEG stream lets you verify the feed while tweaking settings. The same preview appears on the **Settings → Discover** tab when adding a new camera so you can confirm the URL before saving.
+The edit template dialog shows a mini live view of the camera in the top-right corner with a quick summary of the URL, capture mode, and schedule. This MJPEG stream lets you verify the feed while tweaking settings, while the summary updates as you change fields so you can sanity-check the setup at a glance. The same preview appears on the **Settings → Discover** tab when adding a new camera so you can confirm the URL before saving.
+
+The editor now highlights required fields, adds quick capture presets, and includes a direct URL test button. Use the capture mode toggles to switch between direct stream and browser workflows; advanced settings expand below for XPaths, callbacks, and authentication.
 
 Advanced options include several checkboxes with expanded tooltips:
 

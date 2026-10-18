@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -31,7 +31,7 @@ def _market_now(now: datetime | None = None) -> datetime:
     if now is None:
         return datetime.now(zone)
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
     return now.astimezone(zone)
 
 
@@ -89,7 +89,7 @@ def parse_date_utc_series(payload: str | None) -> list[dict[str, Any]]:
             int(match.group("hour")),
             int(match.group("minute")),
             int(match.group("second")),
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         )
         points.append(
             {
@@ -175,7 +175,7 @@ def fetch_comed_price_payload(
 
     return {
         "ok": bool(today_actual or today_day_ahead or previous_actual),
-        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "market_timezone": COMED_TIMEZONE,
         "market_date": market_date,
         "previous_date": previous_date,

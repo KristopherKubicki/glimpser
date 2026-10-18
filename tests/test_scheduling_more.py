@@ -258,8 +258,7 @@ class TestSceneCaptionCache(unittest.TestCase):
                 cache = scheduling._load_scene_caption_cache(tmp)
                 self.assertEqual(len(cache), 2)
                 self.assertNotIn(
-                    "sig1:"
-                    + scheduling.hashlib.sha1("prompt".encode()).hexdigest()[:12],
+                    "sig1:" + scheduling.hashlib.sha1(b"prompt").hexdigest()[:12],
                     cache,
                 )
 

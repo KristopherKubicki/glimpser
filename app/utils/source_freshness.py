@@ -5,7 +5,7 @@ import json
 import logging
 import re
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,9 +18,7 @@ def timestamp(value):
     try:
         parsed = datetime.fromisoformat(str(value or "").replace("Z", "+00:00"))
         return (
-            parsed.replace(tzinfo=timezone.utc)
-            if not parsed.tzinfo
-            else parsed.astimezone(timezone.utc)
+            parsed.replace(tzinfo=UTC) if not parsed.tzinfo else parsed.astimezone(UTC)
         )
     except (ValueError, TypeError):
         return None
@@ -59,7 +57,7 @@ def record_source(
     First-seen time is only a lower bound on image age. HTTP Last-Modified is
     publisher metadata, not proof that a camera exposed a frame at that time.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     observed = now.isoformat()
     key = hashlib.sha256(str(identity).encode()).hexdigest()
     prior = read_evidence(name)
@@ -70,7 +68,7 @@ def record_source(
     try:
         published = parsedate_to_datetime(modified) if modified else None
         if published and not published.tzinfo:
-            published = published.replace(tzinfo=timezone.utc)
+            published = published.replace(tzinfo=UTC)
     except (ValueError, TypeError, OverflowError):
         pass
     try:
@@ -121,9 +119,7 @@ def record_derived_source(name, parent, source_file, output_file):
     if not match:
         return
     try:
-        captured = datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(
-            tzinfo=timezone.utc
-        )
+        captured = datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(tzinfo=UTC)
     except ValueError:
         return
     parent_evidence = read_evidence(parent)
@@ -148,7 +144,7 @@ def record_derived_source(name, parent, source_file, output_file):
 
 def source_freshness(name, details, now=None):
     """Project only safe age evidence for the current camera configuration."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     evidence = read_evidence(name)
     identity = details.get("source_template") or details.get("url") or ""
     if evidence.get("identity") != hashlib.sha256(str(identity).encode()).hexdigest():
@@ -170,7 +166,7 @@ def source_freshness(name, details, now=None):
         if match:
             try:
                 file_time = datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(
-                    tzinfo=timezone.utc
+                    tzinfo=UTC
                 )
                 if abs((file_time - captured).total_seconds()) > 1:
                     evidence = {}

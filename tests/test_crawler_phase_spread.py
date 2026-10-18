@@ -12,9 +12,7 @@ from app.utils import scheduling
 def test_mixed_intervals_do_not_collapse_at_end_of_startup():
     templates = {
         f"camera-{index}": {"frequency": frequency}
-        for index, frequency in enumerate(
-            ([1] * 20 + [5] * 80 + [15] * 100 + [60] * 100)
-        )
+        for index, frequency in enumerate([1] * 20 + [5] * 80 + [15] * 100 + [60] * 100)
     }
     offsets = scheduling.calculate_optimal_offsets(templates, 10)
     assert offsets == scheduling.calculate_optimal_offsets(

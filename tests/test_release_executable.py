@@ -9,7 +9,7 @@ from pathlib import Path
 def test_release_check_reads_utf8_metadata(tmp_path, monkeypatch):
     script = Path(__file__).resolve().parents[1] / "scripts/check_release_executable.py"
     (tmp_path / "pyproject.toml").write_bytes(
-        '[project]\nversion = "0.2.10"\ndescription = "“camera”"\n'.encode("utf-8")
+        '[project]\nversion = "0.2.10"\ndescription = "“camera”"\n'.encode()
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", [str(script), "Glimpser.exe"])

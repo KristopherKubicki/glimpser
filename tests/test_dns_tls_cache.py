@@ -49,9 +49,7 @@ def test_tls_failure_expires_independently_of_dns(probes, monkeypatch):
     connect.side_effect = None
     connect.return_value = MagicMock()
     context = MagicMock()
-    context.wrap_socket.return_value.__enter__.return_value.selected_alpn_protocol.return_value = (
-        None
-    )
+    context.wrap_socket.return_value.__enter__.return_value.selected_alpn_protocol.return_value = None
     monkeypatch.setattr(ss.ssl, "create_default_context", lambda: context)
     assert ss._preflight_dns_tls("https://camera.example") == (True, "tls_ok")
     assert dns.call_count == 1

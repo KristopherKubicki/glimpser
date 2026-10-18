@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from collections import OrderedDict
+from datetime import UTC
 from io import BytesIO
 from pathlib import Path
 
@@ -235,11 +236,11 @@ def _clean_screenshot_path(routes, shot: str, *, force_clean: bool = False) -> s
         canonical = os.path.basename(os.path.realpath(shot))
         match = re.search(r"_(\d{14})(?:_blank)?\.png$", canonical)
         if match:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
             captured = (
                 datetime.strptime(match.group(1), "%Y%m%d%H%M%S")
-                .replace(tzinfo=timezone.utc)
+                .replace(tzinfo=UTC)
                 .timestamp()
             )
             if os.path.getmtime(clean_path) < captured:

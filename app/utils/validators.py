@@ -248,8 +248,7 @@ def normalize_event_buffer_settings(data: dict, sanitized: dict) -> None:
     )
     if pre_seconds >= seconds:
         pre_seconds = max(seconds - 1, 0)
-    if post_seconds > seconds:
-        post_seconds = seconds
+    post_seconds = min(post_seconds, seconds)
 
     output_format = str(data.get("event_buffer_format") or "gif").strip().lower()
     if output_format not in EVENT_BUFFER_FORMATS:

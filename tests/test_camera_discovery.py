@@ -579,7 +579,26 @@ class TestCameraDiscovery(unittest.TestCase):
             if "GetCapabilities" in data:
                 xml = "<Envelope><Body><Capabilities><Media><XAddr>http://1.2.3.4/onvif/media_service</XAddr></Media></Capabilities></Body></Envelope>"
             elif "GetProfiles" in data:
-                xml = "<Envelope><Body><trt:GetProfilesResponse xmlns:trt='http://www.onvif.org/ver10/media/wsdl'><trt:Profiles token='p0'/></trt:GetProfilesResponse></Body></Envelope>"
+                xml = (
+                    "<Envelope><Body>"
+                    "<trt:GetProfilesResponse xmlns:trt='http://www.onvif.org/ver10/media/wsdl' xmlns:tt='http://www.onvif.org/ver10/schema'>"
+                    "<trt:Profiles token='main'><tt:Name>Main</tt:Name>"
+                    "<tt:VideoEncoderConfiguration>"
+                    "<tt:Encoding>H264</tt:Encoding>"
+                    "<tt:Resolution><tt:Width>1920</tt:Width><tt:Height>1080</tt:Height></tt:Resolution>"
+                    "<tt:RateControl><tt:FrameRateLimit>30</tt:FrameRateLimit><tt:BitrateLimit>5000</tt:BitrateLimit></tt:RateControl>"
+                    "</tt:VideoEncoderConfiguration>"
+                    "</trt:Profiles>"
+                    "<trt:Profiles token='sub'><tt:Name>Sub</tt:Name>"
+                    "<tt:VideoEncoderConfiguration>"
+                    "<tt:Encoding>H264</tt:Encoding>"
+                    "<tt:Resolution><tt:Width>640</tt:Width><tt:Height>360</tt:Height></tt:Resolution>"
+                    "<tt:RateControl><tt:FrameRateLimit>5</tt:FrameRateLimit><tt:BitrateLimit>500</tt:BitrateLimit></tt:RateControl>"
+                    "</tt:VideoEncoderConfiguration>"
+                    "</trt:Profiles>"
+                    "</trt:GetProfilesResponse>"
+                    "</Body></Envelope>"
+                )
             elif "GetStreamUri" in data:
                 xml = "<Envelope><Body><tt:Uri xmlns:tt='http://www.onvif.org/ver10/schema'>rtsp://1.2.3.4/stream</tt:Uri></Body></Envelope>"
             else:
@@ -590,6 +609,24 @@ class TestCameraDiscovery(unittest.TestCase):
         res = camera_discovery.autodetect_onvif_endpoints("http://1.2.3.4")
         self.assertEqual(res["stream"], "rtsp://1.2.3.4/stream")
         self.assertEqual(res["snapshot"], "http://1.2.3.4/snap.jpg")
+        # We should prefer the Glimpser-friendly sub profile.
+        self.assertEqual(res.get("profile_token"), "sub")
+
+    @patch("app.utils.camera_discovery.request_with_retry")
+    def test_autodetect_onvif_endpoints_includes_wsse_when_credentials_provided(
+        self, mock_post
+    ):
+        mock_post.return_value = SimpleNamespace(ok=True, content=b"<Envelope/>")
+        camera_discovery.autodetect_onvif_endpoints(
+            "http://1.2.3.4/onvif/device_service",
+            username="user",
+            password="pass",  # pragma: allowlist secret - synthetic test credential
+        )
+        sent = "\n".join(
+            str(c.kwargs.get("data") or "") for c in mock_post.call_args_list
+        )
+        self.assertIn("<wsse:Username>user</wsse:Username>", sent)
+        self.assertIn("<wsse:Password", sent)
 
     def test_mac_for_ip_parses_arp(self):
         arp = (

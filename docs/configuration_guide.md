@@ -36,11 +36,22 @@ can modify them in the application interface or directly in the database.
 - `HOST` – address to bind the server (default `0.0.0.0`). The settings page lists common local addresses first.
 - `ENFORCE_DOMAIN_IN_HOST` – require a domain in the `Host` header (default `False`)
 - `PORT` – port for the web interface (default `8082`). Must be a free, non‑privileged port.
+- `HTTPS_ENABLED` – enable the built-in HTTPS listener (default `False`).
+- `HTTPS_PORT` – port used by the HTTPS listener (default `8443`).
+- `HTTPS_ONLY` – when `True`, serve only HTTPS and disable the HTTP listener (default `False`).
+- `HTTPS_SELF_SIGNED` – when `True`, auto-generate a self-signed certificate if the configured files are missing (default `True`).
+- `HTTPS_CERT_PATH` – certificate path for HTTPS (default `data/certs/glimpser.crt`).
+- `HTTPS_KEY_PATH` – private key path for HTTPS (default `data/certs/glimpser.key`).
+- `HTTPS_CERT_HOSTNAMES` – comma-separated hostnames/IPs to include in the self-signed certificate SAN (default empty).
 - `DEBUG` – enable debug mode (default `False`)
 - `DEBUG_MODE` – runtime alias of `DEBUG` used by the command-line interface
 - `MAX_WORKERS` – number of worker threads (default `8`). Limited to twice the CPU count.
+- `LOW_CPU_MODE` – when `True`, Glimpser reduces worker concurrency and slows
+  non-critical rendering jobs to lower CPU usage (default `False`).
 - `LOG_LEVEL` – logging level (`INFO`, `WARN`, `DEBUG`, etc.)
 - `FLASK_LOG_LEVEL` – logging level used by the Flask app logger (defaults to `LOG_LEVEL`)
+- `LLM_429_LOG_INTERVAL_SECONDS` – minimum seconds between logged LLM 429 warnings
+  across processes (default `300`)
 
 ## User Credentials
 
@@ -48,7 +59,6 @@ Glimpser stores login details in the settings database. These values can be
 updated with `generate_credentials.py` or through the web interface.
 
 - `USER_NAME` – default login name (default `admin`)
-- `USER_PASSWORD_HASH` – hashed password string (empty by default)
 - `SECRET_KEY` – secret key used for session management (default
   `default_secret_key`)
 - `API_KEY` – key used to access the API (empty by default)
@@ -66,6 +76,10 @@ updated with `generate_credentials.py` or through the web interface.
   (default `30`)
 - `SKIP_LOGIN_SUBNETS` – comma-separated list of IPv4 or IPv6 subnets allowed
   to browse non-admin pages without logging in (empty by default)
+- `LAN_GUEST_MODE` – controls LAN guest access for subnets in `SKIP_LOGIN_SUBNETS`.
+  Use `read_only` to allow viewing without login while requiring authentication
+  for changes, `full` to allow all non-admin access, or `disabled` to ignore the
+  subnet list (default `full`)
 
 User accounts are stored in the `users` table. Each record contains the
 `username`, `password_hash`, and an optional `role` that can be used for future
@@ -82,6 +96,22 @@ user table in sync.
 - `SUMMARIES_DIRECTORY` – **deprecated**; summaries are now stored in the database.
 
   Older deployments may still reference this path but it is no longer used.
+- `ARCHIVE_BATCH_SIZE` – number of camera folders to process per archive run
+  (default `25`, set `0` to process all cameras each run)
+- `ARCHIVE_INTERVAL_MINUTES` – minutes between archive runs (default `1`)
+  In `LOW_CPU_MODE`, Glimpser enforces a minimum interval of 5 minutes.
+- `LAN_OFFLINE_DISABLE_ERRORS` – LAN failures within the window before a source
+  is marked offline (default `6`)
+- `LAN_OFFLINE_DISABLE_WINDOW_MINUTES` – minutes to track LAN failures before
+  marking a source offline (default `60`)
+- `LAN_OFFLINE_BACKOFF_SECONDS` – seconds to back off LAN sources after repeated
+  offline failures (default `1800`)
+- `RTSP_PREFLIGHT_FAIL_THRESHOLD` – RTSP preflight failures within the window
+  before a longer backoff is applied (default `3`)
+- `RTSP_PREFLIGHT_FAIL_WINDOW_SECONDS` – seconds to track RTSP preflight failures
+  before applying the longer backoff (default `900`)
+- `RTSP_PREFLIGHT_BACKOFF_SECONDS` – seconds to back off RTSP sources after repeated
+  preflight failures (default `3600`)
 
 You can change these paths via the settings table or by editing `app/config.py` if you maintain a custom build.
 
@@ -143,6 +173,7 @@ Settings controlling how frames are captured from video sources:
 - `ANALYZE_DURATION_RTSP` – analyzeduration for RTSP streams (default `10M`)
 - `ANALYZE_DURATION_OTHER` – analyzeduration for other protocols (default `20M`)
 - `LIVE_FALLBACK_FPS` – still-frame refresh rate when live video fails (default `1`)
+  In `LOW_CPU_MODE`, this is capped at `1` FPS.
 - `LIVE_MAX_FAILURES` – maximum consecutive ffmpeg failures before live view stops (default `10`)
 - `LIVE_BACKOFF_MAX` – maximum seconds between live stream restart attempts (default `30`)
 - `CHYRON_SPEED` – seconds the caption chyron scrolls; set to `0` to disable (default `0`)
@@ -173,7 +204,7 @@ skip validation adhere to the safer defaults.
 
 Additional variables control AI behaviour and external tools:
 
-- `LLM_MODEL_VERSION` – language model version to use (default `gpt-4.1-mini`). Supported models: `gpt-4.1-mini`, `gpt-4.1`, `gpt-4`
+- `LLM_MODEL_VERSION` – language model version to use (default `gpt-5-mini`). Supported models: `gpt-5-mini`, `gpt-4.1`, `gpt-4`
 - `LLM_SUMMARY_PROMPT` – system prompt for log summaries. See [LLM Prompt Settings](llm_prompts.md)
   for the default text and `$datetime` token details.
 - `LLM_CAPTION_PROMPT` – system prompt for image captions. Refer to
@@ -188,6 +219,7 @@ Additional variables control AI behaviour and external tools:
 - When hardware acceleration is enabled and Chrome supports OpenGL, Glimpser
   automatically launches Chrome with `--use-gl=egl` for improved GPU use.
 - `FFMPEG_THREADS` – number of threads ffmpeg uses when encoding (default half the CPU cores)
+  In `LOW_CPU_MODE`, this is capped at `2`.
 - `CRAWLER_STARTUP_SPREAD` – minutes to stagger initial crawler runs at startup (default `10`)
 - `CLIP_MODEL_NAME` – CLIP model used for object filtering (default `openai/clip-vit-base-patch32`)
   Example: `openai/clip-vit-large-patch14`

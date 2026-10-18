@@ -1069,7 +1069,7 @@ def _execute_codex_prompt(prompt: str, speed: str, detail: int) -> tuple[str, st
 
     env = dict(os.environ)
     env["CODEX_HOME"] = CODEX_HOME
-    proc = subprocess.run(cmd, text=True, capture_output=True, env=env)
+    proc = subprocess.run(cmd, check=False, text=True, capture_output=True, env=env)
 
     new_session_id = session_id
     messages: list[str] = []
@@ -1445,7 +1445,7 @@ class Handler(BaseHTTPRequestHandler):
         entry_items = "".join(
             (
                 f'<li><a href="{html.escape(build_file_href(token=TOKEN, path=str(entry.resolve()), profile=profile))}">'
-                f'{html.escape(entry.name)}{"/" if entry.is_dir() else ""}</a></li>'
+                f"{html.escape(entry.name)}{'/' if entry.is_dir() else ''}</a></li>"
             )
             for entry in entries
         )
@@ -3106,8 +3106,16 @@ class Handler(BaseHTTPRequestHandler):
       </div>
       <div class="topbar-actions">
         <span id="run-state" class="pill idle">Loading</span>
-        <a id="theme-toggle-button" class="ghost utility-button button-link" href="{html.escape(build_console_href(token=token_value_raw, profile=theme_toggle_target))}" title="Switch to {html.escape(theme_toggle_label)} mode">{html.escape(theme_toggle_label)}</a>
-        <span class="version-chip" title="Console UI version">UI v{html.escape(UI_VERSION)}</span>
+        <a id="theme-toggle-button" class="ghost utility-button button-link" href="{
+            html.escape(
+                build_console_href(token=token_value_raw, profile=theme_toggle_target)
+            )
+        }" title="Switch to {html.escape(theme_toggle_label)} mode">{
+            html.escape(theme_toggle_label)
+        }</a>
+        <span class="version-chip" title="Console UI version">UI v{
+            html.escape(UI_VERSION)
+        }</span>
         <span id="transport-state" class="hint">Connecting live updates…</span>
         <button id="refresh-button" type="button" class="ghost utility-button">Refresh</button>
         <button id="settings-toggle-button" type="button" class="ghost utility-button">View</button>
@@ -3153,7 +3161,9 @@ class Handler(BaseHTTPRequestHandler):
                 <span>Detail</span>
                 <strong id="response-detail-label">Balanced</strong>
               </span>
-              <input id="response-detail-range" class="response-range" type="range" min="1" max="5" step="1" value="{DEFAULT_RESPONSE_DETAIL}">
+              <input id="response-detail-range" class="response-range" type="range" min="1" max="5" step="1" value="{
+            DEFAULT_RESPONSE_DETAIL
+        }">
             </label>
             <span id="response-summary" class="response-summary">Balanced · Balanced</span>
           </div>
@@ -3163,10 +3173,16 @@ class Handler(BaseHTTPRequestHandler):
           <form id="ask-form" class="composer" method="post" action="/ask">
             <input type="hidden" name="token" value="{html.escape(TOKEN)}">
             <input type="hidden" name="profile" value="{html.escape(active_profile)}">
-            <input id="prompt-speed-input" type="hidden" name="speed" value="{html.escape(DEFAULT_RESPONSE_SPEED)}">
-            <input id="prompt-detail-input" type="hidden" name="detail" value="{DEFAULT_RESPONSE_DETAIL}">
+            <input id="prompt-speed-input" type="hidden" name="speed" value="{
+            html.escape(DEFAULT_RESPONSE_SPEED)
+        }">
+            <input id="prompt-detail-input" type="hidden" name="detail" value="{
+            DEFAULT_RESPONSE_DETAIL
+        }">
             <div class="composer-input-shell">
-              <textarea id="prompt-input" name="message" placeholder="{html.escape(PROMPT_PLACEHOLDER)}"></textarea>
+              <textarea id="prompt-input" name="message" placeholder="{
+            html.escape(PROMPT_PLACEHOLDER)
+        }"></textarea>
               <span class="composer-utility">Enter sends · Shift+Enter newline</span>
               <button id="ask-button" type="submit" class="primary composer-send" title="Send prompt. Press Enter to send and Shift+Enter for a new line.">Send</button>
             </div>
@@ -3223,11 +3239,15 @@ class Handler(BaseHTTPRequestHandler):
           </div>
           <div class="settings-note">Saved on this device for this console.</div>
         </section>
-        {f'''<section class="settings-card">
+        {
+            f'''<section class="settings-card">
           <span class="settings-label">Browse</span>
           <div class="settings-row">{settings_browse_links_html}</div>
           <div class="settings-note">Open the agent workspace and bridge state in a separate viewer tab.</div>
-        </section>''' if settings_browse_links_html else ''}
+        </section>'''
+            if settings_browse_links_html
+            else ""
+        }
       </aside>
       <aside id="system-panel" class="system-panel surface" aria-hidden="true">
         <div class="system-panel-head">
@@ -3245,7 +3265,13 @@ class Handler(BaseHTTPRequestHandler):
             </div>
             <div id="services" class="services"></div>
             <div id="system-summary" class="system-note">Loading runtime…</div>
-            <div class="system-note">ui <strong>v{html.escape(UI_VERSION)}</strong> · tmux <strong>{html.escape(SESSION)}</strong> · web chat <strong>{html.escape(MODEL)}</strong> · tuning <strong>Fast/low ↔ Careful/xhigh</strong> · full access · <a href="/healthz{token_suffix}">healthz</a></div>
+            <div class="system-note">ui <strong>v{
+            html.escape(UI_VERSION)
+        }</strong> · tmux <strong>{html.escape(SESSION)}</strong> · web chat <strong>{
+            html.escape(MODEL)
+        }</strong> · tuning <strong>Fast/low ↔ Careful/xhigh</strong> · full access · <a href="/healthz{
+            token_suffix
+        }">healthz</a></div>
           </section>
 
           <section class="system-card">
@@ -3281,7 +3307,9 @@ class Handler(BaseHTTPRequestHandler):
               <summary>Operator tools</summary>
               <form id="tmux-form" method="post" action="/send">
                 <input type="hidden" name="token" value="{html.escape(TOKEN)}">
-                <input type="hidden" name="profile" value="{html.escape(active_profile)}">
+                <input type="hidden" name="profile" value="{
+            html.escape(active_profile)
+        }">
                 <textarea id="tmux-input" name="message" placeholder="Paste raw text directly into the live interactive tmux session."></textarea>
                 <div class="composer-actions">
                   <span class="hint">Use this only for direct tmux control.</span>
@@ -3314,7 +3342,9 @@ class Handler(BaseHTTPRequestHandler):
     const ACTIVE_PROFILE = {active_profile_name_json};
     const ACTIVE_PROFILE_LABEL = {active_profile_label_json};
     const CHAT_MODEL = {json.dumps(MODEL)};
-    const CHAT_REASONING = {json.dumps(response_reasoning_effort(DEFAULT_RESPONSE_SPEED))};
+    const CHAT_REASONING = {
+            json.dumps(response_reasoning_effort(DEFAULT_RESPONSE_SPEED))
+        };
     const DEFAULT_RESPONSE_SPEED = {default_response_speed_json};
     const DEFAULT_RESPONSE_DETAIL = {default_response_detail_json};
     const RESPONSE_DETAIL_LABELS = {{

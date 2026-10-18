@@ -2,7 +2,7 @@
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -17,7 +17,7 @@ VEHICLE = HOUSEHOLD.get("vehicle_caption", {})
 def _timestamp(value):
     try:
         stamp = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        return stamp.replace(tzinfo=timezone.utc) if stamp.tzinfo is None else stamp
+        return stamp.replace(tzinfo=UTC) if stamp.tzinfo is None else stamp
     except (ValueError, TypeError):
         return None
 
@@ -113,13 +113,11 @@ def caption_context(name, image_paths, now=None):
         if match:
             try:
                 stamps.append(
-                    datetime.strptime(match[1], "%Y%m%d%H%M%S").replace(
-                        tzinfo=timezone.utc
-                    )
+                    datetime.strptime(match[1], "%Y%m%d%H%M%S").replace(tzinfo=UTC)
                 )
             except ValueError:
                 continue
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     if not stamps or not 0 <= (now - max(stamps)).total_seconds() <= 300:
         return (
             prefix

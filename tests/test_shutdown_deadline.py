@@ -48,6 +48,7 @@ cleanup_resources = lambda: None
             "-c",
             setup + functions + "\ngraceful_shutdown(signal.SIGTERM, None)\n",
         ],
+        check=False,
         capture_output=True,
         timeout=4,
     )

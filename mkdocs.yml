@@ -7,7 +7,9 @@ exclude_docs: |
   README.md
 nav:
   - Home: index.md
+  - Weather and Sky Examples: weather_sky_showcase.md
   - Guides:
+      - TODO: todo.md
       - Accessibility Improvements: accessibility.md
       - Agentic Instructions: AGENTS.md
       - API Documentation: api_documentation.md
@@ -15,6 +17,7 @@ nav:
       - Architecture Overview: architecture_overview.md
       - Camera Discovery: camera_discovery.md
       - Camera Fix: camera_fix.md
+      - Camera Recovery: recovery.md
       - Capture Process: capture_process.md
       - Capture Summary Sequence: capture_summary_sequence.md
       - Browser Driver Management: driver_pool.md
@@ -79,6 +82,8 @@ nav:
       - Staged GitHub Flow: staged_github_flow.md
       - Jog-Shuttle Control: jog_shuttle.md
       - Live All Playback: live_all.md
+      - Google Home WEB_RTC Support: google_home_webrtc.md
+      - Eufy Cloud Bridge: eufy_cloud_bridge.md
       - Live View Scrubbing: live_scrub.md
       - Caption Summaries: timeline.md
       - Clip Navigation: clip_navigation.md

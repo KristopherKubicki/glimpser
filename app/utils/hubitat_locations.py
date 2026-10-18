@@ -5,7 +5,7 @@ import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Lock
 from urllib.request import urlopen
 
@@ -28,9 +28,7 @@ _lock = Lock()
 
 def _timestamp(value: str) -> datetime | None:
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
-            timezone.utc
-        )
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC)
     except (ValueError, TypeError, AttributeError):
         return None
 
@@ -39,7 +37,7 @@ def project_subject(
     key: str, label: str, states: dict, now: datetime | None = None
 ) -> dict:
     """Keep presence distinct from GPS, excluding credentials and vehicle controls."""
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
 
     def value(name: str):
         state = states.get(name, {})
@@ -121,7 +119,7 @@ def household_subjects() -> list[dict]:
             position = subject.get("position")
             if position:
                 stamp = _timestamp(position["timestamp"])
-                age = (datetime.now(timezone.utc) - stamp).total_seconds()
+                age = (datetime.now(UTC) - stamp).total_seconds()
                 if not 0 <= age <= 300:
                     subject["position"] = None
                     subject["position_status"] = "Vehicle coordinates stale"
@@ -141,7 +139,7 @@ def distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float
 def nearby_cameras(points: list[dict], cameras: list[dict]) -> list[dict]:
     """Offer distances only for recent usable GPS positions."""
     results = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for point in points:
         stamp = _timestamp(point.get("timestamp"))
         if (

@@ -90,6 +90,7 @@ assert report['cameras'][0]['status'] == 'archived'
     env = {**os.environ, "GLIMPSER_VIEWER_CONFIG": str(settings)}
     result = subprocess.run(
         [sys.executable, "-c", script, str(path), str(tmp_path)],
+        check=False,
         env=env,
         capture_output=True,
         text=True,

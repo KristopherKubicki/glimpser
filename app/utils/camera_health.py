@@ -22,7 +22,7 @@ TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def _utc_now() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return dt.datetime.now(dt.UTC)
 
 
 def _parse_template_time(value: object) -> dt.datetime | None:
@@ -32,7 +32,7 @@ def _parse_template_time(value: object) -> dt.datetime | None:
     for candidate in (text, text.replace("T", " ").replace("Z", "")):
         try:
             parsed = dt.datetime.strptime(candidate[:19], TIMESTAMP_FORMAT)
-            return parsed.replace(tzinfo=dt.timezone.utc)
+            return parsed.replace(tzinfo=dt.UTC)
         except ValueError:
             continue
     return None
@@ -42,7 +42,7 @@ def _age_minutes(value: dt.datetime | None, now: dt.datetime) -> float | None:
     if value is None:
         return None
     if value.tzinfo is None:
-        value = value.replace(tzinfo=dt.timezone.utc)
+        value = value.replace(tzinfo=dt.UTC)
     return max(0.0, (now - value).total_seconds() / 60.0)
 
 
@@ -60,7 +60,7 @@ def _canonical_frame_time(camera_name: str, path: Path) -> dt.datetime | None:
         parsed = dt.datetime.strptime(stamp, "%Y%m%d%H%M%S")
     except ValueError:
         return None
-    return parsed.replace(tzinfo=dt.timezone.utc)
+    return parsed.replace(tzinfo=dt.UTC)
 
 
 def _latest_canonical_frame(
@@ -116,7 +116,7 @@ def _latest_video_age_minutes(
     ]
     if not mtimes:
         return None
-    newest = dt.datetime.fromtimestamp(max(mtimes), tz=dt.timezone.utc)
+    newest = dt.datetime.fromtimestamp(max(mtimes), tz=dt.UTC)
     return _age_minutes(newest, now)
 
 
@@ -157,7 +157,7 @@ def assess_camera_health(
 
     now = now or _utc_now()
     if now.tzinfo is None:
-        now = now.replace(tzinfo=dt.timezone.utc)
+        now = now.replace(tzinfo=dt.UTC)
 
     camera_dir = Path(screenshot_dir) / name
     camera_video_dir = Path(video_dir)

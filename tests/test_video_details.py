@@ -1,6 +1,6 @@
 import importlib.util
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Dynamically load the module to avoid importing heavy app dependencies
@@ -8,7 +8,7 @@ MODULE_PATH = Path(__file__).resolve().parents[1] / "app" / "utils" / "video_det
 spec = importlib.util.spec_from_file_location("video_details", MODULE_PATH)
 video_details = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(video_details)
-UTC = timezone.utc
+UTC = UTC
 
 
 def _make_file(tmp_path, name: str, days_ago: int = 0):

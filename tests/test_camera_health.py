@@ -9,7 +9,7 @@ from app.utils.camera_health import (
     format_camera_health_report,
 )
 
-NOW = dt.datetime(2026, 5, 2, 22, 0, tzinfo=dt.timezone.utc)
+NOW = dt.datetime(2026, 5, 2, 22, 0, tzinfo=dt.UTC)
 
 
 def _png(path):

@@ -173,7 +173,7 @@ def _render_sms_gif_from_paths(
         if source_age > max_age_seconds:
             raise SmsMediaStale("latest source frame is stale")
 
-    generated_at = dt.datetime.now(dt.timezone.utc)
+    generated_at = dt.datetime.now(dt.UTC)
     label = _camera_label(camera_name)
     stamp = generated_at.strftime("%Y-%m-%d %H:%M UTC")
 

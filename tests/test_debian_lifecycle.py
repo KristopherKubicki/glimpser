@@ -14,6 +14,7 @@ def package_sandbox(tmp_path):
         pytest.skip("bubblewrap required for isolated maintainer-script tests")
     probe = subprocess.run(
         ["bwrap", "--ro-bind", "/", "/", "--unshare-net", "/bin/true"],
+        check=False,
         capture_output=True,
     )
     if probe.returncode:
@@ -90,6 +91,7 @@ esac
                 str(Path("debian", script).resolve()),
                 phase,
             ],
+            check=False,
             env=os.environ
             | {"PATH": f"{binary}:/usr/bin:/bin", "TEST_LOG": str(log)}
             | env,

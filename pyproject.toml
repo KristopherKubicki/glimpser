@@ -47,7 +47,7 @@ dependencies = [
   "sqlalchemy==2.0.41",
   "undetected-chromedriver==3.5.5",
   "webdriver-manager==4.0.2",
-  "werkzeug==3.1.6",
+  "werkzeug==3.1.9",
   "yt-dlp==2026.7.4",
   "onnxruntime-gpu~=1.18; sys_platform != 'darwin'",
   "onnxruntime~=1.18; sys_platform == 'darwin'",
@@ -159,8 +159,13 @@ line-length    = 88
 target-version = "py311"
 exclude = [".git", "__pycache__", "build", "dist", "node_modules", "env", ".venv"]
 
-# Enable Ruff’s equivalents of common Flake8 & Pylint rules + isort style
-extend-select = ["E", "F", "I", "UP", "PL"]     # E=pycodestyle, F=pyflakes, I=isort, UP=pyupgrade, PL=pylint
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.ruff.lint]
+# Enable Ruff’s equivalents of common lint rules plus isort-style sorting.
+select = ["E", "F", "I"]
+ignore = ["E501"]
 
 # MyPy stays as-is
 [tool.mypy]
@@ -232,4 +237,3 @@ agents = [
   "vulture",
   "pytest-socket", # for offline coding
 ]
-

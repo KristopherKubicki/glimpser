@@ -7,8 +7,8 @@ import struct
 import subprocess
 import threading
 import time
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Deque, Dict, Generator, Optional, Tuple
 
 
 class _Mp4BoxParser:
@@ -28,7 +28,7 @@ class _Mp4BoxParser:
     def feed(self, data: bytes) -> None:
         self._buf.extend(data)
 
-    def _try_read_box(self) -> Optional[Tuple[str, bytes]]:
+    def _try_read_box(self) -> tuple[str, bytes] | None:
         if len(self._buf) < 8:
             return None
         size = struct.unpack(">I", self._buf[0:4])[0]
@@ -57,7 +57,7 @@ class _Mp4BoxParser:
             t = "????"
         return t, raw
 
-    def boxes(self) -> Generator[Tuple[str, bytes], None, None]:
+    def boxes(self) -> Generator[tuple[str, bytes], None, None]:
         while True:
             item = self._try_read_box()
             if item is None:
@@ -88,7 +88,7 @@ class WarmLiveStream:
         self._init = b""
         self._init_ready = False
         self._pending_frag: list[bytes] = []
-        self._frags: Deque[Tuple[int, bytes]] = collections.deque()
+        self._frags: collections.deque[tuple[int, bytes]] = collections.deque()
         self._frags_bytes = 0
         self._seq = 0
         self._generation = 0
@@ -314,7 +314,7 @@ class WarmLiveManager:
     def __init__(self, cfg: WarmLiveConfig | None = None) -> None:
         self._cfg = cfg or WarmLiveConfig()
         self._lock = threading.Lock()
-        self._streams: Dict[str, WarmLiveStream] = {}
+        self._streams: dict[str, WarmLiveStream] = {}
 
     def get_or_create(self, key: str, cmd: list[str]) -> WarmLiveStream:
         with self._lock:

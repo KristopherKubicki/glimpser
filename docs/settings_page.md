@@ -14,7 +14,8 @@ The **Settings** interface lets you manage configuration values stored in the da
 - **Tab headers removed** – the active tab is highlighted, freeing space.
 - **Unsaved Changes Indicator** – a small alert icon appears next to the Save
   Changes button when edits haven't been saved.
-- **Status** – view CPU, memory, disk usage, and live logs.
+- **Status** – view CPU, memory, disk usage, live logs, and a Top Failures table
+  with filters and quick links to logs.
 - **Certain tabs start collapsed** – Capture, Admin, and
   Advanced appear collapsed until expanded.
 

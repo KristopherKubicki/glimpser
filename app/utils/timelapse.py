@@ -6,7 +6,7 @@ import os
 import re
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
 
@@ -85,9 +85,7 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
     if not template or not eligible(template, name):
         return None
     now = time.time() if now is None else now
-    freshness = source_freshness(
-        name, template, datetime.fromtimestamp(now, timezone.utc)
-    )
+    freshness = source_freshness(name, template, datetime.fromtimestamp(now, UTC))
     # Check current source evidence before even reusing a cached clip: a newly
     # captured screenshot must not make an old/retained source appear current.
     if any(
@@ -118,7 +116,7 @@ def build_timelapse(name: str, now: float | None = None) -> dict | None:
         try:
             stamp = (
                 datetime.strptime(match[1], "%Y%m%d%H%M%S")
-                .replace(tzinfo=timezone.utc)
+                .replace(tzinfo=UTC)
                 .timestamp()
             )
         except ValueError:

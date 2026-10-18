@@ -1,6 +1,6 @@
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -28,7 +28,7 @@ def test_queue_read_does_not_compete_with_writer(monkeypatch, tmp_path, operatio
                     **turn,
                     template={
                         "last_capture_status": "fresh",
-                        "last_screenshot_time": datetime.now(timezone.utc).isoformat(),
+                        "last_screenshot_time": datetime.now(UTC).isoformat(),
                     },
                 )
                 is True

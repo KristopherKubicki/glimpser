@@ -45,9 +45,9 @@ def test_timeout_stops_owned_child_but_preserves_unrelated_process(
             is False
         )
         assert pid_file.exists(), "worker must launch child before timing out"
-        assert not running(
-            int(pid_file.read_text())
-        ), "timed-out worker left child alive"
+        assert not running(int(pid_file.read_text())), (
+            "timed-out worker left child alive"
+        )
         assert sibling.poll() is None, "cleanup crossed worker ownership boundary"
     finally:
         if pid_file.exists():
