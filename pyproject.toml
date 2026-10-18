@@ -47,7 +47,7 @@ dependencies = [
   "sqlalchemy==2.0.41",
   "undetected-chromedriver==3.5.5",
   "webdriver-manager==4.0.2",
-  "werkzeug==3.1.6",
+  "werkzeug==3.1.9",
   "yt-dlp==2026.7.4",
   "onnxruntime-gpu~=1.18; sys_platform != 'darwin'",
   "onnxruntime~=1.18; sys_platform == 'darwin'",
