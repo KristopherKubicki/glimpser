@@ -1,14 +1,25 @@
 name: Docker Build
 
 on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/docker-build.yml
   workflow_run:
     workflows: ["Python application"]
     types:
       - completed
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'pull_request' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
