@@ -106,6 +106,7 @@ agents = [
   #"pre-commit-docker",
   #"gitleaks",
   "gitlint-core>=0.19.1",
+  "sh>=2.2.4; sys_platform != 'win32'",
   "vulture",
   "pytest-socket"
 ]
@@ -234,6 +235,7 @@ agents = [
   #"pre-commit-docker",
   #"gitleaks",
   "gitlint-core>=0.19.1",
+  "sh>=2.2.4; sys_platform != 'win32'",
   "vulture",
   "pytest-socket", # for offline coding
 ]
