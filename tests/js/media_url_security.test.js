@@ -10,7 +10,14 @@ test.each(["javascript:alert(1)", "data:text/html,bad", "file:///etc/passwd", "h
 );
 
 test("preserves valid paths and pins the requested capture", () => {
-  expect(safeMediaUrl("/clip/camera")).toBe("/clip/camera");
+  expect(safeMediaUrl("/clip/camera")).toBe(`${window.location.origin}/clip/camera`);
   expect(safeMediaUrl("https://example.com/image.png")).toBe("https://example.com/image.png");
-  expect(captureImageUrl("/last_screenshot/camera", "saved")).toBe("/last_screenshot/camera?capture=saved");
+  expect(captureImageUrl("/last_screenshot/camera", "saved")).toBe(`${window.location.origin}/last_screenshot/camera?capture=saved`);
+});
+
+
+test("same-origin double slash paths retain their validated origin", () => {
+  const url = `${window.location.origin}//untrusted.example/image.png`;
+  expect(safeMediaUrl(url)).toBe(url);
+  expect(captureImageUrl(url, "saved")).toBe(url);
 });
