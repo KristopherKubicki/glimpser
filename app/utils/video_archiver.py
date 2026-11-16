@@ -1272,8 +1272,31 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
     # concat demuxer without re-encoding.
 
 
+def _archive_io_pressure_high() -> bool:
+    """Defer optional encoding while storage stalls capture/database writers.
+
+    Linux PSI full/avg60 is the percentage of time all runnable tasks stall on
+    I/O. Ten percent sustained stalls warrant yielding this batch, not changing
+    SQLite durability or dropping captures. Missing PSI retains prior behavior.
+    """
+    try:
+        with open("/proc/pressure/io", encoding="ascii") as handle:
+            for line in handle:
+                if line.startswith("full "):
+                    fields = dict(item.split("=", 1) for item in line.split()[1:])
+                    return float(fields["avg60"]) >= 10.0
+    except (OSError, ValueError, KeyError):
+        pass
+    return False
+
+
 def archive_screenshots():
     """Background job to compile screenshots into videos."""
+    # Check before touching the archive cursor: deferred batches must retain
+    # their place. A later scheduled run retries after storage pressure subsides.
+    if _archive_io_pressure_high():
+        logging.info("Deferring screenshot archive batch: sustained storage pressure")
+        return
     # Ensure VIDEO_DIRECTORY exists
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
@@ -1305,39 +1328,19 @@ def archive_screenshots():
             if not cameras:
                 return
 
-            batch_size = max(int(ARCHIVE_BATCH_SIZE), 0)
-            if batch_size == 0 or batch_size >= len(cameras):
-                batch = cameras
-                next_index = 0
-            else:
-                cursor_path = os.path.join(VIDEO_DIRECTORY, ARCHIVE_CURSOR_FILENAME)
-                start_index = 0
-                try:
-                    if os.path.exists(cursor_path):
-                        with open(cursor_path, encoding="utf-8") as handle:
-                            payload = json.load(handle)
-                        start_index = int(payload.get("index", 0)) % len(cameras)
-                except Exception:
-                    start_index = 0
-
-                batch = cameras[start_index : start_index + batch_size]
-                if len(batch) < batch_size:
-                    remainder = batch_size - len(batch)
-                    batch.extend(cameras[:remainder])
-                next_index = (start_index + len(batch)) % len(cameras)
-                try:
-                    tmp_path = f"{cursor_path}.tmp"
-                    with open(tmp_path, "w", encoding="utf-8") as handle:
-                        json.dump(
-                            {
-                                "index": next_index,
-                                "updated_at": datetime.datetime.utcnow().isoformat(),
-                            },
-                            handle,
-                        )
-                    os.replace(tmp_path, cursor_path)
-                except Exception:
-                    logging.debug("Failed to update archive cursor", exc_info=True)
+            batch_size = max(int(ARCHIVE_BATCH_SIZE), 0) or len(cameras)
+            cursor_path = os.path.join(VIDEO_DIRECTORY, ARCHIVE_CURSOR_FILENAME)
+            start_index = 0
+            try:
+                with open(cursor_path, encoding="utf-8") as handle:
+                    payload = json.load(handle)
+                start_index = int(payload.get("index", 0)) % len(cameras)
+            except (OSError, ValueError, TypeError, AttributeError):
+                pass
+            batch = [
+                cameras[(start_index + offset) % len(cameras)]
+                for offset in range(min(batch_size, len(cameras)))
+            ]
 
             logging.info(
                 "Archiving screenshots batch %d/%d",
@@ -1345,31 +1348,59 @@ def archive_screenshots():
                 len(cameras),
             )
 
-            for camera_name in batch:
-                camera_path = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
-                if not os.path.isdir(camera_path):  # just a file
-                    continue
-                video_path = os.path.join(VIDEO_DIRECTORY, camera_name)
-                os.makedirs(camera_path, exist_ok=True)
-                os.makedirs(video_path, exist_ok=True)
-                in_process_video = os.path.join(video_path, "in_process.mp4")
+            processed = 0
+            try:
+                for camera_name in batch:
+                    # Load can rise during an admitted batch. Yield before the next
+                    # camera, leaving it first in line for the next scheduled run.
+                    if _archive_io_pressure_high():
+                        logging.info(
+                            "Deferring remaining screenshot archive: storage pressure"
+                        )
+                        break
+                    processed += 1
+                    camera_path = os.path.join(SCREENSHOT_DIRECTORY, camera_name)
+                    if not os.path.isdir(camera_path):  # just a file
+                        continue
+                    video_path = os.path.join(VIDEO_DIRECTORY, camera_name)
+                    os.makedirs(camera_path, exist_ok=True)
+                    os.makedirs(video_path, exist_ok=True)
+                    in_process_video = os.path.join(video_path, "in_process.mp4")
 
-                # Skip encode work when the screenshot directory has not changed
-                # since the current in-process segment was written.
-                if os.path.exists(in_process_video):
+                    # Skip encode work when the screenshot directory has not changed
+                    # since the current in-process segment was written.
+                    if os.path.exists(in_process_video):
+                        try:
+                            if os.path.getmtime(camera_path) <= os.path.getmtime(
+                                in_process_video
+                            ):
+                                continue
+                        except OSError:
+                            pass
+
                     try:
-                        if os.path.getmtime(camera_path) <= os.path.getmtime(
-                            in_process_video
-                        ):
-                            continue
+                        compile_to_video(camera_path, video_path)
+                    except Exception:
+                        logging.exception(
+                            "Failed to compile video for camera %s", camera_name
+                        )
+            finally:
+                # Advance only past attempted cameras, including unchanged ones.
+                # Writing at batch exit also preserves fairness for unlimited
+                # batches that pause early. A failed write safely replays work.
+                if processed:
+                    try:
+                        tmp_path = f"{cursor_path}.tmp"
+                        with open(tmp_path, "w", encoding="utf-8") as handle:
+                            json.dump(
+                                {
+                                    "index": (start_index + processed) % len(cameras),
+                                    "updated_at": datetime.datetime.utcnow().isoformat(),
+                                },
+                                handle,
+                            )
+                        os.replace(tmp_path, cursor_path)
                     except OSError:
-                        pass
-
-                try:
-                    compile_to_video(camera_path, video_path)
-                except Exception:
-                    logging.exception(
-                        "Failed to compile video for camera %s", camera_name
-                    )
+                        logging.debug("Failed to update archive cursor", exc_info=True)
     except Timeout:
         logging.warning("archive_screenshots already running; skipping this cycle")

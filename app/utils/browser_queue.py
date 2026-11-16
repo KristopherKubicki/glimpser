@@ -74,6 +74,14 @@ def enqueue(name: str, template: dict | None = None) -> bool:
     priority = name.lower().startswith("hubitat") or bool(
         {g.strip() for g in groups} & {"priority", "home", "systems"}
     )
+    # A duplicate scheduler tick needs no writer lock. The transactional path
+    # below still rechecks before inserting if this snapshot found no ticket.
+    with _database(write=False) as db:
+        if db.execute(
+            "SELECT 1 FROM turns WHERE name=? AND (queued >= ? OR lease > ?)",
+            (name, now - MAX_AGE, now),
+        ).fetchone():
+            return True
     with _database() as db:
         db.execute(
             "DELETE FROM turns WHERE queued < ? AND lease <= ?", (now - MAX_AGE, now)
@@ -92,6 +100,17 @@ def enqueue(name: str, template: dict | None = None) -> bool:
 def claim() -> dict | None:
     """Lease one turn atomically; reserve three of four turns for home/status views."""
     now = time.time()
+    # Idle polls and polls during a live lease must not contend with captures
+    # writing acknowledgments. This is only a hint: every safety check remains
+    # inside BEGIN IMMEDIATE below. A newly enqueued turn waits for the next tick.
+    with _database(write=False) as db:
+        if db.execute("SELECT 1 FROM turns WHERE lease > ?", (now,)).fetchone():
+            return None
+        if not db.execute(
+            "SELECT 1 FROM turns WHERE ready <= ? OR queued < ? OR attempts >= ?",
+            (now, now - MAX_AGE, MAX_ATTEMPTS),
+        ).fetchone():
+            return None
     with _database() as db:
         db.execute(
             "DELETE FROM turns WHERE lease <= ? AND (queued < ? OR attempts >= ?)",
@@ -180,6 +199,13 @@ def finish(
     name: str, token: str, retry: bool = False, *, attempted: bool = True
 ) -> None:
     """Acknowledge this lease only; back off busy turns without losing queue age."""
+    # Both child and coordinator acknowledge a turn. Once the child has done
+    # so, the coordinator must not take a writer lock just to discover a no-op.
+    with _database(write=False) as db:
+        if not db.execute(
+            "SELECT 1 FROM turns WHERE name=? AND token=?", (name, token)
+        ).fetchone():
+            return
     with _database() as db:
         row = db.execute(
             "SELECT attempts FROM turns WHERE name=? AND token=?", (name, token)
