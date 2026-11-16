@@ -38,3 +38,23 @@ Frames are streamed to FFmpeg via `image2pipe`, which avoids writing
 intermediate PNG files. The resize filter runs before encoding and temporary
 segments are concatenated with the `concat` demuxer using `-c copy` so the
 encoded H.264 streams are preserved.
+
+## Frame preparation and validation
+
+Archive candidates share one combined PNG integrity/content check. Pillow verifies
+chunk integrity, then loads pixels once for the existing blank-frame classifier.
+The bounded metadata cache retains only booleans, never decoded images. Before
+encoding, file identity is checked again; replacement, editing, deletion, or
+a change during validation rejects or revalidates the result. Fresh files bypass
+the cache. Corrupt frames do not consume the newest-300 valid-frame budget.
+
+Capture cadence, classifier thresholds, encoder settings, and source recordings
+are unchanged. A bounded six-frame profile on 2026-11-16 measured about 30% less
+CPU time for combined preparation than separate content and validity checks.
+This convenience sample used warm caches and fixed stage order; it is not an
+estimate of whole-service CPU reduction or measured wall-power savings.
+
+Per-job CPU timing uses the portable thread clock. Thread I/O block counters are
+reported only where the operating system exposes thread-level resource usage;
+they are null on unsupported platforms, not zero or process-wide estimates.
+Missing I/O telemetry does not disable archiving.
