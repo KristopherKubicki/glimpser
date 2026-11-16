@@ -508,6 +508,9 @@ class TestVideoArchiver(unittest.TestCase):
     def test_archive_screenshots(self, mock_compile_to_video):
         with (
             patch("app.utils.video_archiver.ARCHIVE_BATCH_SIZE", 0),
+            patch(
+                "app.utils.video_archiver._archive_io_pressure_high", return_value=False
+            ),
             patch("app.utils.video_archiver.FileLock", return_value=nullcontext()),
             patch("os.listdir", return_value=["camera1", "camera2"]),
             patch("os.path.isdir", return_value=True),
@@ -520,6 +523,9 @@ class TestVideoArchiver(unittest.TestCase):
     def test_archive_screenshots_logs_error(self, mock_compile_to_video, mock_log):
         with (
             patch("app.utils.video_archiver.ARCHIVE_BATCH_SIZE", 0),
+            patch(
+                "app.utils.video_archiver._archive_io_pressure_high", return_value=False
+            ),
             patch("app.utils.video_archiver.FileLock", return_value=nullcontext()),
             patch("os.listdir", return_value=["camera1"]),
             patch("os.path.isdir", return_value=True),

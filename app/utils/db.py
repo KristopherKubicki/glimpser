@@ -17,6 +17,22 @@ engine = create_engine(
 )
 with engine.connect() as conn:
     conn.execute(text("PRAGMA journal_mode=WAL"))
+
+
+def _reset_pool_after_fork() -> None:
+    """Give child workers their own connections without closing parent ones.
+
+    Capture workers fork from scheduler threads. SQLite connections and the
+    pool's thread locks cannot safely be reused in another process. close=False
+    replaces only the child's pool; the parent's transactions remain intact.
+    """
+    engine.dispose(close=False)
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_pool_after_fork)
+
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

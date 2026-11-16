@@ -1272,8 +1272,31 @@ def _old_compile_to_video_inner(  # noqa: PLR0912, PLR0915
     # concat demuxer without re-encoding.
 
 
+def _archive_io_pressure_high() -> bool:
+    """Defer optional encoding while storage stalls capture/database writers.
+
+    Linux PSI full/avg60 is the percentage of time all runnable tasks stall on
+    I/O. Ten percent sustained stalls warrant yielding this batch, not changing
+    SQLite durability or dropping captures. Missing PSI retains prior behavior.
+    """
+    try:
+        with open("/proc/pressure/io", encoding="ascii") as handle:
+            for line in handle:
+                if line.startswith("full "):
+                    fields = dict(item.split("=", 1) for item in line.split()[1:])
+                    return float(fields["avg60"]) >= 10.0
+    except (OSError, ValueError, KeyError):
+        pass
+    return False
+
+
 def archive_screenshots():
     """Background job to compile screenshots into videos."""
+    # Check before touching the archive cursor: deferred batches must retain
+    # their place. A later scheduled run retries after storage pressure subsides.
+    if _archive_io_pressure_high():
+        logging.info("Deferring screenshot archive batch: sustained storage pressure")
+        return
     # Ensure VIDEO_DIRECTORY exists
     os.makedirs(VIDEO_DIRECTORY, exist_ok=True)
     os.makedirs(SCREENSHOT_DIRECTORY, exist_ok=True)
