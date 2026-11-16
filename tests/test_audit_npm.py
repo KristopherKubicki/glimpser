@@ -38,7 +38,9 @@ def inputs():
 
 
 def test_former_exception_blocks(inputs):
-    assert audit.evaluate(inputs[0]) == ["https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"]
+    assert audit.evaluate(inputs[0]) == [
+        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+    ]
 
 
 def test_other_high_advisory_blocks(inputs):
@@ -46,7 +48,8 @@ def test_other_high_advisory_blocks(inputs):
     other["url"] = "https://github.com/advisories/GHSA-other"
     inputs[0]["vulnerabilities"]["braces"]["via"].append(other)
     assert audit.evaluate(inputs[0]) == [
-        inputs[0]["vulnerabilities"]["braces"]["via"][0]["url"], other["url"]
+        inputs[0]["vulnerabilities"]["braces"]["via"][0]["url"],
+        other["url"],
     ]
 
 
