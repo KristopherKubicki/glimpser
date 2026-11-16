@@ -236,14 +236,12 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.concatenate_videos")
     @patch("app.utils.video_archiver.Image.open")
-    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
     def test_compile_to_video(  # noqa: PLR0913
         self,
         mock_glob,
         mock_blank,
-        mock_is_valid,
         mock_open,
         mock_concatenate_videos,
         mock_get_video_duration,
@@ -271,11 +269,8 @@ class TestVideoArchiver(unittest.TestCase):
             mock_run_ffmpeg.return_value.returncode = 0
             compile_to_video(self.temp_dir, self.temp_dir)
 
-    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
-    def test_compile_to_video_uses_only_canonical_timestamped_frames(
-        self, mock_blank, mock_is_valid
-    ):
+    def test_compile_to_video_uses_only_canonical_timestamped_frames(self, mock_blank):
         camera_path = os.path.join(self.temp_dir, "Front_door_doorbell")
         video_path = os.path.join(self.temp_dir, "video")
         os.makedirs(camera_path, exist_ok=True)
@@ -371,14 +366,12 @@ class TestVideoArchiver(unittest.TestCase):
     @patch("app.utils.video_archiver.get_templates")
     @patch("app.utils.video_archiver.get_video_duration")
     @patch("app.utils.video_archiver.Image.open")
-    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
     def test_compile_to_video_includes_deflicker_filter(  # noqa: PLR0913
         self,
         mock_glob,
         mock_blank,
-        mock_is_valid,
         mock_open,
         mock_get_video_duration,
         mock_get_templates,
@@ -421,10 +414,9 @@ class TestVideoArchiver(unittest.TestCase):
 
     @patch("app.utils.video_archiver.pipe_ffmpeg_frames")
     @patch("app.utils.video_archiver.Image.open")
-    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("glob.glob")
     def test_compile_to_video_ignores_blank_frames(
-        self, mock_glob, mock_is_valid, mock_open, mock_pipe
+        self, mock_glob, mock_open, mock_pipe
     ):
         camera_name = os.path.basename(self.temp_dir)
         canonical = os.path.join(self.temp_dir, f"{camera_name}_20260422145530.png")
@@ -457,16 +449,16 @@ class TestVideoArchiver(unittest.TestCase):
             mock_open.return_value.__exit__.return_value = None
             compile_to_video(self.temp_dir, self.temp_dir)
 
-        mock_open.assert_called_once_with(canonical)
+        assert mock_open.call_count == 2
+        mock_open.assert_called_with(canonical)
         # self.assertEqual(captured_lines, ["shot_2.png"])
 
     @patch("app.utils.video_archiver.run_ffmpeg")
     @patch("app.utils.video_archiver.Image.open")
-    @patch("app.utils.video_archiver._is_valid_png", return_value=True)
     @patch("app.utils.video_archiver.is_mostly_blank", return_value=False)
     @patch("glob.glob")
     def test_compile_to_video_skips_missing_files(
-        self, mock_glob, mock_blank, mock_is_valid, mock_open, mock_run_ffmpeg
+        self, mock_glob, mock_blank, mock_open, mock_run_ffmpeg
     ):
         camera_name = os.path.basename(self.temp_dir)
         mock_glob.return_value = [

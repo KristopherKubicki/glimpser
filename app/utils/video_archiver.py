@@ -37,7 +37,7 @@ from app.config import (
     VERSION,
     VIDEO_DIRECTORY,
 )
-from app.utils.screenshots import _is_valid_png, is_mostly_blank
+from app.utils.screenshots import is_mostly_blank
 
 from .encoder_pipe import stream_encoder_frames
 from .gpu_guard import run_encoder_command
@@ -178,7 +178,7 @@ def _archive_frame_version(path: str) -> tuple:
     )
 
 
-# Two checks per frame across hundreds of camera histories must fit together.
+# Checks across hundreds of camera histories must fit together.
 # Cache keys contain only file metadata and booleans, never decoded images.
 @lru_cache(maxsize=131072)
 def _cached_archive_check(version: tuple, check) -> bool:
@@ -204,8 +204,16 @@ def _archive_check(path: str, check) -> bool:
 
 
 def _frame_has_content(path: str) -> bool:
-    """Apply the existing blank-frame guard to a candidate image."""
+    """Verify integrity and classify content with one full image decode.
+
+    Keep the chunk verification used by ``_is_valid_png`` even when another
+    consumer enables Pillow's tolerant truncation mode. Reopening after verify
+    is required by Pillow; only the second open decodes pixel data.
+    """
     with Image.open(path) as image:
+        image.verify()
+    with Image.open(path) as image:
+        image.load()
         return not is_mostly_blank(image)
 
 
@@ -1129,7 +1137,9 @@ def _compile_to_video_inner(camera_path, video_path) -> bool:  # noqa: PLR0912, 
                 try:
                     if os.path.getsize(os.path.abspath(file)) < MIN_VALID_PNG_BYTES:
                         continue
-                    if not _archive_check(file, _is_valid_png):
+                    # Recheck the version before encoding, reusing the combined
+                    # result only while the frame is unchanged.
+                    if not _archive_check(file, _frame_has_content):
                         continue
                     if os.path.getsize(os.path.abspath(file)) > MIN_VALID_FRAME_BYTES:
                         temp_file.write(f"file '{os.path.abspath(file)}'\n")
