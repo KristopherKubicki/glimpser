@@ -63,7 +63,7 @@ class TestVideoArchiver(unittest.TestCase):
         self.assertEqual(trim_group_name("Multiple   Spaces"), "multiple___spaces")
 
     @patch("app.utils.video_archiver.get_templates")
-    @patch("app.utils.video_archiver.get_video_duration")
+    @patch("app.utils.video_archiver._teaser_video_duration")
     @patch("app.utils.video_archiver.compile_videos")
     def test_compile_to_teaser(
         self, mock_compile_videos, mock_get_video_duration, mock_get_templates

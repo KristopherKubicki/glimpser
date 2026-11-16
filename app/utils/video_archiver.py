@@ -10,12 +10,16 @@ import datetime
 import glob
 import json
 import logging
+import math
 import os
+import resource
 import subprocess
 import tempfile
 import time
+from collections import OrderedDict
 from enum import Enum, auto
-from functools import lru_cache
+from functools import lru_cache, wraps
+from threading import Lock, local
 
 from filelock import FileLock, Timeout
 from PIL import Image
@@ -253,6 +257,67 @@ def trim_group_name(group_name):
     return group_name.replace(" ", "_").lower()
 
 
+_ARCHIVE_JOB_LOCAL = local()
+
+
+def _measure_archive_job(function):
+    """Log bounded per-job costs without changing scheduling or media options."""
+
+    @wraps(function)
+    def measured(*args, **kwargs):
+        started = time.monotonic()
+        before = resource.getrusage(resource.RUSAGE_THREAD)
+        previous = getattr(_ARCHIVE_JOB_LOCAL, "metrics", None)
+        metrics = {
+            "job": function.__name__,
+            "encoder_calls": 0,
+            "encoder_wall_seconds": 0.0,
+            "encoder_failures": 0,
+        }
+        if function.__name__ == "compile_to_video":
+            camera_path = args[0] if args else kwargs.get("camera_path", "")
+            metrics["camera"] = os.path.basename(os.path.normpath(camera_path))
+        _ARCHIVE_JOB_LOCAL.metrics = metrics
+        status = "error"
+        try:
+            result = function(*args, **kwargs)
+            status = "returned"  # Internal failures may be handled by the job itself.
+            return result
+        finally:
+            after = resource.getrusage(resource.RUSAGE_THREAD)
+            metrics.update(
+                status=status,
+                wall_seconds=round(time.monotonic() - started, 4),
+                thread_cpu_seconds=round(
+                    after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime,
+                    4,
+                ),
+                thread_read_blocks=max(0, after.ru_inblock - before.ru_inblock),
+                thread_write_blocks=max(0, after.ru_oublock - before.ru_oublock),
+            )
+            metrics["encoder_wall_seconds"] = round(metrics["encoder_wall_seconds"], 4)
+            _ARCHIVE_JOB_LOCAL.metrics = previous
+            logging.info("archive_job_metrics %s", json.dumps(metrics, sort_keys=True))
+
+    return measured
+
+
+def _run_measured_encoder(command, timeout):
+    """Count encoder attempts and waits; never log potentially sensitive arguments."""
+    metrics = getattr(_ARCHIVE_JOB_LOCAL, "metrics", None)
+    started = time.monotonic()
+    failed = True
+    try:
+        result = run_encoder_command(command, timeout=timeout)
+        failed = result.returncode != 0
+        return result
+    finally:
+        if metrics is not None:
+            metrics["encoder_calls"] += 1
+            metrics["encoder_failures"] += int(failed)
+            metrics["encoder_wall_seconds"] += time.monotonic() - started
+
+
 def run_ffmpeg(command, timeout: int = 30):
     """Execute an FFmpeg command and log output.
 
@@ -263,7 +328,7 @@ def run_ffmpeg(command, timeout: int = 30):
     timeout: int, optional
         Number of seconds before the process is terminated. Defaults to 30.
     """
-    result = run_encoder_command(command, timeout=timeout)
+    result = _run_measured_encoder(command, timeout=timeout)
     if result.stdout:
         logging.debug("ffmpeg stdout: %s", result.stdout.strip())
     if result.stderr:
@@ -275,7 +340,7 @@ def run_ffmpeg(command, timeout: int = 30):
                 "ffmpeg hwaccel failed; retrying with software decode: %s",
                 _summarize_ffmpeg_stderr(result.stderr),
             )
-            retry_result = run_encoder_command(retry_command, timeout=timeout)
+            retry_result = _run_measured_encoder(retry_command, timeout=timeout)
             if retry_result.stdout:
                 logging.debug("ffmpeg stdout: %s", retry_result.stdout.strip())
             if retry_result.stderr:
@@ -508,6 +573,52 @@ def is_video_expired(video_path, max_age_days):
     return age > max_age_days * 86400
 
 
+_TEASER_DURATION_CACHE = OrderedDict()
+_TEASER_DURATION_LOCK = Lock()
+_TEASER_DURATION_CACHE_SIZE = 512
+
+
+def _video_identity(video_path):
+    """Identify content changes, including replacement and same-size rewrites."""
+    stat = os.stat(video_path)
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+
+
+def _teaser_video_duration(video_path):
+    """Reuse successful duration probes only while the source stays unchanged."""
+    path = os.path.abspath(video_path)
+    try:
+        identity = _video_identity(path)
+    except OSError:
+        return None
+    with _TEASER_DURATION_LOCK:
+        cached = _TEASER_DURATION_CACHE.get(path)
+        if (
+            cached is not None
+            and cached[0] == identity
+            and time.monotonic() - cached[2] < 3600
+        ):
+            _TEASER_DURATION_CACHE.move_to_end(path)
+            return cached[1]
+        _TEASER_DURATION_CACHE.pop(path, None)
+
+    duration = get_video_duration(path)
+    if duration is None or not math.isfinite(duration) or duration <= 0:
+        return None
+    try:
+        if _video_identity(path) != identity:
+            return None  # Let the next run retry a file changing during the probe.
+    except OSError:
+        return None
+    with _TEASER_DURATION_LOCK:
+        _TEASER_DURATION_CACHE[path] = (identity, duration, time.monotonic())
+        _TEASER_DURATION_CACHE.move_to_end(path)
+        while len(_TEASER_DURATION_CACHE) > _TEASER_DURATION_CACHE_SIZE:
+            _TEASER_DURATION_CACHE.popitem(last=False)
+    return duration
+
+
+@_measure_archive_job
 def compile_to_teaser():
     """Create short teaser videos from recent camera footage.
 
@@ -544,8 +655,8 @@ def compile_to_teaser():
             )
             if video_files:
                 latest_video = video_files[0]
-                ldur = get_video_duration(latest_video)
-                if ldur < 1:  # not much going on...
+                ldur = _teaser_video_duration(latest_video)
+                if ldur is None or ldur < 1:  # not much going on...
                     continue
                 try:
                     source_mtime = os.path.getmtime(latest_video)
@@ -570,7 +681,7 @@ def compile_to_teaser():
                             final_videos[trimmed_group_name] = []
                             group_latest_mtime[trimmed_group_name] = 0.0
                         final_videos[trimmed_group_name].append(
-                            os.path.abspath(latest_video)
+                            (os.path.abspath(latest_video), ldur)
                         )
                         group_latest_mtime[trimmed_group_name] = max(
                             group_latest_mtime[trimmed_group_name], source_mtime
@@ -583,6 +694,8 @@ def compile_to_teaser():
         except OSError:
             all_output_mtime = 0.0
         if all_output_mtime < all_latest_mtime:
+            # FFmpeg opens this path separately; publish the buffered list first.
+            temp_file.flush()
             compile_videos(temp_file.name, all_output)
         else:
             logging.debug(
@@ -602,8 +715,11 @@ def compile_to_teaser():
             with tempfile.NamedTemporaryFile(
                 mode="w+"
             ) as group_temp_file:  # should be cleaning up automatically...
-                for video in videos:
+                for video, duration in videos:
+                    # Match the all-camera teaser; full recordings stay untouched.
                     group_temp_file.write(f"file '{video}'\n")
+                    group_temp_file.write(f"inpoint {max(duration - 5, 0)}\n")
+                    group_temp_file.write(f"outpoint {duration}\n")
                 group_temp_file.flush()
                 compile_videos(group_temp_file.name, group_output)
 
@@ -915,6 +1031,7 @@ def handle_concat_error(e, temp_video, in_process_video) -> ConcatStatus:
     return ConcatStatus.FATAL
 
 
+@_measure_archive_job
 def compile_to_video(camera_path, video_path):
     """Compile screenshots into an in-process video for a camera.
 
