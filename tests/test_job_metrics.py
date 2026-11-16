@@ -2,7 +2,6 @@ import ast
 import json
 import logging
 import os
-import resource
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -13,12 +12,22 @@ from unittest.mock import Mock
 
 import pytest
 
+try:
+    import resource
+except ImportError:
+    resource = None
+
 SOURCE = Path(__file__).parents[1] / "app/utils/video_archiver.py"
 
 
 @pytest.fixture
 def scope():
-    names = {"_measure_archive_job", "_run_measured_encoder", "run_ffmpeg"}
+    names = {
+        "_thread_io_usage",
+        "_measure_archive_job",
+        "_run_measured_encoder",
+        "run_ffmpeg",
+    }
     tree = ast.parse(SOURCE.read_text())
     nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in names]
     ns = dict(
@@ -107,3 +116,22 @@ def test_nested_restore(scope):
     scope["_ARCHIVE_JOB_LOCAL"].metrics = sentinel
     assert scope["_measure_archive_job"](lambda: 12)() == 12
     assert scope["_ARCHIVE_JOB_LOCAL"].metrics is sentinel
+
+
+@pytest.mark.parametrize(
+    "unavailable",
+    [
+        None,
+        object(),
+        Mock(RUSAGE_THREAD=1, getrusage=Mock(side_effect=OSError("unsupported"))),
+    ],
+)
+def test_missing_thread_io_preserves_job(scope, caplog, unavailable):
+    scope["resource"] = unavailable
+    with caplog.at_level(logging.INFO):
+        assert scope["_measure_archive_job"](lambda: 42)() == 42
+    row = json.loads(caplog.records[-1].args[0])
+    assert row["thread_read_blocks"] is None
+    assert row["thread_write_blocks"] is None
+    assert row["thread_cpu_seconds"] >= 0
+    assert scope["_ARCHIVE_JOB_LOCAL"].metrics is None

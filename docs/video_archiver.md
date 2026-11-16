@@ -53,3 +53,8 @@ are unchanged. A bounded six-frame profile on 2026-11-16 measured about 30% less
 CPU time for combined preparation than separate content and validity checks.
 This convenience sample used warm caches and fixed stage order; it is not an
 estimate of whole-service CPU reduction or measured wall-power savings.
+
+Per-job CPU timing uses the portable thread clock. Thread I/O block counters are
+reported only where the operating system exposes thread-level resource usage;
+they are null on unsupported platforms, not zero or process-wide estimates.
+Missing I/O telemetry does not disable archiving.

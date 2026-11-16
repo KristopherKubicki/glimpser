@@ -12,7 +12,6 @@ import json
 import logging
 import math
 import os
-import resource
 import subprocess
 import tempfile
 import time
@@ -265,6 +264,22 @@ def trim_group_name(group_name):
     return group_name.replace(" ", "_").lower()
 
 
+try:
+    import resource
+except ImportError:  # Windows has no resource module.
+    resource = None
+
+
+def _thread_io_usage():
+    """Return thread I/O counters where supported, never process-wide substitutes."""
+    if resource is None or not hasattr(resource, "RUSAGE_THREAD"):
+        return None
+    try:
+        return resource.getrusage(resource.RUSAGE_THREAD)
+    except (OSError, ValueError):
+        return None
+
+
 _ARCHIVE_JOB_LOCAL = local()
 
 
@@ -274,7 +289,8 @@ def _measure_archive_job(function):
     @wraps(function)
     def measured(*args, **kwargs):
         started = time.monotonic()
-        before = resource.getrusage(resource.RUSAGE_THREAD)
+        cpu_started = time.thread_time()
+        before = _thread_io_usage()
         previous = getattr(_ARCHIVE_JOB_LOCAL, "metrics", None)
         metrics = {
             "job": function.__name__,
@@ -292,16 +308,24 @@ def _measure_archive_job(function):
             status = "returned"  # Internal failures may be handled by the job itself.
             return result
         finally:
-            after = resource.getrusage(resource.RUSAGE_THREAD)
+            after = _thread_io_usage()
             metrics.update(
                 status=status,
                 wall_seconds=round(time.monotonic() - started, 4),
                 thread_cpu_seconds=round(
-                    after.ru_utime + after.ru_stime - before.ru_utime - before.ru_stime,
+                    time.thread_time() - cpu_started,
                     4,
                 ),
-                thread_read_blocks=max(0, after.ru_inblock - before.ru_inblock),
-                thread_write_blocks=max(0, after.ru_oublock - before.ru_oublock),
+                thread_read_blocks=(
+                    max(0, after.ru_inblock - before.ru_inblock)
+                    if before is not None and after is not None
+                    else None
+                ),
+                thread_write_blocks=(
+                    max(0, after.ru_oublock - before.ru_oublock)
+                    if before is not None and after is not None
+                    else None
+                ),
             )
             metrics["encoder_wall_seconds"] = round(metrics["encoder_wall_seconds"], 4)
             _ARCHIVE_JOB_LOCAL.metrics = previous
