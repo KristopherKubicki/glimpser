@@ -6,11 +6,14 @@ utility for checking if arbitrary TCP ports are open.  The helpers are
 used by screenshot capture and to validate runtime environments.
 """
 
+import hashlib
+import json
 import logging
 import os
 import re
 import shutil
 import socket
+import sqlite3
 import subprocess
 import time
 
@@ -18,7 +21,8 @@ from app import config
 
 # Cache for Chrome versions and GPU capability results
 chrome_version: dict[str, tuple[int, float]] = {}
-_browser_gl_cache: dict[str, bool] = {}
+_GL_CACHE_PATH = "data/chrome_gl_probe.sqlite3"
+_GL_CACHE_SECONDS = 300
 
 
 def get_chrome_path() -> str | None:
@@ -75,11 +79,8 @@ def get_chrome_version(chrome_path: str) -> int:
     return int(version)
 
 
-def browser_supports_gl(chrome_path: str) -> bool:
-    """Return ``True`` if Chrome can start with ``--use-gl=egl``."""
-    cached = _browser_gl_cache.get(chrome_path)
-    if cached is not None:
-        return cached
+def _probe_browser_gl(chrome_path: str) -> bool:
+    """Run the existing isolated Chrome capability check."""
     try:
         subprocess.check_call(
             [
@@ -93,11 +94,62 @@ def browser_supports_gl(chrome_path: str) -> bool:
             stderr=subprocess.DEVNULL,
             timeout=5,
         )
-        result = True
+        return True
     except Exception:
-        result = False
-    _browser_gl_cache[chrome_path] = result
-    return result
+        return False
+
+
+def browser_supports_gl(chrome_path: str) -> bool:
+    """Share a five-minute capability result across short-lived capture workers.
+
+    SQLite serializes the check itself, so simultaneous cold workers launch only
+    one probe. Binary metadata invalidates upgrades; the TTL limits stale results
+    following driver or runtime changes. No page or camera data enters this cache.
+    """
+    connection = None
+    result = None
+    try:
+        stat = os.stat(chrome_path)
+        identity = (
+            os.path.realpath(chrome_path),
+            stat.st_dev,
+            stat.st_ino,
+            stat.st_size,
+            stat.st_mtime_ns,
+            stat.st_ctime_ns,
+            os.getuid(),
+        )
+        key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
+        os.makedirs(os.path.dirname(os.path.abspath(_GL_CACHE_PATH)), exist_ok=True)
+        connection = sqlite3.connect(_GL_CACHE_PATH, timeout=10)
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS probe "
+            "(key TEXT PRIMARY KEY, checked REAL NOT NULL, supported INTEGER NOT NULL)"
+        )
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            "SELECT checked, supported FROM probe WHERE key = ?", (key,)
+        ).fetchone()
+        now = time.time()
+        if row is not None and 0 <= now - row[0] < _GL_CACHE_SECONDS:
+            return bool(row[1])
+        result = _probe_browser_gl(chrome_path)
+        connection.execute(
+            "DELETE FROM probe WHERE checked <= ? OR checked > ?",
+            (now - _GL_CACHE_SECONDS, now),
+        )
+        connection.execute(
+            "INSERT OR REPLACE INTO probe VALUES (?, ?, ?)",
+            (key, time.time(), int(result)),
+        )
+        connection.commit()
+        return result
+    except (OSError, sqlite3.Error):
+        # Optional caching must not prevent a capture when storage is unavailable.
+        return result if result is not None else _probe_browser_gl(chrome_path)
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def is_port_open(host: str, port: int, timeout: int = 5) -> bool:
