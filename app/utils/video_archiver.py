@@ -806,21 +806,44 @@ def compile_videos(input_file, output_file):
         ]
     )
 
+    pending = None
+    started = time.monotonic()
     try:
+        # Keep the published teaser intact until its replacement is complete.
+        # A unique sibling also prevents concurrent jobs sharing a partial file.
+        with tempfile.NamedTemporaryFile(
+            dir=os.path.dirname(os.path.abspath(output_file)),
+            prefix=".teaser-",
+            suffix=".mp4",
+            delete=False,
+        ) as handle:
+            pending = handle.name
+        create_command[-1] = pending
         run_ffmpeg(create_command, timeout=30)
-        if (
-            os.path.exists(output_file)
-            and os.path.getsize(output_file) > MIN_VALID_MP4_BYTES
-        ):
-            if is_video_expired(output_file, MAX_COMPRESSED_VIDEO_AGE):
-                logging.info("Rotating expired output %s", output_file)
-            os.rename(output_file, output_file.replace(".tmp", ""))
-            return True
-        # otherwise, do something? clean up the file maybe?
-    except Exception as e:
-        _log_ffmpeg_failure("FFmpeg command failed", e)
-        if os.path.exists(output_file):
-            os.unlink(output_file)
+        if os.path.getsize(pending) <= MIN_VALID_MP4_BYTES:
+            return False
+        if is_video_expired(pending, MAX_COMPRESSED_VIDEO_AGE):
+            logging.info("Rotating expired output %s", output_file)
+        os.replace(pending, output_file.replace(".tmp", ""))
+        return True
+    except Exception as exc:
+        stderr = getattr(exc, "stderr", None) or b""
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode(errors="replace")
+        # Fixed fields only: encoder output can contain private source URLs.
+        logging.warning(
+            "teaser_remux_failed elapsed_seconds=%.3f staged_bytes=%d "
+            "timeout=%s faststart_started=%s",
+            time.monotonic() - started,
+            os.path.getsize(pending) if pending and os.path.exists(pending) else 0,
+            isinstance(exc, subprocess.TimeoutExpired),
+            "moving the moov atom" in stderr,
+        )
+        _log_ffmpeg_failure("FFmpeg command failed", exc)
+        return False
+    finally:
+        if pending and os.path.exists(pending):
+            os.unlink(pending)
 
 
 def create_blank_video(
