@@ -27,13 +27,19 @@ class TestProfiling(unittest.TestCase):
         self.log_patch.stop()
         self.temp_log.close()
         os.unlink(self.temp_log.name)
+        journal = self.temp_log.name + ".jsonl"
+        if os.path.exists(journal):
+            os.unlink(journal)
 
     def test_latency_recorded(self):
         resp = self.client.get("/health")
         self.assertEqual(resp.status_code, 200)
-        with open(self.temp_log.name) as f:
-            data = json.load(f)
+        with open(self.temp_log.name + ".jsonl") as f:
+            data = [json.loads(line) for line in f if line.strip()]
         self.assertTrue(any(d["route"] == "/health" for d in data))
+        from app.utils.profiling import get_latency_stats
+
+        self.assertGreaterEqual(get_latency_stats()["/health"]["count"], 1)
 
     def test_baseline_update(self):
         self.client.get("/health")
