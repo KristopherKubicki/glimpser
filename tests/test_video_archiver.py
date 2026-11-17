@@ -97,7 +97,7 @@ class TestVideoArchiver(unittest.TestCase):
             with (
                 patch("os.path.exists", return_value=True),
                 patch("os.path.getsize", return_value=500),
-                patch("os.rename"),
+                patch("os.replace"),
             ):
                 result = compile_videos(temp_file.name, "output.mp4")
         self.assertTrue(result)
