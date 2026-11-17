@@ -55,6 +55,51 @@ class TestCaptureStreamConfig(unittest.TestCase):
             p_idx = cmd.index("-probesize")
             self.assertEqual(cmd[a_idx + 1], "3M")
             self.assertEqual(cmd[p_idx + 1], "2M")
+            self.assertEqual(cmd[-3:-1], ["-compression_level", "1"])
+            self.assertTrue(cmd[-1].endswith(".png"))
+
+    def test_slow_rtsp_keeps_warmup_and_uses_lossless_fast_png(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = os.path.join(tmp, "t.db")
+            ss = self._reload_modules(
+                {
+                    "GLIMPSER_DATABASE_PATH": db_path,
+                    "GLIMPSER_BACKUP_PATH": os.path.join(tmp, "b.json"),
+                    "ANALYZE_DURATION_DEFAULT": "3M",
+                    "PROBE_SIZE_DEFAULT": "2M",
+                }
+            )
+
+            with (
+                patch(
+                    "app.utils.screenshots._probe_stream_with_ffprobe",
+                    return_value=True,
+                ),
+                patch(
+                    "app.utils.screenshots.shutil.which", return_value="/usr/bin/ffmpeg"
+                ),
+                patch.dict(
+                    ss.capture_policy.CAPTURE_POLICY,
+                    {"slow_rtsp_cameras": ["test-slow"]},
+                ),
+                patch("app.utils.screenshots.run_capture_command") as mock_run,
+                patch("app.utils.screenshots.os.makedirs"),
+                patch("app.utils.screenshots.os.path.exists", return_value=True),
+                patch("app.utils.screenshots.os.listdir", return_value=["f.png"]),
+                patch("app.utils.screenshots.os.path.getsize", return_value=1),
+                patch("app.utils.screenshots.shutil.move"),
+                patch("app.utils.screenshots._is_valid_png", return_value=True),
+                patch("app.utils.screenshots.add_timestamp"),
+            ):
+                ss.capture_frame_from_stream(
+                    "rtsp://example.com/live", "out.png", name="test-slow"
+                )
+
+            cmd = mock_run.call_args.args[0]
+            self.assertEqual(cmd[cmd.index("-ss") + 1], "12")
+            self.assertEqual(cmd[cmd.index("-frames:v") + 1], "3")
+            self.assertEqual(cmd[-3:-1], ["-compression_level", "1"])
+            self.assertTrue(cmd[-1].endswith(".png"))
 
     def test_hdhomerun_profile_uses_other_probe_and_minimal_capture(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -89,7 +134,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 patch("app.utils.screenshots.add_timestamp"),
             ):
                 ss.capture_frame_from_stream(
-                    "http://192.168.50.193:5004/auto/v2.1",
+                    "http://192.0.2.193:5004/auto/v2.1",
                     "out.png",
                 )
 
@@ -131,7 +176,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 patch("app.utils.screenshots.add_timestamp"),
             ):
                 ss.capture_frame_from_stream(
-                    "http://192.168.50.194:5004/auto/v32.1",
+                    "http://192.0.2.194:5004/auto/v32.1",
                     "out.png",
                     timeout=10,
                 )
@@ -166,7 +211,7 @@ class TestCaptureStreamConfig(unittest.TestCase):
                 patch("app.utils.screenshots.add_timestamp"),
             ):
                 ss.capture_frame_from_stream(
-                    "http://192.168.50.194:5004/auto/v32.1",
+                    "http://192.0.2.194:5004/auto/v32.1",
                     "out.png",
                     timeout=45,
                 )

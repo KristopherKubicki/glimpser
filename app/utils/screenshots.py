@@ -9236,6 +9236,10 @@ def capture_frame_from_stream(
                     temp_output_pattern,
                 ]
 
+            # Burst PNGs are disposable: use faster lossless compression.
+            # Keep this after the slow-RTSP override so both paths benefit.
+            command[-1:-1] = ["-compression_level", "1"]
+
             attempt_deadline = time.monotonic() + per_attempt_timeout
             try:
                 run_capture_command(
